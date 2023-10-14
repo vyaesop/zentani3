@@ -1,0 +1,596 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+
+<!-- Mirrored from portotheme.com/html/wolmart/shop-infinite-scroll.html by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 27 Mar 2022 17:35:59 GMT -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+
+    <title>Zentanee | Shopping</title>
+
+    <meta name="keywords" content="Marketplace ecommerce responsive HTML5 Template" />
+    <meta name="description" content="Wolmart is powerful marketplace &amp; ecommerce responsive Html5 Template.">
+    <meta name="author" content="D-THEMES">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'asset/images/icons/photo_2023-10-13_14-01-19.png' %}">
+
+    <!-- WebFont.js -->
+    <script>
+        WebFontConfig = {
+            google: { families: ['Poppins:400,500,600,700'] }
+        };
+        (function (d) {
+            var wf = d.createElement('script'), s = d.scripts[0];
+            wf.src = '{% static 'asset/js/webfont.js' %}';
+            wf.async = true;
+            s.parentNode.insertBefore(wf, s);
+        })(document);
+    </script>
+
+    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2"
+        crossorigin="anonymous">
+    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2"
+        crossorigin="anonymous">
+    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2"
+            crossorigin="anonymous">
+    <link rel="preload" href="{% static 'asset/fonts/wolmart87d5.woff?png09e" as="font" type="font/woff' %}" crossorigin="anonymous">
+
+    <!-- Vendor CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/animate/animate.min.css' %}">
+
+    <!-- Plugins CSS -->
+    <link rel="stylesheet" href="{% static 'asset/vendor/swiper/swiper-bundle.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/nouislider/nouislider.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/magnific-popup/magnific-popup.min.css' %}">
+
+    <!-- Default CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/style.min.css' %}">
+</head>
+
+<body>
+    <div class="page-wrapper">
+        <h1 class="d-none">Zentanee</h1>
+        <!-- Start of Header -->
+        <header class="header header-border">
+            <div class="header-top">
+                <div class="container">
+                    <div class="header-left">
+                        <p class="welcome-msg">Welcome to Zentanee!</p>
+                    </div>
+                    <div class="header-right">
+                        {% comment %} <div class="dropdown">
+                            <a href="#currency">USD</a>
+                            <div class="dropdown-box">
+                                <a href="#USD">USD</a>
+                                <a href="#EUR">EUR</a>
+                            </div>
+                        </div> 
+                        <!-- End of DropDown Menu -->
+
+                        <div class="dropdown">
+                            <a href="#language"><img src="{% static 'asset/images/flags/eng.png' %}" alt="ENG Flag" width="14"
+                                    height="8" class="dropdown-image" /> ENG</a>
+                            <div class="dropdown-box">
+                                <a href="#ENG">
+                                    <img src="{% static 'asset/images/flags/eng.png' %}" alt="ENG Flag" width="14" height="8"
+                                        class="dropdown-image" />
+                                    ENG
+                                </a>
+                                <a href="#FRA">
+                                    <img src="{% static 'asset/images/flags/fra.png' %}" alt="FRA Flag" width="14" height="8"
+                                        class="dropdown-image" />
+                                    FRA
+                                </a>
+                            </div>
+                        </div>{% endcomment %}
+                        <!-- End of Dropdown Menu -->
+                        <span class="divider d-lg-show"></span>
+                    {% comment %} <a href="blog.html" class="d-lg-show">Blog</a> {% endcomment %}
+                    <a href="{% url 'store:contact' %}" class="d-lg-show">Contact Us</a>
+                    {% if request.user.is_authenticated %}
+                    <a href="{% url 'store:profile' %}" class="d-lg-show">My Account</a>
+                    {% else %}
+                    <a href="{% url 'store:login' %}" class="d-lg-show login sign-in"><i
+                            class="w-icon-account"></i>Login</a>
+                    <span class="delimiter d-lg-show">/</span>
+                    <a href="{% url 'store:register' %}" class="ml-0 d-lg-show login register">Register</a>
+                    {% endif %} 
+                    </div>
+                </div>
+            </div>
+            <!-- End of Header Top -->
+
+            <div class="header-middle">
+                <div class="container">
+                    <div class="header-left mr-md-4">
+                        <a href="#" class="mobile-menu-toggle  w-icon-hamburger" aria-label="menu-toggle">
+                        </a>
+                        <a href="{% url 'store:home' %}" class="logo ml-lg-0">
+                            <img src="{% static 'asset/images/photo_2023-10-13_14-01-19-removebg-preview.png' %}" alt="logo" width="144" height="45" />
+                        </a>
+                        <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round d-none d-md-flex input-wrapper">
+                            <div class="select-box">
+                                <select id="category" name="category">
+                                    <option value="{% url 'store:all-categories' %}"><a href="{% url 'store:all-categories' %}">All Categories</a></option>
+                                    
+                                </select>
+                            </div>
+                            <input type="text" class="form-control" name="q" id="search"
+                                placeholder="Search in..." required />
+                            <button class="btn btn-search" type="submit"><i class="w-icon-search"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="header-right ml-4">
+                        <div class="header-call d-xs-show d-lg-flex align-items-center">
+                            <a href="tel:#" class="w-icon-call"></a>
+                            <div class="call-info d-lg-show">
+                                <h4 class="chat font-weight-normal font-size-md text-normal ls-normal text-light mb-0">
+                                    <a href="mailto:#" class="text-capitalize">Call us</a> at :</h4>
+                                <a href="tel:#" class="phone-number font-weight-bolder ls-50">+251 933 392 463 </a>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown cart-dropdown cart-offcanvas mr-0 mr-lg-2">
+                            <div class="cart-overlay"></div>
+                            <a href="{% url 'store:cart' %}" class="cart-toggle label-down link">
+                                <i class="w-icon-cart">
+                                    <span class="cart-count">{{cart_items.count}}</span>
+                                </i>
+                                <span class="cart-label">Cart</span>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Header Middle -->
+
+            <div class="header-bottom sticky-content fix-top sticky-header">
+                <div class="container">
+                    <div class="inner-wrap">
+                        <div class="header-left">
+                            <div class="dropdown category-dropdown has-border" data-visible="true">
+                                <a href="#" class="category-toggle" role="button" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="true" data-display="static"
+                                    title="Browse Categories">
+                                    <i class="w-icon-category"></i>
+                                    <span>Browse Categories</span>
+                                </a>
+
+                                <div class="dropdown-box">
+                                    <ul class="menu vertical-menu category-menu">
+                                        {% if categories_menu %}
+                                        {% for cat_menu in categories_menu %}
+                                        <li>
+                                            <a href="{% url 'store:category-products' cat_menu.slug %}">
+                                                </i><b>{{cat_menu.title}}</b>
+                                            </a>
+                                        </li>
+                                        
+                                        {% endfor %}
+                                        {% endif %}
+                                        <li>
+                                            <a href="{% url 'store:all-categories' %}"
+                                                class="font-weight-bold text-primary text-uppercase ls-25">
+                                                View All Categories<i class="w-icon-angle-right"></i>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <nav class="main-nav">
+                                <ul class="menu active-underline">
+                                    <li>
+                                        <a href="{% url 'store:home' %}">Home</a>
+                                    </li>
+                                    <li>
+                                        <a href="{% url 'store:all-categories' %}">All categories</a>
+                                    </li>
+                                    <li>
+                                        <a href="{% url 'store:all-brands' %}">Brands</a>
+                                    </li>
+                                    <li>
+                                        <a href="{% url 'store:about' %}">About us</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                        {% comment %} <div class="header-right">
+                            <a href="#" class="d-xl-show"><i class="w-icon-map-marker mr-1"></i>Track Order</a>
+                            <a href="#"><i class="w-icon-sale"></i>Daily Deals</a>
+                        </div> {% endcomment %}
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- End of Header -->
+        {% block content %}
+        {% endblock content %}
+ <!-- Start of Footer -->
+ <footer class="footer">
+    {% comment %} <div class="footer-newsletter bg-primary pt-6 pb-6">
+        <div class="container">
+            <div class="row justify-content-center align-items-center">
+                <div class="col-xl-5 col-lg-6">
+                    <div class="icon-box icon-box-side text-white">
+                        <div class="icon-box-icon d-inline-flex">
+                            <i class="w-icon-envelop3"></i>
+                        </div>
+                        <div class="icon-box-content">
+                            <h4 class="icon-box-title text-white text-uppercase mb-0">Subscribe To  Our Newsletter</h4>
+                            <p class="text-white">Get all the latest information on Events, Sales and Offers.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-7 col-lg-6 col-md-9 mt-4 mt-lg-0 ">
+                    <form action="#" method="get" class="input-wrapper input-wrapper-inline input-wrapper-rounded">
+                        <input type="email" class="form-control mr-2 bg-white" name="email" id="email"
+                            placeholder="Your E-mail Address" />
+                    <button class="btn btn-dark btn-rounded" type="submit">Subscribe<i
+                            class="w-icon-long-arrow-right"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div> {% endcomment %}
+    <div class="container">
+        <div class="footer-top">
+            <div class="row">
+                <div class="col-lg-4 col-sm-6">
+                    <div class="widget widget-about">
+                        <a href="{% url 'store:home' %}" class="logo-footer">
+                            <img src="{% static 'asset/images/photo_2023-10-13_14-01-19-removebg-preview.png' %}" alt="logo-footer" width="144"
+                                height="45" />
+                        </a>
+                        <div class="widget-body">
+                            <p class="widget-about-title">Got Question? Call us at</p>
+                            <a href="tel:+251 933 392 463" class="widget-about-call">+251 933 392 463 </a>
+                            
+
+                            <div class="social-icons social-icons-colored">
+                                <a href="#" class="social-icon social-facebook w-icon-facebook"></a>
+                                <a href="#" class="social-icon social-twitter w-icon-twitter"></a>
+                                <a href="https://instagram.com/zentanee" class="social-icon social-instagram w-icon-instagram"></a>
+                                <a href="#" class="social-icon social-youtube w-icon-youtube"></a>
+                                <a href="#" class="social-icon social-pinterest w-icon-pinterest"></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-sm-6">
+                    <div class="widget">
+                        <h3 class="widget-title">Company</h3>
+                        <ul class="widget-body">
+                            <li><a href="{% url 'store:about' %}">About Us</a></li>
+                            <li><a href="https://instagram.com/zentanee">Team Member</a></li>
+                            <li><a href="{% url 'store:contact' %}">Contact Us</a></li>
+                            <li><a href="https://instagram.com/zentanee">Affilate</a></li>
+                            <li><a href="{% url 'store:orders' %}">Order History</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-sm-6">
+                    <div class="widget">
+                        <h4 class="widget-title">My Account</h4>
+                        <ul class="widget-body">
+                            <li><a href="{% url 'store:cart' %}">View Cart</a></li>
+                            <li><a href="{% url 'store:login' %}">Sign In</a></li>
+                            <li><a href="https://instagram.com/zentanee">Help</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-sm-6">
+                    <div class="widget">
+                        <h4 class="widget-title">Customer Service</h4>
+                        <ul class="widget-body">
+                            <li><a href="https://instagram.com/zentanee">Payment Methods</a></li>
+                            <li><a href="https://instagram.com/zentanee">Money-back guarantee!</a></li>
+                            <li><a href="https://instagram.com/zentanee">Product Returns</a></li>
+                            <li><a href="https://instagram.com/zentanee">Support Center</a></li>
+                            <li><a href="https://instagram.com/zentanee">Shipping</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-left">
+                <p class="copyright">Copyright © 2023 Zentanee. All Rights Reserved.</p>
+            </div>
+            <div class="footer-right">
+                <span>Website by >>></span><a href="https://instagram.com/tegabeeno" class="social-icon social-instagram w-icon-instagram"></a>
+
+            </div>
+        </div>
+    </div>
+</footer>
+<!-- End of Footer -->
+</div>
+<!-- End of Page Wrapper -->
+
+<!-- Start of Sticky Footer -->
+<div class="sticky-footer sticky-content fix-bottom">
+<a href="{% url 'store:home' %}" class="sticky-link active">
+    <i class="w-icon-home"></i>
+    <p>Home</p>
+</a>
+<a href="{% url 'store:all-categories' %}" class="sticky-link">
+    <i class="w-icon-category"></i>
+    <p>Categories</p>
+</a>
+<a href="{% url 'store:profile' %}" class="sticky-link">
+    <i class="w-icon-account"></i>
+    <p>Account</p>
+</a>
+<a href="{% url 'store:cart' %}" class="sticky-link">
+    <i class="w-icon-cart"></i>
+    <p>Cart</p>
+</a>
+    
+    <!-- End of Dropdown Box -->
+
+
+<div class="header-search hs-toggle dir-up">
+    <a href="#" class="search-toggle sticky-link">
+        <i class="w-icon-search"></i>
+        <p>Search</p>
+    </a>
+    <form action="#" class="input-wrapper">
+        <input type="text" class="form-control" name="search" autocomplete="off" placeholder="Search"
+            required />
+        <button class="btn btn-search" type="submit">
+            <i class="w-icon-search"></i>
+        </button>
+    </form>
+</div>
+</div>
+<!-- End of Sticky Footer -->
+
+<!-- Start of Scroll Top -->
+<a id="scroll-top" class="scroll-top" href="#top" title="Top" role="button"> <i class="w-icon-angle-up"></i> <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"> <circle id="progress-indicator" fill="transparent" stroke="#000000" stroke-miterlimit="10" cx="35" cy="35" r="34" style="stroke-dasharray: 16.4198, 400;"></circle> </svg> </a>
+<!-- End of Scroll Top -->
+
+<!-- Start of Mobile Menu -->
+<div class="mobile-menu-wrapper">
+<div class="mobile-menu-overlay"></div>
+<!-- End of .mobile-menu-overlay -->
+
+<a href="#" class="mobile-menu-close"><i class="close-icon"></i></a>
+<!-- End of .mobile-menu-close -->
+
+<div class="mobile-menu-container scrollable">
+    <form action="{% url 'store:search' %}" method="GET" class="input-wrapper">
+        <input type="text" class="form-control" id="search" name="q" autocomplete="off" placeholder="Search"
+            required />
+        <button class="btn btn-search" type="submit">
+            <i class="w-icon-search"></i>
+        </button>
+    </form>
+    <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round d-none d-md-flex input-wrapper">
+        <input type="text" class="form-control" name="q" id="search"
+            placeholder="Search in..." required />
+        <button class="btn btn-search" type="submit"><i class="w-icon-search"></i>
+        </button>
+    </form>
+    <!-- End of Search Form -->
+    <div class="tab">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item">
+                <a href="#main-menu" class="nav-link active">Main Menu</a>
+            </li>
+        </ul>
+    </div>
+    <div class="tab-content">
+        <div class="tab-pane active" id="main-menu">
+            <ul class="mobile-menu">
+                <li><a href="{% url 'store:home' %}">Home</a></li>
+                <li>
+                    <a href="{% url 'store:all-categories' %}">Categories</a>
+                </li>
+                <li>
+                    <a href="{% url 'store:all-brands' %}">Brands</a>
+                </li>
+                <li>
+                    <a href="{% url 'store:about' %}">About Us</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+</div>
+<!-- End of Mobile Menu -->
+
+<!-- Start of Quick View -->
+<div class="product product-single product-popup">
+<div class="row gutter-lg">
+    <div class="col-md-6 mb-4 mb-md-0">
+        <div class="product-gallery product-gallery-sticky">
+            <div class="swiper-container product-single-swiper swiper-theme nav-inner">
+                <div class="swiper-wrapper row cols-1 gutter-no">
+                    <div class="swiper-slide">
+                        <figure class="product-image">
+                            <img src="{% static 'asset/images/products/popup/1-440x494.jpg' %}"
+                                data-zoom-image="asset/images/products/popup/1-800x900.jpg"
+                                alt="Water Boil Black Utensil" width="800" height="900">
+                        </figure>
+                    </div>
+                    <div class="swiper-slide">
+                        <figure class="product-image">
+                            <img src="{% static 'asset/images/products/popup/2-440x494.jpg' %}"
+                                data-zoom-image="asset/images/products/popup/2-800x900.jpg"
+                                alt="Water Boil Black Utensil" width="800" height="900">
+                        </figure>
+                    </div>
+                    <div class="swiper-slide">
+                        <figure class="product-image">
+                            <img src="{% static 'asset/images/products/popup/3-440x494.jpg' %}"
+                                data-zoom-image="asset/images/products/popup/3-800x900.jpg"
+                                alt="Water Boil Black Utensil" width="800" height="900">
+                        </figure>
+                    </div>
+                    <div class="swiper-slide">
+                        <figure class="product-image">
+                            <img src="{% static 'asset/images/products/popup/4-440x494.jpg' %}"
+                                data-zoom-image="asset/images/products/popup/4-800x900.jpg"
+                                alt="Water Boil Black Utensil" width="800" height="900">
+                        </figure>
+                    </div>
+                </div>
+                <button class="swiper-button-next"></button>
+                <button class="swiper-button-prev"></button>
+            </div>
+            <div class="product-thumbs-wrap swiper-container" data-swiper-options="{
+                'navigation': {
+                    'nextEl': '.swiper-button-next',
+                    'prevEl': '.swiper-button-prev'
+                }
+            }">
+                <div class="product-thumbs swiper-wrapper row cols-4 gutter-sm">
+                    <div class="product-thumb swiper-slide">
+                        <img src="{% static 'asset/images/products/popup/1-103x116.jpg' %}" alt="Product Thumb" width="103"
+                            height="116">
+                    </div>
+                    <div class="product-thumb swiper-slide">
+                        <img src="{% static 'asset/images/products/popup/2-103x116.jpg' %}" alt="Product Thumb" width="103"
+                            height="116">
+                    </div>
+                    <div class="product-thumb swiper-slide">
+                        <img src="{% static 'asset/images/products/popup/3-103x116.jpg' %}" alt="Product Thumb" width="103"
+                            height="116">
+                    </div>
+                    <div class="product-thumb swiper-slide">
+                        <img src="{% static 'asset/images/products/popup/4-103x116.jpg' %}" alt="Product Thumb" width="103"
+                            height="116">
+                    </div>
+                </div>
+                <button class="swiper-button-next"></button>
+                <button class="swiper-button-prev"></button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 overflow-hidden p-relative">
+        <div class="product-details scrollable pl-0">
+            <h2 class="product-title">Electronics Black Wrist Watch</h2>
+            <div class="product-bm-wrapper">
+                <figure class="brand">
+                    <img src="{% static 'asset/images/products/brand/brand-1.jpg' %}" alt="Brand" width="102" height="48" />
+                </figure>
+                <div class="product-meta">
+                    <div class="product-categories">
+                        Category:
+                        <span class="product-category"><a href="#">Electronics</a></span>
+                    </div>
+                    <div class="product-sku">
+                        SKU: <span>MS46891340</span>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="product-divider">
+
+            <div class="product-price">$40.00</div>
+
+            <div class="ratings-container">
+                <div class="ratings-full">
+                    <span class="ratings" style="width: 80%;"></span>
+                    <span class="tooltiptext tooltip-top"></span>
+                </div>
+                <a href="#" class="rating-reviews">(3 Reviews)</a>
+            </div>
+
+            <div class="product-short-desc">
+                <ul class="list-type-check list-style-none">
+                    <li>Ultrices eros in cursus turpis massa cursus mattis.</li>
+                    <li>Volutpat ac tincidunt vitae semper quis lectus.</li>
+                    <li>Aliquam id diam maecenas ultricies mi eget mauris.</li>
+                </ul>
+            </div>
+
+            <hr class="product-divider">
+
+            <div class="product-form product-variation-form product-color-swatch">
+                <label>Color:</label>
+                <div class="d-flex align-items-center product-variations">
+                    <a href="#" class="color" style="background-color: #ffcc01"></a>
+                    <a href="#" class="color" style="background-color: #ca6d00;"></a>
+                    <a href="#" class="color" style="background-color: #1c93cb;"></a>
+                    <a href="#" class="color" style="background-color: #ccc;"></a>
+                    <a href="#" class="color" style="background-color: #333;"></a>
+                </div>
+            </div>
+            <div class="product-form product-variation-form product-size-swatch">
+                <label class="mb-1">Size:</label>
+                <div class="flex-wrap d-flex align-items-center product-variations">
+                    <a href="#" class="size">Small</a>
+                    <a href="#" class="size">Medium</a>
+                    <a href="#" class="size">Large</a>
+                    <a href="#" class="size">Extra Large</a>
+                </div>
+                <a href="#" class="product-variation-clean">Clean All</a>
+            </div>
+
+            <div class="product-variation-price">
+                <span></span>
+            </div>
+
+            <div class="product-form">
+                <div class="product-qty-form">
+                    <div class="input-group">
+                        <input class="quantity form-control" type="number" min="1" max="10000000">
+                        <button class="quantity-plus w-icon-plus"></button>
+                        <button class="quantity-minus w-icon-minus"></button>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-cart">
+                    <i class="w-icon-cart"></i>
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+
+            <div class="social-links-wrapper">
+                <div class="social-links">
+                    <div class="social-icons social-no-color border-thin">
+                        <a href="#" class="social-icon social-facebook w-icon-facebook"></a>
+                        <a href="#" class="social-icon social-twitter w-icon-twitter"></a>
+                        <a href="#" class="social-icon social-pinterest fab fa-pinterest-p"></a>
+                        <a href="#" class="social-icon social-whatsapp fab fa-whatsapp"></a>
+                        <a href="#" class="social-icon social-youtube fab fa-linkedin-in"></a>
+                    </div>
+                </div>
+                <span class="divider d-xs-show"></span>
+                <div class="product-link-wrapper d-flex">
+                    <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"><span></span></a>
+                    <a href="#"
+                        class="btn-product-icon btn-compare btn-icon-left w-icon-compare"><span></span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<!-- End of Quick view -->
+
+<!-- Plugin JS File -->
+<script src="{% static 'asset/vendor/jquery/jquery.min.js' %}"></script>
+<script src="{% static 'asset/vendor/sticky/sticky.js' %}"></script>
+<script src="{% static 'asset/vendor/jquery.plugin/jquery.plugin.min.js' %}"></script>
+<script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}"></script>
+<script src="{% static 'asset/vendor/nouislider/nouislider.min.js' %}"></script>
+<script src="{% static 'asset/vendor/jquery.countdown/jquery.countdown.min.js' %}"></script>
+<script src="{% static 'asset/vendor/imagesloaded/imagesloaded.pkgd.min.js' %}"></script>
+<script src="{% static 'asset/vendor/zoom/jquery.zoom.js' %}"></script>
+<script src="{% static 'asset/vendor/magnific-popup/jquery.magnific-popup.min.js' %}"></script>
+
+<!-- Main JS -->
+<script src="{% static 'asset/js/main.min.js' %}"></script>
+</body>
+
+
+<!-- Mirrored from portotheme.com/html/wolmart/shop-infinite-scroll.html by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 27 Mar 2022 17:36:00 GMT -->
+</html>
