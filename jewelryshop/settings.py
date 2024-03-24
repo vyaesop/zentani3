@@ -19,10 +19,10 @@ if os.path.isfile(dotenv_file):
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ['SECRET_KEY']
+SECRET_KEY = 'django-insecure-3%y3laftm62q0zaj+s7#p-xqq9(&#q+)s8)p-&#&bz*0$!xu$0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -90,7 +90,8 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
         
 #     }
 # }
-DATABASES = {'default': dj_database_url.config(default=os.environ['DATABASE_URL'], engine='django_cockroachdb')}
+DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
+DATABASE_URL = "postgresql://vyaesop_gmail_com:vmSNEh95h-bbqDyeEt2Q7A@oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=require"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
