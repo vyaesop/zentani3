@@ -71,14 +71,12 @@ DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='d
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'defaultdb',  # Change this to your actual database name
-        'USER': 'vyaesop_gmail_com',  # Change this to your actual username
-        'PASSWORD': 'vmSNEh95h-bbqDyeEt2Q7A',  # Change this to your actual password
-        'HOST': 'oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud',
-        'PORT': '26257',
-        'OPTIONS': {
-            'sslmode': 'allow',
-        },
+        'NAME': 'railway',
+        'USER':'postgres',
+        'PASSWORD':'pBreqhBaLiaiVTGLiNBhTBdOUvnecDuS',
+        'HOST':'viaduct.proxy.rlwy.net',
+        'PORT':'41679'
+        
     }
 }
 
