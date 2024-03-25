@@ -73,17 +73,6 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'hsaklqme',
-#         'USER':'hsaklqme',
-#         'PASSWORD':'JVp8UDTms-eM8X-Uts4G5G88Q_d-KmJ2',
-#         'HOST':'rosie.db.elephantsql.com',
-#         'PORT':'5432'
-        
-#     }
-# }
 DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
 DATABASE_URL = "postgresql://vyaesop_gmail_com:vmSNEh95h-bbqDyeEt2Q7A@oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=require"
 
