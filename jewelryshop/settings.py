@@ -7,6 +7,10 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
@@ -67,12 +71,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
+<<<<<<< Updated upstream
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
 DATABASE_URL = "postgresql://vyaesop_gmail_com:vmSNEh95h-bbqDyeEt2Q7A@oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=allow"
+=======
+DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'defaultdb',  # Change this to your actual database name
+        'USER': 'vyaesop_gmail_com',  # Change this to your actual username
+        'PASSWORD': 'vmSNEh95h-bbqDyeEt2Q7A',  # Change this to your actual password
+        'HOST': 'oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud',
+        'PORT': '26257',
+        'OPTIONS': {
+            'sslmode': 'allow',
+        },
+    }
+}
+>>>>>>> Stashed changes
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
