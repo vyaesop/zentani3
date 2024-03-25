@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='coupon',
             name='code',
-            field=models.CharField(default=None, max_length=40, unique=True),
+            field=models.TextField(default=None, unique=True),
         ),
+
     ]

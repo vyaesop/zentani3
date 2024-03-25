@@ -4,11 +4,16 @@ from pathlib import Path
 
 import os
 import cloudinary_storage
-
+import dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+dotenv_file = os.path.join(BASE_DIR, '.env')
+
+if os.path.isfile(dotenv_file):
+    dotenv.load_dotenv(dotenv_file)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -74,18 +79,19 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER':'postgres',
-        'PASSWORD':'pBreqhBaLiaiVTGLiNBhTBdOUvnecDuS',
-        'HOST':'viaduct.proxy.rlwy.net',
-        'PORT':'41679'
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'hsaklqme',
+#         'USER':'hsaklqme',
+#         'PASSWORD':'JVp8UDTms-eM8X-Uts4G5G88Q_d-KmJ2',
+#         'HOST':'rosie.db.elephantsql.com',
+#         'PORT':'5432'
         
-    }
-}
-
+#     }
+# }
+DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
+DATABASE_URL = "postgresql://vyaesop_gmail_com:vmSNEh95h-bbqDyeEt2Q7A@oak-octopus-4198.7s5.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=require"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
