@@ -396,8 +396,15 @@
                 <li>
                     <a href="{% url 'store:about' %}">About Us</a>
                 </li>
-                    <li><a href="{% url 'store:login' %}" >
-                            Login</a></li>
+                    <li>
+                    {% if request.user.is_authenticated %}
+                    <a href="{% url 'store:profile' %}" class="d-lg-show">My Account</a>
+                    {% else %}
+                    <a href="{% url 'store:login' %}">Login</a>
+                    <span class="delimiter d-lg-show">/</span>
+                    <a href="{% url 'store:register' %}">Register</a>
+                    {% endif %} 
+                </li>
             </ul>
         </div>
     </div>
