@@ -247,14 +247,11 @@ def cart(request):
             cart_products.update(coupon=coupon)
             messages.success(request, 'Coupon applied successfully.')
 
-    addresses = Address.objects.filter(user=user)
-
     context = {
         'cart_products': cart_products,
         'amount': amount,
         'shipping_amount': shipping_amount,
         'total_amount': amount + shipping_amount,
-        'addresses': addresses,
         'coupon': coupon,
     }
 
