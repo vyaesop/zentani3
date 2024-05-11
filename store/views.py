@@ -309,14 +309,12 @@ def minus_cart(request, cart_id):
 @login_required
 def checkout(request):
     user = request.user
-    address_id = request.GET.get('address')
     
-    address = get_object_or_404(Address, id=address_id)
     # Get all the products of User in Cart
     cart = Cart.objects.filter(user=user)
     for c in cart:
         # Saving all the products from Cart to Order
-        Order(user=user, address=address, product=c.product, quantity=c.quantity).save()
+        Order(user=user, product=c.product, quantity=c.quantity).save()
         # And Deleting from Cart
         c.delete()
     return redirect('store:orders')
