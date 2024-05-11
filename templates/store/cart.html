@@ -132,24 +132,6 @@
                                   <span class="ls-50">{{total_amount|intcomma}} ETB</span>
                               </div>
                               <div class="text-end" id="paypal-button-container"></div>
-                              
-                              <form action="{% url 'store:checkout' %}" id="myform">
-                                {% if addresses %}
-                                {% for address in addresses %}
-                                <div class="custom-radio">
-                                  <input type="radio" type="radio" id="free-shipping" class="custom-control-input"
-                                  name="address" value="{{address.id}}"><label for="free-shipping"
-                                  class="custom-control-label color-dark"><strong>Address: {{address.address}}, {{address.city}}</strong></label>
-                                  </div>
-                                {% endfor %}
-                                {% endif %}<br>
-                                <div class="alert alert-primary alert-simple alert-inline ">
-                                <h4 class="alert-title">Heads up!</h4> Make sure to select your address before checking out.
-                                </div><br>
-                              <button type="submit" class="btn btn-block btn-dark btn-icon-right btn-rounded  btn-checkout">
-                                  Proceed to checkout<i class="w-icon-long-arrow-right" type="submit"></i></a></button>
-                              </div>
-                            </form>
                           </div>
                       </div>
                   </div>
