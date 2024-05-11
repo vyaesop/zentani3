@@ -123,7 +123,6 @@ STATUS_CHOICES = (
 
 class Order(models.Model):
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
-    address = models.ForeignKey(Address, verbose_name="Shipping Address", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name="Quantity")
     ordered_date = models.DateTimeField(auto_now_add=True, verbose_name="Ordered Date")
