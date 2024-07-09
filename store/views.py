@@ -25,7 +25,7 @@ def home(request):
     categories = Category.objects.filter(is_active=True, is_featured=True).order_by("created_at")[:8]
     brands = Brand.objects.filter(is_active=True, is_featured=True)[:12]
 
-    products = Product.objects.filter(is_active=True, is_featured=True)[:10]
+    products = Product.objects.filter(is_active=True, is_featured=True)[:50]
     context = {
         'categories': categories,
         'products': products,
