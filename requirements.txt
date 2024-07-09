@@ -1,6 +1,5 @@
 asgiref==3.3.4
 Django==3.2.3
-django-allauth==0.39.1
 django-ckeditor==6.5.1
 django-cors-headers==3.8.0
 django-countries==5.3.3
