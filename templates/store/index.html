@@ -16,12 +16,12 @@
             }">
                 <div class="swiper-wrapper">
                     <div class="swiper-slide banner banner-fixed intro-slide intro-slide1"
-                        style="background-image: url({% static 'asset/images/demos/demo1/sliders/slide-1.jpg' %}); background-color: #ebeef2;">
+                        style="background-image: url({% static 'asset/images/demos/demo1/sliders/slide-5.jpg' %}); background-color: #ebeef2;">
                         <div class="container">
                             <figure class="slide-image skrollable slide-animate">
-                                <img src="{% static 'asset/images/demos/demo1/sliders/2.png' %}" alt="Banner"
+                                {% comment %} <img src="{% static 'asset/images/demos/demo1/sliders/2.png' %}" alt="Banner"
                                     data-bottom-top="transform: translateY(10vh);"
-                                    data-top-bottom="transform: translateY(-10vh);" width="474" height="397">
+                                    data-top-bottom="transform: translateY(-10vh);" width="474" height="397"> {% endcomment %}
                             </figure>
                             <div class="banner-content y-50 text-right">
                                 <h5 class="banner-subtitle font-weight-normal text-default ls-50 lh-1 mb-2 slide-animate"
@@ -30,7 +30,7 @@
                                 'duration': '1s',
                                 'delay': '.2s'
                             }">
-                                    High end <span class="p-relative d-inline-block">Designer</span>
+                            Quality <span class="p-relative d-inline-block">Shopping</span>
                                 </h5>
                                 <h3 class="banner-title font-weight-bolder ls-25 lh-1 slide-animate"
                                     data-animation-options="{
@@ -38,7 +38,7 @@
                                 'duration': '1s',
                                 'delay': '.4s'
                             }">
-                                    CLOTHING
+                            Effortless Experience
                                 </h3>
                                 <p class="font-weight-normal text-default slide-animate" data-animation-options="{
                                 'name': 'fadeInRightShorter',
@@ -63,8 +63,8 @@
                     </div>
                     <!-- End of .intro-slide1 -->
 
-                    <div class="swiper-slide banner banner-fixed intro-slide intro-slide2"
-                        style="background-image: url({% static 'asset/images/demos/demo1/sliders/slide-1.jpg' %}); background-color: #ebeef2;">
+                    {% comment %} <div class="swiper-slide banner banner-fixed intro-slide intro-slide2"
+                        style="background-image: url({% static 'asset/images/demos/demo1/sliders/slide-5.jpg' %}); background-color: #ebeef2;">
                         <div class="container">
                             <figure class="slide-image skrollable slide-animate" data-animation-options="{
                                 'name': 'fadeInUpShorter',
@@ -111,16 +111,16 @@
                             <!-- End of .banner-content -->
                         </div>
                         <!-- End of .container -->
-                    </div>
+                    </div> {% endcomment %}
                     <!-- End of .intro-slide2 -->
 
                     
                     <!-- End of .intro-slide3 -->
                 </div>
-                <div class="swiper-pagination"></div>
+                {% comment %} <div class="swiper-pagination"></div>
                 <button class="swiper-button-next"></button>
                 <button class="swiper-button-prev"></button>
-            </div>
+            </div> {% endcomment %}
             <!-- End of .swiper-container -->
         </section>
         <!-- End of .intro-section -->
@@ -867,7 +867,7 @@
         <!-- End of .category-section top-category -->
 
         <div class="container">
-            <h2 class="title justify-content-center ls-normal mb-4 mt-10 pt-1 appear-animate">Popular Products
+            <h2 class="title justify-content-center ls-normal mb-4 mt-10 pt-1 appear-animate">Featured
             </h2>
             <div class="tab tab-nav-boxed tab-nav-outline appear-animate">
                {% comment %} <ul class="nav nav-tabs justify-content-center" role="tablist">
