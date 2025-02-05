@@ -11,6 +11,11 @@
           <a class="d-block" href="{% url 'store:product-detail' product.slug %}">
             {% if product.product_image %}
               <img class="img-fluid w-100" src="{{product.product_image.url}}" alt="{{product.title}}">
+              {% if product.is_sold_out %}
+                                    <div class="product-label-group">
+                                        <label class="product-label label-discount">SOLD OUT</label>
+                                    </div>
+                                    {% endif %}
             {% else %}
               <img class="img-fluid w-100" src="{% static 'img/product-1.jpg' %}" alt="{{product.title}}">
             {% endif %}

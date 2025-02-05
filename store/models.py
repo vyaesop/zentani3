@@ -61,6 +61,7 @@ class Product(models.Model):
     is_featured = models.BooleanField(verbose_name="Is Featured?")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Date")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Date")
+    is_sold_out = models.BooleanField(verbose_name="Is Sold Out?", default=False, null=True)
 
     class Meta:
         verbose_name_plural = 'Products'

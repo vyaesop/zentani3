@@ -160,6 +160,11 @@
                                           <img src="{{product.product_image.url}}" alt="Product" width="300"
                                               height="338" />
                                       </a>
+                                      {% if product.is_sold_out %}
+                                    <div class="product-label-group">
+                                        <label class="product-label label-discount">SOLD OUT</label>
+                                    </div>
+                                    {% endif %}
                                       <div class="product-action-horizontal">
                                         <form action="{% url 'store:add-to-cart' %}">
                                           <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">

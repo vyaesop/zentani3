@@ -1199,6 +1199,11 @@
                                               <img src="{{rp.product_image.url}}" alt="Product"
                                                   width="300" height="338" />
                                           </a>
+                                          {% if rp.is_sold_out %}
+                                    <div class="product-label-group">
+                                        <label class="product-label label-discount">SOLD OUT</label>
+                                    </div>
+                                    {% endif %}
                                           {% comment %} <div class="product-action-vertical">
                                               <a href="#" class="btn-product-icon btn-cart w-icon-cart"
                                                   title="Add to cart"></a>
