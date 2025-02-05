@@ -31,7 +31,7 @@ class ProductImagesAdmin(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImagesAdmin]
     
-    list_display = ('title', 'slug', 'category','brand', 'product_image', 'is_sold_out', 'is_active', 'is_featured', 'updated_at')
+    list_display = ('title', 'is_sold_out', 'slug', 'category','brand', 'product_image', 'is_active', 'is_featured', 'updated_at')
     list_editable = ('slug', 'category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
