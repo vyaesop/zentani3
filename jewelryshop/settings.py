@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import os
-import socket
 import cloudinary_storage
 import dj_database_url
 
@@ -68,29 +67,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
-PRODUCTION_DB_URL = 'postgres://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a/zentanee_ocb0'
+DATABASE_URL = 'postgres://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a/zentanee_ocb0'
 
-# Try to detect if we're on local dev by checking if we can resolve the Render DB host
-try:
-    socket.gethostbyname('dpg-d15b6295pdvs73f41qf0-a')
-    ON_RENDER = True
-except socket.gaierror:
-    ON_RENDER = False
-
-if ON_RENDER:
-    DATABASE_URL = PRODUCTION_DB_URL
-else:
-    DATABASE_URL = 'sqlite:///db.sqlite3'  # Use SQLite locally
-
-# Set up DATABASES config
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,
         conn_max_age=600,
-        # ssl_require=True,
     )
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
