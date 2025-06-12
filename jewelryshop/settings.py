@@ -67,17 +67,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
-DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
+PRODUCTION_DB_URL = 'postgres://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a/zentanee_ocb0'
+
+# Try to detect if we're on local dev by checking if we can resolve the Render DB host
+try:
+    socket.gethostbyname('dpg-d15b6295pdvs73f41qf0-a')
+    ON_RENDER = True
+except socket.gaierror:
+    ON_RENDER = False
+
+if ON_RENDER:
+    DATABASE_URL = PRODUCTION_DB_URL
+else:
+    DATABASE_URL = 'sqlite:///db.sqlite3'  # Use SQLite locally
+
+# Set up DATABASES config
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER':'postgres',
-        'PASSWORD':'iahfYHqJBgnqAAWxVaZnZsakrpYAGYjo',
-        'HOST':'junction.proxy.rlwy.net',
-        'PORT':'13590'
-        
-    }
+    'default': dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        # ssl_require=True,
+    )
 }
 
 # Password validation
