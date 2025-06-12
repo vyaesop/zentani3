@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import os
+import socket
 import cloudinary_storage
 import dj_database_url
 
@@ -67,18 +68,34 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
-DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+
+DATABASE_URL = 'postgresql://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a.singapore-postgres.render.com/zentanee_ocb0'
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER':'postgres',
-        'PASSWORD':'iahfYHqJBgnqAAWxVaZnZsakrpYAGYjo',
-        'HOST':'junction.proxy.rlwy.net',
-        'PORT':'13590'
-        
-    }
+    'default': dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        # ssl_require=True,
+    )
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'railway',
+#         'USER':'postgres',
+#         'PASSWORD':'7a8sBbSTddEtErsin7YO9xoPuARpazYx',
+#         'HOST':'dpg-d15b6295pdvs73f41qf0-a',
+#         'PORT':'5432'
+        
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators

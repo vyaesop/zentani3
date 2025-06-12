@@ -53,4 +53,20 @@
 
         </div>       
       </div>
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          const form = document.querySelector("form");
+          const phoneField = document.querySelector("input[name='email']");  //Select email field (which we treat as phone)
+      
+          if (form && phoneField) {
+            form.addEventListener("submit", function (event) {
+              let phone = phoneField.value.trim();
+              if (!phone.includes("@")) {  
+                phoneField.value = phone + "@phone.local";  //    ffAppend @phone.local before submitting
+              }
+            });
+          }
+        });
+      </script>
+      
 {% endblock content %}
