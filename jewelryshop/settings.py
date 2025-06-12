@@ -67,7 +67,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
-DATABASE_URL = 'postgresql://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a.singapore-postgres.render.com/zentanee_ocb0'
+DATABASE_URL = 'postgresql://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a/zentanee_ocb0'
 
 DATABASES = {
     'default': dj_database_url.config(
