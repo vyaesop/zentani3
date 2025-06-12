@@ -126,6 +126,13 @@
         <!-- End of .intro-section -->
 
         <div class="container">
+            <br>
+            <div class="alert alert-success alert-button ">
+                <h4>You can order by screenshoting the product you want and sending it on instagram. Link on the button below</h4>
+                <a href="https://instagram.com/zentanee" class="btn btn-block btn-primary btn-rounded btn-icon-right">
+                    Click here<i class="w-icon-instagram"></i>
+                </a>
+            </div>
             <h2 class="title justify-content-center ls-normal mb-4 mt-10 pt-1 appear-animate">Featured
             </h2>
             <div class="tab tab-nav-boxed tab-nav-outline appear-animate">
@@ -160,6 +167,11 @@
                                         <img src="{{ product.product_image.url }}" alt="Product"
                                             width="300" height="338" />
                                     </a>
+                                    {% if product.is_sold_out %}
+                                    <div class="product-label-group">
+                                        <label class="product-label label-discount">SOLD OUT</label>
+                                    </div>
+                                    {% endif %}
                                     <div class="product-action-vertical">
                                       <form action="{% url 'store:add-to-cart' %}">
                                         <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
@@ -1275,7 +1287,7 @@
                             <h5 class="banner-subtitle font-weight-bold text-uppercase">Popular now</h5>
                             <h3 class="banner-title font-weight-bolder text-capitalize text-white">Original
                                 Perfumes<br>Collection</h3>
-                            <a href="https://zentanee.vercel.app/perfumes"
+                            <a href="#"
                                 class="btn btn-white btn-link btn-underline btn-icon-right">Shop Now<i
                                     class="w-icon-long-arrow-right"></i></a>
                         </div>
@@ -1291,7 +1303,7 @@
                             <h5 class="banner-subtitle font-weight-bold text-uppercase">Trending Now</h5>
                             <h3 class="banner-title font-weight-bolder text-capitalize">
                                 Dresses<br>Collection</h3>
-                            <a href="https://zentanee.vercel.app/dresses/"
+                            <a href="#"
                                 class="btn btn-dark btn-link btn-underline btn-icon-right">Shop Now<i
                                     class="w-icon-long-arrow-right"></i></a>
                         </div>
