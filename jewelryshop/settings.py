@@ -1,7 +1,6 @@
-from pathlib import Path
+from pathlib import PathMore actions
 
 import os
-import socket
 import cloudinary_storage
 import dj_database_url
 
@@ -68,42 +67,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-
-# DATABASE_URL = 'postgresql://zedb_owner:npg_jNIz92hOJGFY@ep-steep-hat-a9oq073s-pooler.gwc.azure.neon.tech/zedb?sslmode=require'
-
+DATABASES = {'default': dj_database_url.config(default='DATABASE_URL', engine='django_cockroachdb')}
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'zedb',
-        'USER': 'zedb_owner',
-        'PASSWORD': 'npg_jNIz92hOJGFY',
-        'HOST': 'ep-steep-hat-a9oq073s-pooler.gwc.azure.neon.tech',
-        'PORT': 5432,
-        'OPTIONS': {
-            'sslmode': 'require',
-            # You might also need this if connecting to Neon or other cloud DBs
-            'sslrootcert': os.path.join(BASE_DIR, 'ssl', 'root.crt'),  # optional path to root cert
-        }
+        'NAME': 'railway',
+        'USER':'postgres',
+        'PASSWORD':'hCiUyBWsBsTmWKQutUnEeoMuDjqpvMAQ',
+        'HOST':'postgres.railway.internal',
+        'PORT':'5432'
+
     }
 }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'railway',
-#         'USER':'postgres',
-#         'PASSWORD':'7a8sBbSTddEtErsin7YO9xoPuARpazYx',
-#         'HOST':'dpg-d15b6295pdvs73f41qf0-a',
-#         'PORT':'5432'
-        
-#     }
-# }
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
