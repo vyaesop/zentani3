@@ -76,14 +76,22 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 # }
 
 
-DATABASE_URL = 'postgresql://zentanee_ocb0_user:7a8sBbSTddEtErsin7YO9xoPuARpazYx@dpg-d15b6295pdvs73f41qf0-a.singapore-postgres.render.com/zentanee_ocb0'
+# DATABASE_URL = 'postgresql://zedb_owner:npg_jNIz92hOJGFY@ep-steep-hat-a9oq073s-pooler.gwc.azure.neon.tech/zedb?sslmode=require'
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        # ssl_require=True,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'zedb',
+        'USER': 'zedb_owner',
+        'PASSWORD': 'npg_jNIz92hOJGFY',
+        'HOST': 'ep-steep-hat-a9oq073s-pooler.gwc.azure.neon.tech',
+        'PORT': 5432,
+        'OPTIONS': {
+            'sslmode': 'require',
+            # You might also need this if connecting to Neon or other cloud DBs
+            'sslrootcert': os.path.join(BASE_DIR, 'ssl', 'root.crt'),  # optional path to root cert
+        }
+    }
 }
 # DATABASES = {
 #     'default': {
