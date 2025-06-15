@@ -96,6 +96,21 @@ DATABASES = {
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'postgres',  # Supabase DB name
+#         'USER': 'postgres',
+#         'PASSWORD': 'x9KpmtFXiPIWg92f',
+#         'HOST': 'db.hndfdrhwatomdlqnnthz.supabase.co',  # or from Supabase host setting
+#         'PORT': 5432,
+#         'OPTIONS': {
+#             'sslmode': 'require',
+#             # Optional: if Supabase gives a root cert
+#             # 'sslrootcert': os.path.join(BASE_DIR, 'ssl', 'supabase_root.crt'),
+#         },
+#     }
+# }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
 #         'NAME': 'railway',
 #         'USER':'postgres',
 #         'PASSWORD':'hCiUyBWsBsTmWKQutUnEeoMuDjqpvMAQ',
