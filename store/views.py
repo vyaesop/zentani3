@@ -228,7 +228,7 @@ def cart(request):
         # Calculate total amount using aggregation and ExpressionWrapper
         expression = ExpressionWrapper(F('quantity') * F('product__price'), output_field=DecimalField())
         amount = cart_products.aggregate(total_amount=Sum(expression)).get('total_amount', 0)
-    shipping_amount = decimal.Decimal(40)
+    shipping_amount = decimal.Decimal(0)
     # Check if a coupon is applied
     coupon = None
     if cart_products.filter(coupon__isnull=False).exists():
