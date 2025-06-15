@@ -3,7 +3,8 @@
 import os
 import sys
 
-
+import psycopg
+sys.modules['psycopg2'] = psycopg.compat
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jewelryshop.settings')
