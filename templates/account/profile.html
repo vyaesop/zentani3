@@ -9,7 +9,7 @@
         <div class="jumbotron">
           <h1>{{request.user.first_name}} {{request.user.last_name}}</h1>
           <p><strong>Email:</strong> {{request.user.email}}</p>
-          <p><strong>Username:</strong> {{request.user.username}}</p>
+          <p><strong>Phone number:</strong> {{request.user.username}}</p>
           <p><a class="btn btn-primary btn-large" href="{% url 'store:add-address' %}">Add Address »</a> <a class="btn btn-outline-primary btn-large" href="#">My Orders »</a></p>
         </div>
 

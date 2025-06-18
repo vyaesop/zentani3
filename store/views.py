@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.views import View
 import decimal
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login # Import the login function
 from django.utils.decorators import method_decorator # for Class Based Views
 from django.template.loader import render_to_string
 from decimal import Decimal
@@ -162,8 +163,9 @@ class RegistrationView(View):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             messages.success(request, "Congratulations! Registration Successful!")
-            form.save()
-            return redirect('store:login')  # Redirect to account/login.html
+            user = form.save()
+            login(request, user) # Log the user in
+            return redirect('store:home')
         return render(request, 'account/register.html', {'form': form})
         
 
