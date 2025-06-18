@@ -64,6 +64,7 @@
                         <!-- JavaScript to update the main image when a thumbnail is clicked -->
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
+                                // Thumbnail image switcher
                                 // Select all thumbnails
                                 const thumbnails = document.querySelectorAll('.product-thumb img.thumbnail');
                                 
@@ -71,16 +72,49 @@
                                 const mainImage = document.getElementById('main-product-image');
                         
                                 // Add event listener for each thumbnail
-                                thumbnails.forEach(function(thumbnail) {
-                                    thumbnail.addEventListener('click', function() {
-                                        // Get the URL of the clicked thumbnail's large image
-                                        const newImageUrl = thumbnail.getAttribute('data-large');
-                                        
-                                        // Update the main image's src and data-zoom-image attributes
-                                        mainImage.setAttribute('src', newImageUrl);
-                                        mainImage.setAttribute('data-zoom-image', newImageUrl);
+                                if (mainImage && thumbnails.length > 0) {
+                                    thumbnails.forEach(function(thumbnail) {
+                                        thumbnail.addEventListener('click', function() {
+                                            const newImageUrl = thumbnail.getAttribute('data-large');
+                                            mainImage.setAttribute('src', newImageUrl);
+                                            mainImage.setAttribute('data-zoom-image', newImageUrl);
+                                        });
                                     });
-                                });
+                                }
+
+                                // Quantity control script
+                                const quantityInput = document.getElementById('quantity-input');
+                                const minusButton = document.getElementById('quantity-minus-btn');
+                                const plusButton = document.getElementById('quantity-plus-btn');
+
+                                if (quantityInput && minusButton && plusButton) {
+                                    minusButton.addEventListener('click', function() {
+                                        let currentValue = parseInt(quantityInput.value, 10);
+                                        const minValue = parseInt(quantityInput.min, 10) || 1;
+                                        if (currentValue > minValue) {
+                                            quantityInput.value = currentValue - 1;
+                                        }
+                                    });
+
+                                    plusButton.addEventListener('click', function() {
+                                        let currentValue = parseInt(quantityInput.value, 10);
+                                        const maxValue = parseInt(quantityInput.max, 10) || 1000; // Default max if not set
+                                        if (currentValue < maxValue) {
+                                            quantityInput.value = currentValue + 1;
+                                        }
+                                    });
+
+                                    quantityInput.addEventListener('change', function() {
+                                        let value = parseInt(this.value, 10);
+                                        const minValue = parseInt(this.min, 10) || 1;
+                                        const maxValue = parseInt(this.max, 10) || 1000;
+                                        if (isNaN(value) || value < minValue) {
+                                            this.value = minValue;
+                                        } else if (value > maxValue) {
+                                            this.value = maxValue;
+                                        }
+                                    });
+                                }
                             });
                         </script>
                         
@@ -144,31 +178,36 @@
 
                                   <div class="fix-bottom product-sticky-content sticky-content">
                                       <div class="product-form container">
-                                          <div class="product-qty-form">
-                                              <div class="input-group">
-                                                  <input class="quantity form-control" type="number" value="1" max="1000">
-                                                  <button class="quantity-plus w-icon-plus inc-btn p-0"></button>
-                                                  <button class="quantity-minus w-icon-minus dec-btn p-0"></button>
-                                              </div>
-                                          </div>
-                                          
-                                          <form action="{% url 'store:add-to-cart' %}">
-                                            {% if available_sizes %}
-<div class="my-3">
-    <label for="size-select">Select Size:</label>
-    <select name="size" id="size-select" class="form-control" style="width: auto;">
-        {% for size_option in available_sizes %}
-        <option value="{{ size_option }}">{{ size_option }}</option>
-        {% endfor %}
-    </select>
-</div>
-{% endif %}
-
+                                        <form action="{% url 'store:add-to-cart' %}" method="GET" class="d-flex flex-wrap align-items-end">
                                             <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
-                                          <button type="submit" class="btn btn-primary">
-                                              <i class="w-icon-cart"></i>
-                                              <span>Add to Cart</span>
-                                          </button>
+
+                                            <!-- Quantity Section -->
+                                            <div class="me-3 mb-2 mb-md-0">
+                                                <label for="quantity-input" class="form-label mb-1 d-block">Quantity:</label>
+                                                <div class="input-group input-group-sm" style="max-width: 120px;">
+                                                    <button class="btn btn-outline-secondary quantity-minus" type="button" id="quantity-minus-btn"><i class="w-icon-minus"></i></button>
+                                                    <input id="quantity-input" name="quantity" type="number" class="form-control form-control-sm text-center" value="1" min="1" max="{{ product.stock_count|default:1000 }}">
+                                                    <button class="btn btn-outline-secondary quantity-plus" type="button" id="quantity-plus-btn"><i class="w-icon-plus"></i></button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Size Selector Section -->
+                                            {% if available_sizes %}
+                                            <div class="me-3 mb-2 mb-md-0">
+                                                <label for="size-select" class="form-label mb-1 d-block">Select Size:</label>
+                                                <select name="size" id="size-select" class="form-select form-select-sm" style="width: auto; min-width: 100px;">
+                                                    {% for size_option in available_sizes %}
+                                                    <option value="{{ size_option }}">{{ size_option }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                              </div>
+                                            {% endif %}
+
+                                            <!-- Add to Cart Button -->
+                                            <button type="submit" class="btn btn-primary btn-sm mt-2 mt-md-0">
+                                                <i class="w-icon-cart"></i>
+                                                <span>Add to Cart</span>
+                                            </button>
                                         </form>
                                       </div>
                                   </div>
