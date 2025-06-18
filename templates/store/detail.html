@@ -182,14 +182,14 @@
                                             <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
 
                                             <!-- Quantity Section -->
-                                            <div class="me-3 mb-2 mb-md-0">
+                                            {% comment %} <div class="me-3 mb-2 mb-md-0">
                                                 <label for="quantity-input" class="form-label mb-1 d-block">Quantity:</label>
                                                 <div class="input-group input-group-sm" style="max-width: 120px;">
                                                     <button class="btn btn-outline-secondary quantity-minus" type="button" id="quantity-minus-btn"><i class="w-icon-minus"></i></button>
                                                     <input id="quantity-input" name="quantity" type="number" class="form-control form-control-sm text-center" value="1" min="1" max="{{ product.stock_count|default:1000 }}">
                                                     <button class="btn btn-outline-secondary quantity-plus" type="button" id="quantity-plus-btn"><i class="w-icon-plus"></i></button>
                                                 </div>
-                                            </div>
+                                            </div> {% endcomment %}
 
                                             <!-- Size Selector Section -->
                                             {% if available_sizes %}
