@@ -38,11 +38,12 @@ def detail(request, slug):
     product = get_object_or_404(Product, slug=slug)
     related_products = Product.objects.exclude(id=product.id).filter(is_active=True, category=product.category)[:4]
     p_image = product.p_images.all()
+    available_sizes_list = [s.strip() for s in product.available_sizes.split(',') if s.strip()] if product.available_sizes else []
     context = {
         'product': product,
         'related_products': related_products,
-        'p_image': p_image
-
+        'p_image': p_image,
+        'available_sizes': available_sizes_list,
     }
     return render(request, 'store/detail.html', context)
 
@@ -204,62 +205,78 @@ def add_to_cart(request):
     user = request.user
     product_id = request.GET.get('prod_id')
     product = get_object_or_404(Product, id=product_id)
+    selected_size = request.GET.get('size')
 
-    # Check whether the Product is alread in Cart or Not
-    item_already_in_cart = Cart.objects.filter(product=product_id, user=user)
-    if item_already_in_cart:
-        cp = get_object_or_404(Cart, product=product_id, user=user)
-        cp.quantity += 1
-        cp.save()
+    # Basic validation: if product has sizes, a size must be selected
+    if product.available_sizes and not selected_size:
+        messages.error(request, "Please select a size for this product.")
+        # Re-render detail page with error
+        related_products = Product.objects.exclude(id=product.id).filter(is_active=True, category=product.category)[:4]
+        p_image = product.p_images.all()
+        available_sizes_list = [s.strip() for s in product.available_sizes.split(',') if s.strip()] if product.available_sizes else []
+        context_for_render = {
+            'product': product,
+            'related_products': related_products,
+            'p_image': p_image,
+            'available_sizes': available_sizes_list,
+        }
+        return render(request, 'store/detail.html', context_for_render)
+
+    cart_item, created = Cart.objects.get_or_create(
+        user=user,
+        product=product,
+        size=selected_size if selected_size else None, # Store None if no size applicable/selected
+        defaults={'quantity': 1}
+    )
+
+    if not created:
+        cart_item.quantity += 1
+        cart_item.save()
+        messages.success(request, f"Quantity of {product.title} (Size: {selected_size or 'N/A'}) updated in cart.")
     else:
-        Cart(user=user, product=product).save()
-    
-    return render(request, 'store/detail.html', {'product': product})
+        messages.success(request, f"Added {product.title} (Size: {selected_size or 'N/A'}) to cart.")
+
+    # Re-render detail page (original behavior) or redirect
+    # For re-rendering, ensure full context is available:
+    related_products = Product.objects.exclude(id=product.id).filter(is_active=True, category=product.category)[:4]
+    p_image = product.p_images.all()
+    available_sizes_list = [s.strip() for s in product.available_sizes.split(',') if s.strip()] if product.available_sizes else []
+    context_for_render = {
+        'product': product,
+        'related_products': related_products,
+        'p_image': p_image,
+        'available_sizes': available_sizes_list,
+    }
+    return render(request, 'store/detail.html', context_for_render)
 
 
 @login_required
-
 def cart(request):
     user = request.user
     cart_products = Cart.objects.filter(user=user)
-    amount = 0
-    # Calculate total amount using aggregation and ExpressionWrapper
-    if cart_products.exists():
-        # Calculate total amount using aggregation and ExpressionWrapper
-        expression = ExpressionWrapper(F('quantity') * F('product__price'), output_field=DecimalField())
-        amount = cart_products.aggregate(total_amount=Sum(expression)).get('total_amount', 0)
+    
+    amount = decimal.Decimal(0)
+    for item in cart_products:
+        amount += item.total_price # Relies on the corrected Cart.total_price property
+
     shipping_amount = decimal.Decimal(0)
-    # Check if a coupon is applied
-    coupon = None
-    if cart_products.filter(coupon__isnull=False).exists():
-        coupon = cart_products.first().coupon
-        discount = coupon.discount if coupon.discount else 0
-        amount = amount - discount
-
-    if request.method == 'POST':
-        coupon_code = request.POST.get('coupon')
-
-        try:
-            coupon = Coupon.objects.get(code=coupon_code)
-        except Coupon.DoesNotExist:
-            messages.error(request, 'Invalid coupon code. Please try again.')
-        else:
-            cart_products.update(coupon=coupon)
-            messages.success(request, 'Coupon applied successfully.')
+    
+    # For displaying applied coupon information (assumes AddCoupon applies one coupon to all items)
+    coupon_for_display = None
+    first_item_with_coupon = cart_products.filter(coupon__isnull=False, coupon__active=True).first()
+    if first_item_with_coupon:
+        coupon_for_display = first_item_with_coupon.coupon
 
     context = {
         'cart_products': cart_products,
         'amount': amount,
         'shipping_amount': shipping_amount,
         'total_amount': amount + shipping_amount,
-        'coupon': coupon,
+        'coupon': coupon_for_display,
     }
-
     return render(request, 'store/cart.html', context)
 
 class AddCoupon(View):
-    def __init__(self):
-        pass
     def post(self, request, *args, **kwargs):
         code = request.POST.get('coupon', '')
         coupon = Coupon.objects.filter(code__iexact=code)
@@ -267,7 +284,11 @@ class AddCoupon(View):
         if coupon.exists():
             # Apply the coupon to the user's cart
             cart_products = Cart.objects.filter(user=request.user)
-            cart_products.update(coupon=coupon.first())  # Assign the coupon to all cart products
+            active_coupon = coupon.first()
+            if not active_coupon.active:
+                messages.warning(request, "This coupon is not active.")
+                return redirect('store:cart')
+            cart_products.update(coupon=active_coupon)  # Assign the coupon to all cart products
             
             messages.success(request, "Coupon applied successfully")
         else:
@@ -309,15 +330,30 @@ def minus_cart(request, cart_id):
 @login_required
 def checkout(request):
     user = request.user
-    
-    # Get all the products of User in Cart
-    cart = Cart.objects.filter(user=user)
-    for c in cart:
-        # Saving all the products from Cart to Order
-        Order(user=user, product=c.product, quantity=c.quantity).save()
-        # And Deleting from Cart
-        c.delete()
-    return redirect('store:orders')
+    cart_items = Cart.objects.filter(user=user)
+    addresses = Address.objects.filter(user=user) # Assuming you want to show addresses
+
+    if not cart_items.exists():
+        messages.warning(request, "Your cart is empty. Please add items to your cart before proceeding to checkout.")
+        return redirect('store:cart')
+
+    amount = decimal.Decimal(0)
+    for item in cart_items:
+        amount += item.total_price
+
+    shipping_amount = decimal.Decimal(0) # Or your actual shipping calculation
+    total_amount = amount + shipping_amount
+
+    context = {
+        'cart_items': cart_items,
+        'addresses': addresses,
+        'amount': amount,
+        'shipping_amount': shipping_amount,
+        'total_amount': total_amount,
+    }
+    # The actual order creation should happen after this page,
+    # e.g., when a "Place Order" button is clicked and payment is processed.
+    return render(request, 'store/checkout.html', context)
 
 
 @login_required

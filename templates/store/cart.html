@@ -51,6 +51,9 @@
                                       <a href="{% url 'store:product-detail' cart_product.product.slug %}">
                                         {{cart_product.product.title}}
                                       </a>
+                                      {% if cart_product.size %}
+                                        <p class="cart-item-size text-muted small mb-0">Size: {{ cart_product.size }}</p>
+                                      {% endif %}
                                   </td>
                                   <td class="product-price"><span class="amount">{{cart_product.product.price}} ETB</span></td>
                                   <td class="product-quantity">

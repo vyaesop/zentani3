@@ -151,7 +151,19 @@
                                                   <button class="quantity-minus w-icon-minus dec-btn p-0"></button>
                                               </div>
                                           </div>
+                                          
                                           <form action="{% url 'store:add-to-cart' %}">
+                                            {% if available_sizes %}
+<div class="my-3">
+    <label for="size-select">Select Size:</label>
+    <select name="size" id="size-select" class="form-control" style="width: auto;">
+        {% for size_option in available_sizes %}
+        <option value="{{ size_option }}">{{ size_option }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}
+
                                             <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
                                           <button type="submit" class="btn btn-primary">
                                               <i class="w-icon-cart"></i>

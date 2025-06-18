@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -52,6 +53,7 @@ class Product(models.Model):
     slug = models.SlugField(max_length=160, verbose_name="Product Slug")
     sku = models.CharField(max_length=255, unique=True, verbose_name="Unique Product ID (SKU)")
     short_description = models.TextField(verbose_name="Short Description")
+    available_sizes = models.CharField(max_length=100, blank=True, help_text="Comma-separated list of available sizes (e.g., S,M,L,XL)", verbose_name="Available Sizes")
     detail_description = models.TextField(blank=True, null=True, verbose_name="Detail Description")
     product_image = models.ImageField(upload_to='product', verbose_name="Product Image")
     price = models.DecimalField(max_digits=8, decimal_places=2)
@@ -94,6 +96,7 @@ class Cart(models.Model):
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
     coupon = models.ForeignKey(Coupon, verbose_name="Coupon", on_delete=models.CASCADE, null=True, blank=True)
+    size = models.CharField(max_length=50, null=True, blank=True, verbose_name="Size")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Quantity")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Date")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Date")
@@ -104,12 +107,15 @@ class Cart(models.Model):
     # Creating Model Property to calculate Quantity x Price
     @property
     def total_price(self):
-        if self.coupon:
-            discount = self.coupon.discount if self.coupon.discount else 0
-            discounted_price = self.product.price - discount
-            return self.quantity * discounted_price
-        else:
-            return self.quantity * self.product.price
+        base_price_per_item = self.product.price
+        effective_price_per_item = base_price_per_item
+
+        if self.coupon and self.coupon.discount is not None and self.coupon.active:
+            # Assuming coupon.discount is a percentage
+            discount_percentage = Decimal(self.coupon.discount) / Decimal(100)
+            discount_amount_per_item = base_price_per_item * discount_percentage
+            effective_price_per_item = base_price_per_item - discount_amount_per_item
+        return self.quantity * effective_price_per_item
 
 
 
@@ -125,6 +131,7 @@ STATUS_CHOICES = (
 class Order(models.Model):
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
+    size = models.CharField(max_length=50, null=True, blank=True, verbose_name="Size")
     quantity = models.PositiveIntegerField(verbose_name="Quantity")
     ordered_date = models.DateTimeField(auto_now_add=True, verbose_name="Ordered Date")
     status = models.CharField(
@@ -132,5 +139,3 @@ class Order(models.Model):
         max_length=50,
         default="Pending"
         )
-
-
