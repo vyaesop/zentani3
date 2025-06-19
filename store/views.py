@@ -332,31 +332,15 @@ def minus_cart(request, cart_id):
 @login_required
 def checkout(request):
     user = request.user
-    cart_items = Cart.objects.filter(user=user)
-    addresses = Address.objects.filter(user=user) # Assuming you want to show addresses
-
-    if not cart_items.exists():
-        messages.warning(request, "Your cart is empty. Please add items to your cart before proceeding to checkout.")
-        return redirect('store:cart')
-
-    amount = decimal.Decimal(0)
-    for item in cart_items:
-        amount += item.total_price
-
-    shipping_amount = decimal.Decimal(0) # Or your actual shipping calculation
-    total_amount = amount + shipping_amount
-
-    context = {
-        'cart_items': cart_items,
-        'addresses': addresses,
-        'amount': amount,
-        'shipping_amount': shipping_amount,
-        'total_amount': total_amount,
-    }
-    # The actual order creation should happen after this page,
-    # e.g., when a "Place Order" button is clicked and payment is processed.
-    return render(request, 'store/checkout.html', context)
-
+    
+    # Get all the products of User in Cart
+    cart = Cart.objects.filter(user=user)
+    for c in cart:
+        # Saving all the products from Cart to Order
+        Order(user=user, product=c.product, quantity=c.quantity, size=c.size).save()
+        # And Deleting from Cart
+        c.delete()
+    return redirect('store:orders')
 
 @login_required
 def orders(request):

@@ -1,103 +1,140 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
 
-    {% block content %}
-
-      <div class="container py-5">
-
-
-        <div class="row">
-
-          
-
-          <div class="col-lg-12">
-            <div class="card mb-4" id="tables">
-              <div class="card-header text-center"><h3>Orders</h3></div>
-              <div class="card-body">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Item</th>
-                      <th>Size</th>
-                      <th>Image</th>
-                      <th>Qty.</th>
-                      <th>Ordered Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-
-                    {% if orders %}
-
-                    {% for order in orders %}
-                    <tr>
-                      <td>{{forloop.counter}}</td>
-                      <td>{{order.product.title}}</td>
-                      <td>
-                        {% if order.size %}{{ order.size }}{% else %}-{% endif %}
-                      </td>
-                      <td>
-                        {% if order.product.product_image %}
-                          <img src="{{order.product.product_image.url}}" alt="{{order.product.product_ttile}}" style="width:150px;">
-                        {% endif %}
-                      </td>
-                      <td>{{order.quantity}}</td>
-                      <td>{{order.ordered_date|naturaltime}}</td>
-                      <td>
-
-                        {% if order.status == 'Pending' %}
-                        
-                        {% endif %}
-
-                        {% if order.status == 'Accepted' %}
-                        <div class="bg-light border border-primary">
-                            <div class="p-3 bg-primary" style="width:0;"></div>
-                        </div>
-                        {% endif %}
-
-                        {% if order.status == 'Packed' %}
-                        <div class="bg-light border border-primary">
-                            <div class="p-3 bg-primary" style="width:40%;"></div>
-                        </div>
-                        {% endif %}
-                        
-                        
-                        {% if order.status == 'On The Way' %}
-                        <div class="bg-light border border-primary">
-                            <div class="p-3 bg-primary" style="width:70%;"></div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if order.status == 'Delivered' %}
-                        <div class="bg-light border border-primary">
-                            <div class="p-3 bg-primary" style="width:100%;"></div>
-                        </div>
-                        {% endif %}
-
-                        {% if order.status == 'Cancelled' %}
-                        <div class="bg-light border border-danger">
-                            <div class="p-3 bg-danger" style="width:100%;"></div>
-                        </div>
-                        {% endif %}
-                        
-                        {{order.status}}
-                      </td>
-                    </tr>
-                    {% endfor %}
-                    {% endif %}
-                    
-                  </tbody>
-                </table>
-                
-              </div>
-            </div>
-          </div>
-          
+{% block content %}
+<main class="main">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title mb-0">My Orders</h1>
         </div>
-    
-        
-        
-      </div>
+    </div>
+    <!-- End of Page Header -->
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb-nav mb-6">
+        <div class="container">
+            <ul class="breadcrumb">
+                <li><a href="{% url 'store:home' %}">Home</a></li>
+                <li><a href="{% url 'store:profile' %}">Profile</a></li>
+                <li>My Orders</li>
+            </ul>
+        </div>
+    </nav>
+    <!-- End of Breadcrumb -->
+
+    <div class="page-content">
+        <div class="container">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if orders %}
+                <div class="orders-list">
+                    {% for order in orders %}
+                    <div class="card order-card mb-4 shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
+                            <div>
+                                <h5 class="mb-1 card-title">Order Placed: {{ order.ordered_date|date:"F d, Y, P" }}</h5>
+                                <small class="text-muted">Order ID: #{{ order.id }}</small>
+                            </div>
+                            <span class="badge mt-2 mt-md-0
+                                {% if order.status == 'Delivered' %}bg-success text-white
+                                {% elif order.status == 'Cancelled' %}bg-danger text-white
+                                {% elif order.status == 'On The Way' %}bg-info text-dark
+                                {% elif order.status == 'Accepted' or order.status == 'Packed' %}bg-primary text-white
+                                {% else %}bg-warning text-dark{% endif %}">
+                                {{ order.status }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-lg-1 col-md-2 col-3 text-center mb-3 mb-md-0">
+                                    {% if order.product.product_image %}
+                                    <img src="{{ order.product.product_image.url }}" alt="{{ order.product.title }}" class="img-fluid rounded order-product-image">
+                                    {% else %}
+                                    <img src="{% static 'asset/images/default-product.png' %}" alt="No image" class="img-fluid rounded order-product-image"> {# Make sure you have a default image placeholder #}
+                                    {% endif %}
+                                </div>
+                                <div class="col-lg-5 col-md-4 col-9 mb-3 mb-md-0">
+                                    <h6 class="mb-1 product-title-link"><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h6>
+                                    {% if order.size %}
+                                        <p class="mb-0 text-muted"><small>Size: {{ order.size }}</small></p>
+                                    {% endif %}
+                                </div>
+                                <div class="col-lg-2 col-md-2 col-4 text-md-center mb-2 mb-md-0">
+                                    <p class="mb-0">Qty: {{ order.quantity }}</p>
+                                </div>
+                                <div class="col-lg-2 col-md-2 col-4 text-md-center mb-2 mb-md-0">
+                                    <p class="mb-0">{{ order.price_at_purchase|floatformat:2 }} ETB</p>
+                                </div>
+                                <div class="col-lg-2 col-md-2 col-4 text-md-end">
+                                    <p class="mb-0 fw-bold">{{ order.line_total|floatformat:2 }} ETB</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="w-icon-orders display-1 text-muted mb-3"></i> {# Changed icon for better semantics #}
+                    <h4 class="mt-3">You have no orders yet.</h4>
+                    <p>All your placed orders will appear here.</p>
+                    <a href="{% url 'store:home' %}" class="btn btn-primary btn-rounded mt-2">Start Shopping</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
+
+<style>
+    .order-card {
+        border: 1px solid #e9ecef; /* Softer border */
+        border-radius: .375rem; /* Standard Bootstrap radius */
+    }
+    .order-card .card-header {
+        border-bottom: 1px solid #e9ecef;
+        padding: 0.75rem 1.25rem; /* Standard Bootstrap padding */
+    }
+    .order-card .card-title {
+        font-size: 1.1rem; /* Slightly larger title */
+    }
+    .badge {
+        font-size: 0.85em; /* Slightly smaller badge text for balance */
+        padding: .45em .7em;
+    }
+    .order-product-image {
+        max-width: 70px; /* Consistent image size */
+        max-height: 70px;
+        object-fit: cover; /* Crop to fit, maintaining aspect ratio */
+    }
+    .product-title-link a {
+        color: inherit; /* Make product title link less obtrusive */
+        text-decoration: none;
+    }
+    .product-title-link a:hover {
+        text-decoration: underline;
+        color: var(--bs-primary); /* Or your theme's primary color */
+    }
+    /* Responsive adjustments for smaller screens if needed */
+    @media (max-width: 767px) {
+        .order-card .card-header {
+            text-align: center; /* Center header content on small screens */
+        }
+        .order-card .card-header > div {
+            margin-bottom: 0.5rem;
+        }
+        .order-card .card-body .col-md-2.text-md-center,
+        .order-card .card-body .col-md-2.text-md-end {
+            text-align: left !important; /* Align text left on small screens for readability */
+        }
+    }
+</style>
+
 {% endblock content %}
