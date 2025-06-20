@@ -71,10 +71,10 @@
                                     <p class="mb-0">Qty: {{ order.quantity }}</p>
                                 </div>
                                 <div class="col-lg-2 col-md-2 col-4 text-md-center mb-2 mb-md-0">
-                                    <p class="mb-0">{{ order.price_at_purchase|floatformat:2 }} ETB</p>
+                                    <p class="mb-0">{{ order.price_at_purchase|default:0|floatformat:2 }} ETB</p>
                                 </div>
                                 <div class="col-lg-2 col-md-2 col-4 text-md-end">
-                                    <p class="mb-0 fw-bold">{{ order.line_total|floatformat:2 }} ETB</p>
+                                    <p class="mb-0 fw-bold">{{ order.line_total|default:0|floatformat:2 }} ETB</p>
                                 </div>
                             </div>
                         </div>

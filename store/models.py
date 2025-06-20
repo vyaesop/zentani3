@@ -133,6 +133,8 @@ class Order(models.Model):
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
     size = models.CharField(max_length=50, null=True, blank=True, verbose_name="Size")
     quantity = models.PositiveIntegerField(verbose_name="Quantity")
+    price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Price at Purchase")
+    line_total = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Line Total")
     ordered_date = models.DateTimeField(auto_now_add=True, verbose_name="Ordered Date")
     status = models.CharField(
         choices=STATUS_CHOICES,

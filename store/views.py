@@ -335,9 +335,22 @@ def checkout(request):
     
     # Get all the products of User in Cart
     cart = Cart.objects.filter(user=user)
+    
     for c in cart:
+        # Calculate effective price per item, considering coupon
+        base_price_per_item = c.product.price
+        effective_price_per_item = base_price_per_item
+        if c.coupon and c.coupon.discount is not None and c.coupon.active:
+            discount_percentage = Decimal(c.coupon.discount) / Decimal(100)
+            discount_amount_per_item = base_price_per_item * discount_percentage
+            effective_price_per_item = base_price_per_item - discount_amount_per_item
+        
+        line_total_for_order = c.quantity * effective_price_per_item
+
         # Saving all the products from Cart to Order
-        Order(user=user, product=c.product, quantity=c.quantity, size=c.size).save()
+        Order(user=user, product=c.product, quantity=c.quantity, size=c.size, 
+              price_at_purchase=effective_price_per_item, 
+              line_total=line_total_for_order).save()
         # And Deleting from Cart
         c.delete()
     return redirect('store:orders')

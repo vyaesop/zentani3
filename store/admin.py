@@ -51,8 +51,8 @@ class CouponAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'size', 'quantity', 'status', 'ordered_date')
-    list_editable = ('quantity', 'status', 'size')
+    list_display = ('user', 'product', 'size', 'quantity', 'price_at_purchase', 'line_total', 'status', 'ordered_date')
+    list_editable = ('quantity', 'status', 'size', 'price_at_purchase', 'line_total')
     list_filter = ('status', 'ordered_date')
     list_per_page = 20
     search_fields = ('user', 'product')

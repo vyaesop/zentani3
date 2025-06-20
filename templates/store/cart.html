@@ -1,194 +1,203 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
 
-    {% block content %}
-    <main class="main cart">
-      <!-- Start of Breadcrumb -->
-      <nav class="breadcrumb-nav">
-          <div class="container">
-              <ul class="breadcrumb shop-breadcrumb bb-no">
-                  <li class="active"><a href="#">Shopping Cart</a></li>
-                  <li><a href="#">Checkout</a></li>
-                  <li><a href="#">Order Complete</a></li>
-              </ul>
-          </div>
-      </nav>
-      <!-- End of Breadcrumb -->
+{% block content %}
+<main class="main">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title mb-0">Shopping Cart</h1>
+        </div>
+    </div>
+    <!-- End of Page Header -->
 
-      <!-- Start of PageContent -->
-      <div class="page-content">
-        {% if cart_products %}
-          <div class="container">
-            {% include 'partials/_messages.html' %}
-              <div class="row gutter-lg mb-10">
-                  <div class="col-lg-8 pr-lg-4 mb-6">
-                      <table class="shop-table cart-table">
-                          <thead>
-                              <tr>
-                                  <th class="product-name"><span>Product</span></th>
-                                  <th></th>
-                                  <th class="product-price"><span>Price</span></th>
-                                  <th class="product-quantity"><span>Quantity</span></th>
-                                  <th class="product-subtotal"><span>Subtotal</span></th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                            {% for cart_product in cart_products %}
-                              <tr>
-                                  <td class="product-thumbnail">
-                                      <div class="p-relative">
-                                          <a href="{% url 'store:product-detail' cart_product.product.slug %}">
-                                              <figure>
-                                                  <img src="{{cart_product.product.product_image.url}}" alt="product"
-                                                      width="300" height="338">
-                                              </figure>
-                                          </a>
-                                          
-                                      </div>
-                                  </td>
-                                  <td class="product-name">
-                                      <a href="{% url 'store:product-detail' cart_product.product.slug %}">
-                                        {{cart_product.product.title}}
-                                      </a>
-                                      {% if cart_product.size %}
-                                        <p class="cart-item-size text-muted small mb-0">Size: {{ cart_product.size }}</p>
-                                      {% endif %}
-                                  </td>
-                                  <td class="product-price"><span class="amount">{{cart_product.product.price}} ETB</span></td>
-                                  <td class="product-quantity">
-                                      <div class="input-group">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb-nav mb-6">
+        <div class="container">
+            <ul class="breadcrumb">
+                <li><a href="{% url 'store:home' %}">Home</a></li>
+                <li>Shopping Cart</li>
+            </ul>
+        </div>
+    </nav>
+    <!-- End of Breadcrumb -->
 
-                                        <a href="{% url 'store:minus-cart' cart_product.id %}" class="social-icon social-facebook w-icon-minus"></a>
-                                        <input class="form-control form-control-sm border-0 shadow-0 p-0" type="text" value="{{cart_product.quantity}}"/>
-                                        <a href="{% url 'store:plus-cart' cart_product.id %}" class="social-icon social-facebook w-icon-plus"></a>
+    <div class="page-content">
+        <div class="container">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
 
-                                      </div>
-                                  </td>
-                                  <td class="product-subtotal">
-                                      <span class="amount">{{cart_product.total_price|intcomma}} ETB</span>
-                                  </td>
-                                  <td class="align-middle border-0"><a class="reset-anchor" href="{% url 'store:remove-cart' cart_product.id %}"><i class="fas fa-trash-alt small text-muted"></i></a></td>
+            {% if cart_products %}
+            <div class="row gutter-lg">
+                <div class="col-lg-8 pr-lg-4">
+                    <div class="cart-items-list">
+                        {% for item in cart_products %}
+                        <div class="card cart-item-card mb-3 shadow-sm">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2 col-3 text-center mb-3 mb-md-0">
+                                        <a href="{% url 'store:product-detail' item.product.slug %}">
+                                            {% if item.product.product_image %}
+                                            <img src="{{ item.product.product_image.url }}" alt="{{ item.product.title }}" class="img-fluid rounded cart-product-image">
+                                            {% else %}
+                                            <img src="{% static 'asset/images/default-product.png' %}" alt="No image" class="img-fluid rounded cart-product-image">
+                                            {% endif %}
+                                        </a>
+                                    </div>
+                                    <div class="col-md-4 col-9 mb-3 mb-md-0">
+                                        <h6 class="mb-1 product-title-link"><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h6>
+                                        {% if item.size %}
+                                            <p class="mb-0 text-muted"><small>Size: {{ item.size }}</small></p>
+                                        {% endif %}
+                                        <p class="mb-0 text-muted"><small>Price: {{ item.product.price|floatformat:2 }} ETB</small></p>
+                                    </div>
+                                    <div class="col-md-3 col-6 mb-2 mb-md-0">
+                                        <div class="input-group quantity-control">
+                                            <a href="{% url 'store:minus-cart' item.id %}" class="btn btn-sm btn-outline-secondary">-</a>
+                                            <input type="text" class="form-control form-control-sm text-center" value="{{ item.quantity }}" readonly style="background-color: white;">
+                                            <a href="{% url 'store:plus-cart' item.id %}" class="btn btn-sm btn-outline-secondary">+</a>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 col-3 text-md-end">
+                                        <p class="mb-1 fw-bold">{{ item.total_price|floatformat:2 }} ETB</p>
+                                    </div>
+                                    <div class="col-md-1 col-3 text-md-end">
+                                        <a href="{% url 'store:remove-cart' item.id %}" class="btn btn-sm btn-danger" title="Remove item"><i class="fas fa-trash"></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="cart-actions d-flex justify-content-between mt-4">
+                        <a href="{% url 'store:home' %}" class="btn btn-outline-primary btn-rounded"><i class="w-icon-long-arrow-left"></i>Continue Shopping</a>
+                        {% comment %} <a href="#" class="btn btn-outline-secondary btn-rounded">Update Cart</a> {% endcomment %}
+                    </div>
+                </div>
 
-                              </tr>
-                              {% endfor %}
-                          </tbody>
-                      </table>
-
-                      <div class="cart-action mb-6">
-                          <a href="{% url 'store:home' %}" class="btn btn-dark btn-rounded btn-icon-left btn-shopping mr-auto"><i class="w-icon-long-arrow-left"></i>Continue Shopping</a>
-                      </div>
-
-                      <form action="{% url 'store:add-coupon' %}" method="POST" class="coupon">
-                        {% csrf_token %}
-                        {% include 'partials/_messages.html' %}  
-                        <h5 class="title coupon-title font-weight-bold text-uppercase">Coupon Discount</h5>
-                          <input id="coupon-input" name="coupon" type="text" class="form-control mb-4" placeholder="Enter coupon code here..." required />
-                          <button type="submit" class="btn btn-dark btn-outline btn-rounded">Apply Coupon</button>
-                      </form>
-                      <script>
-                        // Clear coupon input field after submission
-                        document.addEventListener("DOMContentLoaded", function () {
-                          const couponInput = document.getElementById("coupon-input");
-                      
-                          document.querySelector("form").addEventListener("submit", function () {
-                            couponInput.value = "";
-                          });
-                        });
-                      </script>
-                  </div>
-                  {% comment %} <a class="btn btn-primary btn-large" href="{% url 'store:add-address' %}">Add Address »</a> {% endcomment %}
-                  <div class="col-lg-4 sticky-sidebar-wrapper">
-                      <div class="sticky-sidebar">
-                          <div class="cart-summary mb-4">
-                              <h3 class="cart-title text-uppercase">Cart Totals</h3>
-                              <div class="cart-subtotal d-flex align-items-center justify-content-between">
-                                  <label class="ls-25">Subtotal</label>
-                                  <span>{{amount|intcomma}} ETB</span>
-                              </div>
-
-                              <hr class="divider">
-
-                              <ul class="shipping-methods mb-2">
-                                  <li>
-                                      <label
-                                          class="shipping-title text-dark font-weight-bold">Shipping</label>
-                                  </li>
-                                  
-                                  <li>
-                                    <label for="flat-rate" class="custom-control-label color-dark">Delivery
-                                        charge: {{shipping_amount}} ETB</label>
-                                  </li>
-                                  
-                              </ul>
-
-                              <div class="shipping-calculator">
-                                <form action="{% url 'store:checkout' %}" id="myform">
-                                {% for address in addresses %}
-                                  <p class="shipping-destination lh-1">Shipping to <strong>{{address.address}}, {{address.city}}</strong>.</p>
-                                  {% endfor %}
+                <div class="col-lg-4 sticky-sidebar-wrapper">
+                    <div class="sticky-sidebar">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0 card-title">Cart Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Subtotal
+                                        <span>{{ amount|floatformat:2 }} ETB</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Delivery Charges
+                                        {% if shipping_amount == 0 %}
+                                            <span class="text-success">Free</span>
+                                        {% else %}
+                                            <span>{{ shipping_amount|floatformat:2 }} ETB</span>
+                                        {% endif %}
+                                    </li>
+                                    {% if coupon %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-success">
+                                        Coupon Applied ({{coupon.code}})
+                                        <span>- {{ coupon.discount }}%</span>
+                                    </li>
+                                    {% endif %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
+                                        Total
+                                        <span>{{ total_amount|floatformat:2 }} ETB</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body border-top">
+                                <form action="{% url 'store:add-coupon' %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="input-group">
+                                        <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
+                                        <button class="btn btn-secondary" type="submit">Use</button>
+                                    </div>
                                 </form>
-                              </div>
+                            </div>
+                            <div class="card-footer bg-transparent border-0">
+                                <a href="{% url 'store:checkout' %}" class="btn btn-primary btn-block btn-lg btn-rounded w-100">Proceed to Checkout <i class="w-icon-long-arrow-right"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="w-icon-cart display-1 text-muted mb-3"></i>
+                    <h4 class="mt-3">Your cart is empty.</h4>
+                    <p>Looks like you haven't added anything to your cart yet.</p>
+                    <a href="{% url 'store:home' %}" class="btn btn-primary btn-rounded mt-2">Start Shopping</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</main>
 
-                              <hr class="divider mb-6">
-                              <div class="order-total d-flex justify-content-between align-items-center">
-                                  <label>Total</label>
-                                  <span class="ls-50">{{total_amount|intcomma}} ETB</span>
-                              </div>
-                              <div class="text-end" id="paypal-button-container"></div>
-                              <form action="{% url 'store:checkout' %}" id="myform">
-                              <button type="submit" class="btn btn-block btn-dark btn-icon-right btn-rounded  btn-checkout">
-                                  Proceed to checkout<i class="w-icon-long-arrow-right" type="submit"></i></a></button>
-                              </div>
-                            </form>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          {% else %}
-          <div class="text-center py-5">
-            <h3 class="mb-3">Your cart is empty.</h3>
-            <a href="{% url 'store:home' %}"><i class="fas fa-long-arrow-alt-left mr-2"> </i>Continue shopping</a>
-          </div>
-        {% endif %}
-      </div>
-      <!-- End of PageContent -->
-  </main>
-      </div>
-      {% endblock content %}
-
-      {% block payment-gateway %}
-        <!-- Include the PayPal JavaScript SDK -->
-    
-        <script src="https://www.paypal.com/sdk/js?client-id=YOUR-PAYPAL-CLIENT-ID&currency=USD"></script>
-
-    <script>
-        // Render the PayPal button into #paypal-button-container
-        paypal.Buttons({
-
-            // Set up the transaction
-            createOrder: function(data, actions) {
-                return actions.order.create({
-                    purchase_units: [{
-                        amount: {
-                            value: '{{total_amount}}'
-                        }
-                    }]
-                });
-            },
-
-            // Finalize the transaction
-            onApprove: function(data, actions) {
-                return actions.order.capture().then(function(details) {
-                    // Show a success message to the buyer
-                    alert('Transaction completed by ' + details.payer.name.given_name + '!');
-                    // Savind Order in Database after Payment Success
-                    document.getElementById('myform').submit();
-                });
-            }
-
-
-        }).render('#paypal-button-container');
-    </script>
-      {% endblock payment-gateway %}
+<style>
+    .cart-item-card {
+        border: 1px solid #e9ecef;
+        border-radius: .375rem;
+    }
+    .cart-item-card .card-body {
+        padding: 1rem; /* Adjust padding as needed */
+    }
+    .cart-product-image {
+        max-width: 80px;
+        max-height: 80px;
+        object-fit: cover;
+    }
+    .product-title-link a {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .product-title-link a:hover {
+        text-decoration: underline;
+        color: var(--bs-primary);
+    }
+    .quantity-control .form-control {
+        max-width: 50px;
+        text-align: center;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+    }
+    .quantity-control .btn {
+        border-radius: 0;
+    }
+    .quantity-control .btn:first-child {
+        border-top-left-radius: .25rem;
+        border-bottom-left-radius: .25rem;
+    }
+    .quantity-control .btn:last-child {
+        border-top-right-radius: .25rem;
+        border-bottom-right-radius: .25rem;
+    }
+    .sticky-sidebar-wrapper {
+        position: relative;
+    }
+    .sticky-sidebar {
+        position: -webkit-sticky; /* Safari */
+        position: sticky;
+        top: 20px; /* Adjust as needed, considering your navbar height */
+    }
+    .card .list-group-item {
+        border-left: 0;
+        border-right: 0;
+    }
+    .card .list-group-item:first-child {
+        border-top: 0;
+    }
+     .card .list-group-item:last-child {
+        border-bottom: 0;
+    }
+</style>
+{% endblock content %}
