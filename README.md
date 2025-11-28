@@ -15,15 +15,14 @@ Users can browse products, add items to cart, and purchase clothing. The website
 - **Backend**: Django (Python) — models, views, routing, authentication, business logic  
 - **Frontend**: HTML, CSS, JavaScript — responsive UI, dynamic interactions  
 - **Database**: PostgreSQL — storing product, user, order, cart and related data  
-- (Optionally) Any other libraries / tools you use (e.g. for image handling, payments, static files)  
 
 ## ✅ Key Features
 
 - Product listing: clothes/apparel with images, descriptions, prices  
 - Product detail pages  
 - Shopping cart: add/remove items, adjust quantities  
-- User authentication: sign-up, login (optional, if implemented)  
-- Order placement (or checkout flow — if implemented)  
+- User authentication: sign-up, login  
+- Order placement
 - Admin panel (via Django admin) to manage products, orders, users  
 - Clean design and responsive layout for better UX  
 
