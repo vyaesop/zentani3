@@ -7,9 +7,8 @@
 Zentanee is a full-stack e-commerce web application for selling clothes and apparel.  
 Users can browse products, add items to cart, and purchase clothing. The website is built using Django (backend), HTML/CSS/JavaScript (frontend), and PostgreSQL as the database, offering a clean, maintainable, and scalable architecture.
 
-![Project Image](https://res.cloudinary.com/dzak0zcmt/image/upload/v1/media/product/Screenshot_2025-11-28_120943_ovahi7))
-![Project Image](https://res.cloudinary.com/dzak0zcmt/image/upload/v1/media/product-images/Screenshot_2025-11-28_121018_z9gvcu)
-![Project Image](https://res.cloudinary.com/dzak0zcmt/image/upload/v1/media/product-images/Screenshot_2025-11-28_121018_z9gvcu)
+![Project Image](https://res.cloudinary.com/dzak0zcmt/image/upload/v1/media/product/Screenshot_2025-11-28_120943_ovahi7)
+![Project Image](https://res.cloudinary.com/dzak0zcmt/image/upload/v1/media/product-images/Screenshot_2025-11-28_121113_pvpgmw)
 
 ## 🧰 Tech Stack
 
