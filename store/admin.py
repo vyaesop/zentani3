@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.conf import settings
+from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
@@ -73,11 +74,47 @@ class CouponAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'size', 'quantity', 'price_at_purchase', 'line_total', 'status', 'ordered_date')
+    list_display = (
+        'customer_name',
+        'customer_username',
+        'customer_address',
+        'product',
+        'size',
+        'quantity',
+        'price_at_purchase',
+        'line_total',
+        'status',
+        'ordered_date',
+    )
     list_editable = ('quantity', 'status', 'size', 'price_at_purchase', 'line_total')
     list_filter = ('status', 'ordered_date')
     list_per_page = 20
-    search_fields = ('user', 'product')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'user__email', 'product__title')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request).select_related('user', 'product')
+        latest_address = Address.objects.filter(user=OuterRef('user_id')).order_by('-id')
+        return qs.annotate(
+            latest_address_text=Subquery(latest_address.values('address')[:1]),
+            latest_city_text=Subquery(latest_address.values('city')[:1]),
+        )
+
+    @admin.display(description='Name', ordering='user__first_name')
+    def customer_name(self, obj):
+        full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return full_name or '-'
+
+    @admin.display(description='Username', ordering='user__username')
+    def customer_username(self, obj):
+        return obj.user.username
+
+    @admin.display(description='Address')
+    def customer_address(self, obj):
+        address = getattr(obj, 'latest_address_text', '')
+        city = getattr(obj, 'latest_city_text', '')
+        if address and city:
+            return f'{address}, {city}'
+        return address or '-'
 
 
 class AffiliateProfileAdmin(admin.ModelAdmin):

@@ -59,3 +59,25 @@ python manage.py runserver
 
 # 9. Open in browser
 #    Visit http://127.0.0.1:8000 to see the site
+
+## Production Preflight Checklist
+
+Before deploying, ensure these environment variables are set with real values (not placeholders):
+
+- `DATABASE_URL`
+- `DJANGO_SECRET_KEY`
+- `ALLOWED_HOSTS`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+Run this command locally to catch deployment issues early:
+
+```bash
+python manage.py check --deploy --fail-level ERROR
+```
+
+Notes:
+
+- On Vercel/serverless, sqlite media writes are not suitable for admin uploads.
+- If Cloudinary credentials are missing or invalid, uploads will fail.

@@ -13,15 +13,57 @@ from django.utils.translation import gettext, gettext_lazy as _
 
 
 class RegistrationForm(UserCreationForm):
+    full_name = forms.CharField(
+        required=True,
+        label='Full Name',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full Name'})
+    )
+    address = forms.CharField(
+        required=True,
+        label='Address',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nearest Location'})
+    )
+    city = forms.CharField(
+        required=True,
+        label='City',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'})
+    )
     password1 = forms.CharField(label='Password', widget=forms.PasswordInput(attrs={'class':'form-control', 'placeholder':'Password'}))
     password2 = forms.CharField(label="Confirm Password", widget=forms.PasswordInput(attrs={'class':'form-control', 'placeholder':'Confirm Password'}))
     email = forms.CharField(required=True, widget=forms.EmailInput(attrs={'class':'form-control', 'placeholder':'Email Address'}))
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = ['full_name', 'username', 'email', 'address', 'city', 'password1', 'password2']
         labels = {'email': 'Email', 'username': _('Phone Number')}
         widgets = {'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder':'Phone Number'})}
+
+    def clean_full_name(self):
+        return self.cleaned_data['full_name'].strip()
+
+    def clean_username(self):
+        return self.cleaned_data['username'].strip()
+
+    def clean_address(self):
+        return self.cleaned_data['address'].strip()
+
+    def clean_city(self):
+        return self.cleaned_data['city'].strip()
+
+    def clean_email(self):
+        return self.cleaned_data['email'].strip().lower()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        full_name = self.cleaned_data.get('full_name', '').strip()
+        if full_name:
+            name_parts = full_name.split(None, 1)
+            user.first_name = name_parts[0]
+            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        user.email = self.cleaned_data.get('email', '').strip().lower()
+        if commit:
+            user.save()
+        return user
 
 
 class LoginForm(AuthenticationForm):
