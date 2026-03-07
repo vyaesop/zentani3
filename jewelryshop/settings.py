@@ -170,7 +170,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'jewelryshop/static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles', 'static') # Automatically Created on Production
 
 if importlib.util.find_spec('whitenoise'):
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    # Use non-manifest storage to avoid build failures when vendor CSS contains
+    # unresolved relative references that are not shipped in this project.
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Settings for Media
 MEDIA_URL = '/media/'
