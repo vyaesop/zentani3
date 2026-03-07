@@ -383,7 +383,19 @@ def remove_address(request, id):
 
 @login_required
 def add_to_cart(request):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    def _json(message, ok=True, status=200):
+        payload = {
+            "ok": ok,
+            "message": message,
+            "cart_items_count": Cart.objects.filter(user=request.user).count(),
+        }
+        return JsonResponse(payload, status=status)
+
     if request.method != "POST":
+        if is_ajax:
+            return _json("Please use the add-to-cart button to add an item.", ok=False, status=405)
         messages.warning(request, "Please use the add-to-cart button to add an item.")
         return redirect("store:home")
 
@@ -392,6 +404,8 @@ def add_to_cart(request):
     selected_size = (request.POST.get("size") or "").strip()
 
     if not product_id:
+        if is_ajax:
+            return _json("Unable to add product to cart. Please try again.", ok=False, status=400)
         messages.error(request, "Unable to add product to cart. Please try again.")
         return redirect("store:home")
 
@@ -402,6 +416,8 @@ def add_to_cart(request):
     )
 
     if product.is_sold_out:
+        if is_ajax:
+            return _json(f"{product.title} is currently sold out.", ok=False, status=400)
         messages.warning(request, f"{product.title} is currently sold out.")
         return redirect("store:product-detail", slug=product.slug)
 
@@ -409,10 +425,14 @@ def add_to_cart(request):
     selected_size_value = selected_size or None
 
     if available_sizes and not selected_size:
+        if is_ajax:
+            return _json("Please select a size for this product.", ok=False, status=400)
         messages.error(request, "Please select a size for this product.")
         return redirect("store:product-detail", slug=product.slug)
 
     if selected_size and selected_size not in available_sizes:
+        if is_ajax:
+            return _json("Selected size is not available for this product.", ok=False, status=400)
         messages.error(request, "Selected size is not available for this product.")
         return redirect("store:product-detail", slug=product.slug)
 
@@ -427,9 +447,14 @@ def add_to_cart(request):
     if not created:
         cart_item.quantity += 1
         cart_item.save(update_fields=["quantity", "updated_at"])
-        messages.success(request, f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart.")
+        success_message = f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart."
+        messages.success(request, success_message)
     else:
-        messages.success(request, f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart.")
+        success_message = f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart."
+        messages.success(request, success_message)
+
+    if is_ajax:
+        return _json(success_message, ok=True, status=200)
 
     return redirect(_safe_redirect_url(request, fallback_url="store:cart"))
 
