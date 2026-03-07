@@ -2,3 +2,13 @@
 .vercel-venv/
 __pycache__/
 *.py[cod]
+
+# Django build/runtime artifacts
+staticfiles/
+media/
+*.sqlite3
+
+# Tooling/editor noise
+.DS_Store
+.vscode/
+.idea/
