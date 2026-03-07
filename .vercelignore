@@ -1,0 +1,12 @@
+.git/
+.github/
+.vscode/
+.vercel/
+.vercel-venv/
+__pycache__/
+*.pyc
+*.pyo
+*.sqlite3
+db.sqlite3
+media/
+chart.drawio
