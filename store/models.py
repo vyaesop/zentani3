@@ -1,4 +1,5 @@
 from decimal import Decimal
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -165,4 +166,70 @@ class Order(models.Model):
             models.Index(fields=['user', 'ordered_date']),
             models.Index(fields=['product', 'ordered_date']),
             models.Index(fields=['status', 'ordered_date']),
+        ]
+
+
+class AffiliateProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="affiliate_profile")
+    code = models.SlugField(max_length=40, unique=True, db_index=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_active", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} ({self.code})"
+
+    @staticmethod
+    def generate_unique_code(prefix="aff"):
+        while True:
+            candidate = f"{prefix}-{uuid.uuid4().hex[:10]}"
+            if not AffiliateProfile.objects.filter(code=candidate).exists():
+                return candidate
+
+
+class AffiliateClick(models.Model):
+    affiliate = models.ForeignKey(AffiliateProfile, on_delete=models.CASCADE, related_name="clicks")
+    session_key = models.CharField(max_length=64, blank=True, null=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    landing_path = models.CharField(max_length=300, blank=True)
+    converted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["affiliate", "created_at"]),
+            models.Index(fields=["session_key", "created_at"]),
+            models.Index(fields=["converted", "created_at"]),
+        ]
+
+
+COMMISSION_STATUS_CHOICES = (
+    ("Pending", "Pending"),
+    ("Paid", "Paid"),
+    ("Cancelled", "Cancelled"),
+)
+
+
+class AffiliateCommission(models.Model):
+    affiliate = models.ForeignKey(AffiliateProfile, on_delete=models.CASCADE, related_name="commissions")
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name="affiliate_commissions")
+    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="affiliate_purchases")
+    rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("5.00"))
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=COMMISSION_STATUS_CHOICES, default="Pending")
+    payout_reference = models.CharField(max_length=120, blank=True)
+    payout_note = models.CharField(max_length=250, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["affiliate", "status", "created_at"]),
+            models.Index(fields=["order", "created_at"]),
         ]

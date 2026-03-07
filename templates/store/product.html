@@ -129,11 +129,18 @@
                                 <li class="list-inline-item m-0 p-0"><a class="btn btn-sm btn-outline-dark" href="#"><i class="far fa-heart"></i></a></li>
                                 <li class="list-inline-item m-0 p-0">
                                   {% comment %} <a class="btn btn-sm btn-dark" href="{% url 'store:add-to-cart' %}">Add to cart</a> {% endcomment %}
-
-                                  <form action="{% url 'store:add-to-cart' %}">
+                                  {% if product.is_sold_out %}
+                                  <button type="button" class="btn btn-sm btn-secondary" disabled>Sold Out</button>
+                                  {% elif product.available_sizes %}
+                                  <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark">Choose options</a>
+                                  {% else %}
+                                  <form action="{% url 'store:add-to-cart' %}" method="POST">
+                                    {% csrf_token %}
                                     <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                     <button type="submit" class="btn btn-sm btn-dark">Add to Cart</button>
                                   </form>
+                                  {% endif %}
 
                                 </li>
                               </ul>

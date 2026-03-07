@@ -60,16 +60,25 @@
                                     </div>
                                     <div class="col-md-3 col-6 mb-2 mb-md-0">
                                         <div class="input-group quantity-control">
-                                            <a href="{% url 'store:minus-cart' item.id %}" class="btn btn-sm btn-outline-secondary">-</a>
+                                            <form action="{% url 'store:minus-cart' item.id %}" method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">-</button>
+                                            </form>
                                             <input type="text" class="form-control form-control-sm text-center" value="{{ item.quantity }}" readonly style="background-color: white;">
-                                            <a href="{% url 'store:plus-cart' item.id %}" class="btn btn-sm btn-outline-secondary">+</a>
+                                            <form action="{% url 'store:plus-cart' item.id %}" method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
+                                            </form>
                                         </div>
                                     </div>
                                     <div class="col-md-2 col-3 text-md-end">
-                                        <p class="mb-1 fw-bold">{{ item.total_price|floatformat:2 }} ETB</p>
+                                        <p class="mb-1 fw-bold">{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</p>
                                     </div>
                                     <div class="col-md-1 col-3 text-md-end">
-                                        <a href="{% url 'store:remove-cart' item.id %}" class="btn btn-sm btn-danger" title="Remove item"><i class="fas fa-trash"></i></a>
+                                        <form action="{% url 'store:remove-cart' item.id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Remove item"><i class="fas fa-trash"></i></button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -124,7 +133,10 @@
                                 </form>
                             </div>
                             <div class="card-footer bg-transparent border-0">
-                                <a href="{% url 'store:checkout' %}" class="btn btn-primary btn-block btn-lg btn-rounded w-100">Proceed to Checkout <i class="w-icon-long-arrow-right"></i></a>
+                                <form action="{% url 'store:checkout' %}" method="POST">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary btn-block btn-lg btn-rounded w-100">Proceed to Checkout <i class="w-icon-long-arrow-right"></i></button>
+                                </form>
                             </div>
                         </div>
                     </div>

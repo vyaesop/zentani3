@@ -10,7 +10,11 @@
           <h1>{{request.user.first_name}} {{request.user.last_name}}</h1>
           <p><strong>Email:</strong> {{request.user.email}}</p>
           <p><strong>Phone number:</strong> {{request.user.username}}</p>
-          <p><a class="btn btn-primary btn-large" href="{% url 'store:add-address' %}">Add Address »</a> <a class="btn btn-outline-primary btn-large" href="#">My Orders »</a></p>
+          <p>
+            <a class="btn btn-primary btn-large" href="{% url 'store:add-address' %}">Add Address »</a>
+            <a class="btn btn-outline-primary btn-large" href="{% url 'store:orders' %}">My Orders »</a>
+            <a class="btn btn-dark btn-large" href="{% url 'store:affiliate-dashboard' %}">{% if has_affiliate_profile %}Affiliate Dashboard »{% else %}Become an Affiliate »{% endif %}</a>
+          </p>
         </div>
 
 
@@ -24,7 +28,12 @@
                     {% for address in addresses %}
                         <h4 class="mb-3">Address {{forloop.counter}}</h4> 
                         
-                        <span class="float-right"><a href="{% url 'store:remove-address' address.id %}"><i class="fas fa-trash-alt small text-muted"></i></a></span>
+                        <span class="float-right">
+                          <form action="{% url 'store:remove-address' address.id %}" method="POST" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link p-0 border-0"><i class="fas fa-trash-alt small text-muted"></i></button>
+                          </form>
+                        </span>
 
                         <p>
                             <strong>Address: </strong>{{address.address}} <br>

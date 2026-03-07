@@ -166,16 +166,23 @@
                                         <label class="product-label label-discount">SOLD OUT</label>
                                     </div>
                                     {% endif %}
-                                      <div class="product-action-horizontal">
-                                        <form action="{% url 'store:add-to-cart' %}">
-                                          <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
-                                          <button type="submit" class="btn-product-icon w-icon-cart"
-                                              title="Add to cart"></button>
-                                        </form>
-                                          <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                              title="Wishlist"></a>
-                                        
-                                      </div>
+                                                                            <div class="product-action-horizontal">
+                                                                                {% if product.is_sold_out %}
+                                                                                <button type="button" class="btn-product-icon w-icon-cart" disabled title="Sold out"></button>
+                                                                                {% elif product.available_sizes %}
+                                                                                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark" title="Choose options">Choose options</a>
+                                                                                {% else %}
+                                                                                <form action="{% url 'store:add-to-cart' %}" method="POST">
+                                                                                    {% csrf_token %}
+                                                                                    <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
+                                                                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                                                    <button type="submit" class="btn-product-icon w-icon-cart"
+                                                                                            title="Add to cart"></button>
+                                                                                </form>
+                                                                                {% endif %}
+                                                                                <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
+                                                                                        title="Wishlist"></a>
+                                                                            </div>
                                   </figure>
                                   <div class="product-details">
                                       <div class="product-cat">
