@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 import importlib.util
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 try:
     from dotenv import load_dotenv
@@ -91,6 +92,7 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
 
 DATABASE_URL = os.getenv('DATABASE_URL')
+IS_VERCEL = os.getenv('VERCEL') == '1'
 
 if DATABASE_URL:
     # Use managed DB URL in production/serverless environments.
@@ -98,7 +100,10 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
     }
 else:
-    # Local fallback when DATABASE_URL is not provided.
+    if IS_VERCEL or not DEBUG:
+        raise ImproperlyConfigured('DATABASE_URL is required in production/serverless environments.')
+
+    # Local development fallback only.
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
