@@ -2,8 +2,14 @@
 set -eu
 
 # Use an isolated virtual environment to avoid PEP 668 system-package restrictions.
-VENV_DIR=".vercel-venv"
+VENV_DIR="/tmp/zent-build-venv"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+
+rm -rf "$VENV_DIR"
+cleanup() {
+	rm -rf "$VENV_DIR"
+}
+trap cleanup EXIT
 
 "$PYTHON_BIN" -m venv "$VENV_DIR"
 
