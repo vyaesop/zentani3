@@ -1,3 +1,6 @@
+{% load static %}
+{% load image_optim %}
+
 {% if products %}
   {% for product in products %}
   
@@ -10,7 +13,7 @@
 
           <a class="d-block" href="{% url 'store:product-detail' product.slug %}">
             {% if product.product_image %}
-              <img class="img-fluid w-100" src="{{product.product_image.url}}" alt="{{product.title}}">
+              <img loading="lazy" class="img-fluid w-100" src="{{product.product_image.url|cdn_optimize}}" alt="{{product.title}}">
               {% if product.is_sold_out %}
                                     <div class="product-label-group">
                                         <label class="product-label label-discount">SOLD OUT</label>

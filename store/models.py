@@ -26,6 +26,9 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = 'Categories'
         ordering = ('-created_at', )
+        indexes = [
+            models.Index(fields=['is_active', 'is_featured']),
+        ]
 
     def __str__(self):
         return self.title
@@ -43,6 +46,9 @@ class Brand(models.Model):
     class Meta:
         verbose_name_plural = 'Brands'
         ordering = ('-created_at', )
+        indexes = [
+            models.Index(fields=['is_active', 'is_featured']),
+        ]
 
     def __str__(self):
         return self.title
@@ -68,6 +74,12 @@ class Product(models.Model):
     class Meta:
         verbose_name_plural = 'Products'
         ordering = ('-created_at', )
+        indexes = [
+            models.Index(fields=['is_active', 'is_featured']),
+            models.Index(fields=['is_active', 'category']),
+            models.Index(fields=['is_active', 'brand']),
+            models.Index(fields=['is_active', 'sku']),
+        ]
 
     def __str__(self):
         return self.title
@@ -103,6 +115,12 @@ class Cart(models.Model):
  
     def __str__(self):
         return str(self.user)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'updated_at']),
+            models.Index(fields=['user', 'product']),
+        ]
  
     # Creating Model Property to calculate Quantity x Price
     @property
@@ -141,3 +159,10 @@ class Order(models.Model):
         max_length=50,
         default="Pending"
         )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'ordered_date']),
+            models.Index(fields=['product', 'ordered_date']),
+            models.Index(fields=['status', 'ordered_date']),
+        ]

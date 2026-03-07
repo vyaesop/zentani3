@@ -1,30 +1,58 @@
-from .models import Category, Cart, Product, Brand
+from django.core.cache import cache
 from django.db.models import Min, Max
+
+from .models import Brand, Cart, Category, Product
+
+
+MENU_CACHE_TTL = 60 * 10
+
+
 def store_menu(request):
-    categories = Category.objects.filter(is_active=True)
+    categories = cache.get("store_menu_categories")
+    if categories is None:
+        categories = list(
+            Category.objects.filter(is_active=True)
+            .only("id", "title", "slug")
+            .order_by("title")
+        )
+        cache.set("store_menu_categories", categories, MENU_CACHE_TTL)
+
     context = {
-        'categories_menu': categories,
+        "categories_menu": categories,
     }
     return context
+
+
 def brand_menu(request):
-    brands = Brand.objects.filter(is_active=True)
+    brands = cache.get("store_menu_brands")
+    if brands is None:
+        brands = list(
+            Brand.objects.filter(is_active=True)
+            .only("id", "title", "slug")
+            .order_by("title")
+        )
+        cache.set("store_menu_brands", brands, MENU_CACHE_TTL)
+
     context = {
-        'brands_menu': brands,
+        "brands_menu": brands,
     }
     return context
+
 
 def cart_menu(request):
     if request.user.is_authenticated:
-        cart_items= Cart.objects.filter(user=request.user)
+        cart_items_count = Cart.objects.filter(user=request.user).count()
         context = {
-            'cart_items': cart_items,
+            "cart_items_count": cart_items_count,
         }
     else:
-        context = {}
+        context = {"cart_items_count": 0}
     return context
+
+
 def default(request):
     min_max_price = Product.objects.aggregate(Min("price"), Max("price"))
 
-    return{
-        'min_max_price':min_max_price,
+    return {
+        "min_max_price": min_max_price,
     }

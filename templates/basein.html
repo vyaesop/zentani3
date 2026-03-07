@@ -149,7 +149,7 @@
                             <div class="cart-overlay"></div>
                             <a href="{% url 'store:cart' %}" class="cart-toggle label-down link">
                                 <i class="w-icon-cart">
-                                    <span class="cart-count">{{cart_items.count}}</span>
+                                    <span class="cart-count">{{ cart_items_count }}</span>
                                 </i>
                                 <span class="cart-label">Cart</span>
                             </a>

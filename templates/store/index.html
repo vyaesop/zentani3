@@ -1,5 +1,6 @@
 {% extends 'basein.html' %}
 {% load static %}
+{% load image_optim %}
 
       {% block content %}
 
@@ -212,9 +213,9 @@
                             <div class="product text-center">
                                 <figure class="product-media">
                                     <a href="{% url 'store:product-detail' product.slug %}">
-                                        <img src="{{ product.product_image.url }}" alt="Product"
+                                        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="Product"
                                             width="300" height="338" />
-                                        <img src="{{ product.product_image.url }}" alt="Product"
+                                        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="Product"
                                             width="300" height="338" />
                                     </a>
                                     {% if product.is_sold_out %}
@@ -2010,7 +2011,7 @@
                                 <div class="category category-ellipse">
                                     <figure class="category-media">
                                         <a href="{% url 'store:category-products' bra.slug %}">
-                                            <img src="{{ bra.category_image.url }}" alt="Categroy"
+                                            <img loading="lazy" src="{{ bra.category_image.url|cdn_optimize }}" alt="Categroy"
                                                 width="190" height="190" style="background-color: #5C92C0;" />
                                         </a>
                                     </figure>
