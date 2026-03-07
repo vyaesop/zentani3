@@ -188,13 +188,37 @@ if importlib.util.find_spec('whitenoise'):
 # Settings for Media
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+def _is_placeholder_secret(value):
+    return value.strip().lower() in {
+        'untitled',
+        'changeme',
+        'your-cloud-name',
+        'your-api-key',
+        'your-api-secret',
+        'none',
+        'null',
+    }
+
+
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', ''),
     'API_KEY': os.getenv('CLOUDINARY_API_KEY', ''),
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
 }
 
-if all(CLOUDINARY_STORAGE.values()):
+CLOUDINARY_BACKEND_AVAILABLE = importlib.util.find_spec('cloudinary_storage') is not None
+HAS_VALID_CLOUDINARY_CONFIG = all(
+    value and not _is_placeholder_secret(value)
+    for value in CLOUDINARY_STORAGE.values()
+)
+
+if HAS_VALID_CLOUDINARY_CONFIG:
+    if not CLOUDINARY_BACKEND_AVAILABLE:
+        raise ImproperlyConfigured(
+            'cloudinary_storage package is required when Cloudinary env vars are configured.'
+        )
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Default cache backend powers menu caching and can be replaced by Redis in production.

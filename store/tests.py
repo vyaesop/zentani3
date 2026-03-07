@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product
+from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product
 
 
 class StoreFlowTests(TestCase):
@@ -131,3 +131,47 @@ class StoreFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, f"/product/{self.product.slug}/")
         self.assertEqual(self.client.session.get("affiliate_profile_id"), affiliate_profile.id)
+
+    def test_registration_requires_address_fields(self):
+        response = self.client.post(
+            reverse("store:register"),
+            {
+                "full_name": "Jane Doe",
+                "username": "0911777000",
+                "email": "jane@example.com",
+                "address": "",
+                "city": "",
+                "password1": "ComplexPass123!",
+                "password2": "ComplexPass123!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="0911777000").exists())
+
+    def test_registration_creates_address_and_name(self):
+        response = self.client.post(
+            reverse("store:register"),
+            {
+                "full_name": "Jane Doe",
+                "username": "0911888999",
+                "email": "jane2@example.com",
+                "address": "Megenagna, near main square",
+                "city": "Addis Ababa",
+                "password1": "ComplexPass123!",
+                "password2": "ComplexPass123!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        user = User.objects.get(username="0911888999")
+        self.assertEqual(user.first_name, "Jane")
+        self.assertEqual(user.last_name, "Doe")
+        self.assertTrue(
+            Address.objects.filter(
+                user=user,
+                address="Megenagna, near main square",
+                city="Addis Ababa",
+                phone="0911888999",
+            ).exists()
+        )

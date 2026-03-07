@@ -248,7 +248,14 @@ class RegistrationView(View):
     def post(self, request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            with transaction.atomic():
+                user = form.save()
+                Address.objects.create(
+                    user=user,
+                    address=form.cleaned_data.get("address"),
+                    city=form.cleaned_data.get("city"),
+                    phone=form.cleaned_data.get("username"),
+                )
 
             # Re-authenticate so Django can attach the correct backend when multiple backends are configured.
             authenticated_user = authenticate(
