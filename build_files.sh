@@ -2,11 +2,12 @@
 set -eu
 
 # Use an isolated virtual environment to avoid PEP 668 system-package restrictions.
-python3 -m venv .vercel-venv
-. .vercel-venv/bin/activate
+VENV_DIR=".vercel-venv"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-python -m pip install --upgrade pip
-# Python 3.12 removed stdlib distutils; setuptools provides the compatibility shim.
-python -m pip install setuptools
-python -m pip install -r requirements.txt
-python manage.py collectstatic --noinput
+"$PYTHON_BIN" -m venv "$VENV_DIR"
+
+# Always run pip/manage.py through the venv interpreter (no shell activation required).
+"$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
+"$VENV_DIR/bin/python" -m pip install -r requirements.txt
+"$VENV_DIR/bin/python" manage.py collectstatic --noinput
