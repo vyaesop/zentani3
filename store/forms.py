@@ -28,6 +28,9 @@ class LoginForm(AuthenticationForm):
     username = UsernameField(label=_("Phone Number"), widget=forms.TextInput(attrs={'autofocus': True, 'class': 'form-control', 'placeholder':'Phone Number'}))
     password = forms.CharField(label=_("Password"), strip=False, widget=forms.PasswordInput(attrs={'autocomplete':'current-password', 'class':'form-control'}))
 
+    def clean_username(self):
+        return self.cleaned_data["username"].strip()
+
 
 class AddressForm(forms.ModelForm):
     class Meta:
