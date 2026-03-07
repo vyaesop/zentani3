@@ -9359,7 +9359,7 @@ img.mfp-img {
   background-position: center;
   background-size: cover;
   border-radius: 1rem;
-  background-image: url(../images/newsletter-1.jpg);
+  background-image: url(../images/newsletter-1.webp);
 }
 .newsletter-popup .popup-media {
   margin-bottom: 1.7rem;
@@ -9598,7 +9598,7 @@ body .product-popup {
     max-width: 40rem;
     min-height: 40rem;
     padding: 0rem 2rem;
-    background-image: url(../images/newsletter-2.jpg);
+    background-image: url(../images/newsletter-2.webp);
     text-align: center;
     -webkit-box-align: center;
         -ms-flex-align: center;
@@ -21158,7 +21158,7 @@ aside .sp-sidebar-banner span {
 }
 .review-area .form-control {
   margin-bottom: 2.2rem;
-  background: #fff url(../images/vendor/wcfm/write.jpg) no-repeat 10px center;
+  background: #fff url(../images/vendor/wcfm/write.webp) no-repeat 10px center;
   min-width: 4.6rem;
   padding-left: 3.5rem;
   color: #777;

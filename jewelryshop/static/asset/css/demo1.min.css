@@ -7600,7 +7600,7 @@ textarea {
   background-position: center;
   background-size: cover;
   border-radius: 1rem;
-  background-image: url(../images/newsletter-1.jpg);
+  background-image: url(../images/newsletter-1.webp);
 }
 .newsletter-popup .popup-media {
   margin-bottom: 1.7rem;
@@ -7839,7 +7839,7 @@ body .product-popup {
     max-width: 40rem;
     min-height: 40rem;
     padding: 0rem 2rem;
-    background-image: url(../images/newsletter-2.jpg);
+    background-image: url(../images/newsletter-2.webp);
     text-align: center;
     -webkit-box-align: center;
         -ms-flex-align: center;

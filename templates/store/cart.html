@@ -47,7 +47,7 @@
                                             {% if item.product.product_image %}
                                             <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}" class="img-fluid rounded cart-product-image">
                                             {% else %}
-                                            <img src="{% static 'asset/images/default-product.png' %}" alt="No image" class="img-fluid rounded cart-product-image">
+                                            <img src="{% static 'asset/images/default-product.webp' %}" alt="No image" class="img-fluid rounded cart-product-image">
                                             {% endif %}
                                         </a>
                                     </div>

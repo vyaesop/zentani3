@@ -59,7 +59,7 @@
                                     {% if order.product.product_image %}
                                     <img loading="lazy" src="{{ order.product.product_image.url|cdn_optimize }}" alt="{{ order.product.title }}" class="img-fluid rounded order-product-image">
                                     {% else %}
-                                    <img src="{% static 'asset/images/default-product.png' %}" alt="No image" class="img-fluid rounded order-product-image"> {# Make sure you have a default image placeholder #}
+                                    <img src="{% static 'asset/images/default-product.webp' %}" alt="No image" class="img-fluid rounded order-product-image"> {# Make sure you have a default image placeholder #}
                                     {% endif %}
                                 </div>
                                 <div class="col-lg-5 col-md-4 col-9 mb-3 mb-md-0">
