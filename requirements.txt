@@ -27,3 +27,4 @@ dj-database-url==2.1.0
 django-cockroachdb==3.2.4
 python-dotenv==1.0.1
 django-postgresql==0.0.3
+whitenoise==6.8.2

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load image_optim %}
 
     {% block content %}
     
@@ -117,7 +118,7 @@
                               <div class="product text-center">
                                   <figure class="product-media">
                                       <a href="{% url 'store:product-detail' product.slug %}">
-                                          <img src="{{product.product_image.url}}" alt="Product" width="300"
+                                          <img loading="lazy" src="{{product.product_image.url|cdn_optimize}}" alt="Product" width="300"
                                               height="338" />
                                       </a>
                                       {% if product.is_sold_out %}
@@ -141,7 +142,7 @@
                                           <a href="shop-banner-sidebar.html">{{product.category}}</a>
                                       </div>
                                       <h3 class="product-name">
-                                          <a href="{{product.product_image.url}}">{{product.title}}</a>
+                                          <a href="{{product.product_image.url|cdn_optimize}}">{{product.title}}</a>
                                       </h3>
                                       
                                       <div class="product-pa-wrapper">

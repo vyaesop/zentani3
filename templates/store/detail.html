@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load image_optim %}
 
     {% block content %}
     <main class="main">
@@ -23,16 +24,16 @@
                                         <div class="swiper-slide">
                                             <figure class="product-image">
                                                 <!-- Main product image with an ID for easy targeting -->
-                                                <img id="main-product-image" src="{{ product.product_image.url }}"
-                                                    data-zoom-image="{{ product.product_image.url }}"
+                                                <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}"
+                                                    data-zoom-image="{{ product.product_image.url|cdn_optimize }}"
                                                     alt="Electronics Black Wrist Watch" width="800" height="900">
                                             </figure>
                                         </div>
                                         {% for p in p_image %}
                                         <div class="swiper-slide">
                                             <figure class="product-image">
-                                                <img src="{{ p.image.url }}"
-                                                    data-zoom-image="{{ p.image.url }}"
+                                                <img src="{{ p.image.url|cdn_optimize }}"
+                                                    data-zoom-image="{{ p.image.url|cdn_optimize }}"
                                                     alt="Electronics Black Wrist Watch" width="488" height="549">
                                             </figure>
                                         </div>
@@ -51,7 +52,7 @@
                                         {% for p in p_image %}
                                         <div class="product-thumb swiper-slide">
                                             <!-- Thumbnail images with a custom attribute for large image URLs -->
-                                            <img class="thumbnail" src="{{ p.image.url }}" alt="Product Thumb" width="800" height="900" data-large="{{ p.image.url }}">
+                                            <img class="thumbnail" src="{{ p.image.url|cdn_optimize }}" alt="Product Thumb" width="800" height="900" data-large="{{ p.image.url|cdn_optimize }}">
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -1235,7 +1236,7 @@
                              <div class="swiper-slide product">
                                       <figure class="product-media">
                                           <a href="{% url 'store:product-detail' rp.slug %}">
-                                              <img src="{{rp.product_image.url}}" alt="Product"
+                                              <img loading="lazy" src="{{rp.product_image.url|cdn_optimize}}" alt="Product"
                                                   width="300" height="338" />
                                           </a>
                                           {% if rp.is_sold_out %}

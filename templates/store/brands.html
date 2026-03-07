@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load image_optim %}
 
       {% block content %}
 
@@ -28,7 +29,7 @@
                         <div class="vendor-brand">
                             <a href="{% url 'store:brand-products' brand.slug %}">
                                 <figure class="brand">
-                                    <img src="{{ brand.brand_image.url }}" alt="Brand" width="150"
+                                    <img loading="lazy" src="{{ brand.brand_image.url|cdn_optimize }}" alt="Brand" width="150"
                                         height="150" />
                                 </figure>
                                 <h4 class="vendor-name">{{ brand.title }}</h4>

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load image_optim %}
 
 {% block content %}
 <main class="main">
@@ -56,7 +57,7 @@
                             <div class="row align-items-center">
                                 <div class="col-lg-1 col-md-2 col-3 text-center mb-3 mb-md-0">
                                     {% if order.product.product_image %}
-                                    <img src="{{ order.product.product_image.url }}" alt="{{ order.product.title }}" class="img-fluid rounded order-product-image">
+                                    <img loading="lazy" src="{{ order.product.product_image.url|cdn_optimize }}" alt="{{ order.product.title }}" class="img-fluid rounded order-product-image">
                                     {% else %}
                                     <img src="{% static 'asset/images/default-product.png' %}" alt="No image" class="img-fluid rounded order-product-image"> {# Make sure you have a default image placeholder #}
                                     {% endif %}
