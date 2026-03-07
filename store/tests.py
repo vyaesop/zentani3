@@ -1,8 +1,13 @@
 from decimal import Decimal
+from io import BytesIO
+import tempfile
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 
 from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product
 
@@ -175,3 +180,32 @@ class StoreFlowTests(TestCase):
                 phone="0911888999",
             ).exists()
         )
+
+    @override_settings(MEDIA_ROOT=tempfile.gettempdir())
+    def test_uploaded_product_image_is_converted_to_webp(self):
+        image_bytes = BytesIO()
+        Image.new("RGB", (30, 30), color="red").save(image_bytes, format="JPEG")
+        image_bytes.seek(0)
+
+        uploaded = SimpleUploadedFile(
+            "test-upload.jpg",
+            image_bytes.read(),
+            content_type="image/jpeg",
+        )
+
+        product = Product.objects.create(
+            title="WebP Product",
+            slug="webp-product",
+            sku="SKU-WEBP-1",
+            short_description="Image conversion test",
+            available_sizes="",
+            product_image=uploaded,
+            price=Decimal("150.00"),
+            category=self.category,
+            brand=self.brand,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+
+        self.assertTrue(product.product_image.name.lower().endswith(".webp"))
