@@ -1,7 +1,53 @@
 from decimal import Decimal
 import uuid
+import os
+from io import BytesIO
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+
+def _convert_uploaded_image_to_webp(field_file, quality=80):
+    """Convert newly uploaded images to WebP before persistent storage."""
+    if Image is None or not field_file:
+        return
+
+    # Only process in-memory uploads assigned in current request lifecycle.
+    source_file = getattr(field_file, "_file", None)
+    if source_file is None:
+        return
+
+    original_name = field_file.name or "upload.jpg"
+    original_extension = os.path.splitext(original_name)[1].lower()
+    if original_extension == ".webp":
+        return
+
+    source_file.seek(0)
+    image = Image.open(source_file)
+    if image.mode in ("RGBA", "P"):
+        image = image.convert("RGBA")
+    else:
+        image = image.convert("RGB")
+
+    output = BytesIO()
+    image.save(output, format="WEBP", quality=quality, optimize=True)
+    output.seek(0)
+
+    webp_name = f"{os.path.splitext(original_name)[0]}.webp"
+    field_file.file = InMemoryUploadedFile(
+        output,
+        field_name=None,
+        name=webp_name,
+        content_type="image/webp",
+        size=output.getbuffer().nbytes,
+        charset=None,
+    )
+    field_file.name = webp_name
 
 # Create your models here.
 class Address(models.Model):
@@ -33,6 +79,10 @@ class Category(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        _convert_uploaded_image_to_webp(self.category_image)
+        super().save(*args, **kwargs)
     
 class Brand(models.Model):
     title = models.CharField(max_length=50, verbose_name="Brand Title")
@@ -53,6 +103,10 @@ class Brand(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        _convert_uploaded_image_to_webp(self.brand_image)
+        super().save(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -84,6 +138,10 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        _convert_uploaded_image_to_webp(self.product_image)
+        super().save(*args, **kwargs)
     
 class ProductImages(models.Model):
     image = models.ImageField(upload_to="product-images", default="product.jpg")
@@ -92,6 +150,10 @@ class ProductImages(models.Model):
 
     class Meta:
         verbose_name_plural = "Product images"
+
+    def save(self, *args, **kwargs):
+        _convert_uploaded_image_to_webp(self.image)
+        super().save(*args, **kwargs)
 
 class Coupon(models.Model):
     code = models.CharField(max_length=30, unique=True,default=None)
