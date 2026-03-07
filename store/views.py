@@ -2,7 +2,7 @@ import decimal
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -248,9 +248,18 @@ class RegistrationView(View):
     def post(self, request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
-            messages.success(request, "Congratulations! Registration Successful!")
             user = form.save()
-            login(request, user)
+
+            # Re-authenticate so Django can attach the correct backend when multiple backends are configured.
+            authenticated_user = authenticate(
+                request,
+                username=form.cleaned_data.get("username"),
+                password=form.cleaned_data.get("password1"),
+            )
+            if authenticated_user is not None:
+                login(request, authenticated_user)
+
+            messages.success(request, "Congratulations! Registration Successful!")
             return redirect("store:home")
         return render(request, "account/register.html", {"form": form})
 
