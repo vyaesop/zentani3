@@ -179,19 +179,22 @@
 
                                   <div class="fix-bottom product-sticky-content sticky-content">
                                       <div class="product-form container">
-                                        <form action="{% url 'store:add-to-cart' %}" method="POST" class="d-flex flex-wrap align-items-end">
+                                        <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="d-flex flex-wrap align-items-end gap-2">
                                             {% csrf_token %}
                                             <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
                                             <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                             {% if available_sizes %}
-                                            <div class="me-3 mb-2 mb-md-0">
-                                                <label for="size-select" class="form-label mb-1 d-block">Select Size:</label>
-                                                <select name="size" id="size-select" class="form-select form-select-sm" style="width: auto; min-width: 100px;">
+                                            <div class="size-chooser-wrap me-3 mb-2 mb-md-0">
+                                                <label class="form-label mb-2 d-block fw-bold">Select Size</label>
+                                                <div class="size-options" role="radiogroup" aria-label="Available sizes">
                                                     {% for size_option in available_sizes %}
-                                                    <option value="{{ size_option }}">{{ size_option }}</option>
+                                                    <label class="size-chip">
+                                                        <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
+                                                        <span>{{ size_option }}</span>
+                                                    </label>
                                                     {% endfor %}
-                                                </select>
-                                              </div>
+                                                </div>
+                                            </div>
                                             {% endif %}
 
                                             <!-- Add to Cart Button -->
@@ -200,6 +203,7 @@
                                                 <span>{% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}</span>
                                             </button>
                                         </form>
+                                        <div id="add-to-cart-feedback" class="mt-2 small"></div>
                                       </div>
                                   </div>
 
@@ -226,6 +230,122 @@
                               </div>
                           </div>
                       </div>
+
+                                            <style>
+                                                .size-chooser-wrap {
+                                                    min-width: 260px;
+                                                }
+
+                                                .size-options {
+                                                    display: flex;
+                                                    flex-wrap: wrap;
+                                                    gap: 8px;
+                                                }
+
+                                                .size-chip {
+                                                    position: relative;
+                                                    margin: 0;
+                                                }
+
+                                                .size-chip input {
+                                                    position: absolute;
+                                                    opacity: 0;
+                                                    pointer-events: none;
+                                                }
+
+                                                .size-chip span {
+                                                    display: inline-flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    min-width: 48px;
+                                                    height: 36px;
+                                                    padding: 0 14px;
+                                                    border-radius: 999px;
+                                                    border: 1px solid #d7dce6;
+                                                    background: #f7f9fc;
+                                                    color: #2f3640;
+                                                    font-weight: 600;
+                                                    font-size: 13px;
+                                                    cursor: pointer;
+                                                    transition: all .2s ease;
+                                                }
+
+                                                .size-chip span:hover {
+                                                    border-color: #2b7cff;
+                                                    background: #eef4ff;
+                                                }
+
+                                                .size-chip input:checked + span {
+                                                    border-color: #1f5fcc;
+                                                    background: #2b7cff;
+                                                    color: #fff;
+                                                    box-shadow: 0 6px 14px rgba(43, 124, 255, .24);
+                                                }
+
+                                                #add-to-cart-feedback.text-success {
+                                                    color: #1f8c47 !important;
+                                                    font-weight: 600;
+                                                }
+
+                                                #add-to-cart-feedback.text-danger {
+                                                    color: #cc3344 !important;
+                                                    font-weight: 600;
+                                                }
+                                            </style>
+
+                                            <script>
+                                                document.addEventListener('DOMContentLoaded', function () {
+                                                    const form = document.getElementById('product-add-to-cart-form');
+                                                    const feedback = document.getElementById('add-to-cart-feedback');
+                                                    if (!form || !feedback) return;
+
+                                                    form.addEventListener('submit', async function (event) {
+                                                        event.preventDefault();
+
+                                                        const submitButton = form.querySelector('button[type="submit"]');
+                                                        const originalButtonText = submitButton ? submitButton.innerHTML : '';
+
+                                                        try {
+                                                            if (submitButton) {
+                                                                submitButton.disabled = true;
+                                                                submitButton.innerHTML = '<span>Adding...</span>';
+                                                            }
+
+                                                            const response = await fetch(form.action, {
+                                                                method: 'POST',
+                                                                headers: {
+                                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                                },
+                                                                body: new FormData(form),
+                                                                credentials: 'same-origin',
+                                                            });
+
+                                                            if (response.redirected) {
+                                                                window.location.href = response.url;
+                                                                return;
+                                                            }
+
+                                                            const data = await response.json();
+                                                            feedback.textContent = data.message || 'Request completed.';
+                                                            feedback.className = data.ok ? 'mt-2 small text-success' : 'mt-2 small text-danger';
+
+                                                            if (typeof data.cart_items_count !== 'undefined') {
+                                                                document.querySelectorAll('.cart-count').forEach(function (el) {
+                                                                    el.textContent = data.cart_items_count;
+                                                                });
+                                                            }
+                                                        } catch (error) {
+                                                            feedback.textContent = 'Unable to add item right now. Please try again.';
+                                                            feedback.className = 'mt-2 small text-danger';
+                                                        } finally {
+                                                            if (submitButton) {
+                                                                submitButton.disabled = {{ product.is_sold_out|yesno:'true,false' }};
+                                                                submitButton.innerHTML = originalButtonText;
+                                                            }
+                                                        }
+                                                    });
+                                                });
+                                            </script>
                       {% comment %} <div class="frequently-bought-together mt-5">
                           <h2 class="title title-underline">Frequently Bought Together</h2>
                           <div class="bought-together-products row mt-8 pb-4">
