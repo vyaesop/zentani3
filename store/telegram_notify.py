@@ -67,15 +67,20 @@ def notify_new_signup(user, address=None):
     city_text = _safe_text(getattr(address, "city", None))
     phone_text = _safe_text(getattr(address, "phone", None), fallback=_safe_text(user.username))
     message = (
-        "New customer signup\n"
-        f"User ID: {user.id}\n"
-        f"Full name: {_format_full_name(user)}\n"
-        f"Phone/Username: {_safe_text(user.username)}\n"
-        f"Email: {_safe_text(user.email)}\n"
-        f"Address: {address_text}\n"
-        f"City: {city_text}\n"
-        f"Phone: {phone_text}\n"
-        f"Time: {timestamp}"
+        "🟢 NEW SIGNUP ALERT\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "👤 Customer\n"
+        f"• ID: {user.id}\n"
+        f"• Full name: {_format_full_name(user)}\n"
+        f"• Phone/Username: {_safe_text(user.username)}\n"
+        f"• Email: {_safe_text(user.email)}\n"
+        "\n"
+        "📍 Address\n"
+        f"• Address: {address_text}\n"
+        f"• City: {city_text}\n"
+        f"• Phone: {phone_text}\n"
+        "\n"
+        f"⏰ Time: {timestamp}"
     )
     return _send_telegram_message(_trim_message(message))
 
@@ -102,27 +107,36 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
     for idx, line in enumerate(order_lines or [], start=1):
         line_chunks.append(
             (
-                f"{idx}) {_safe_text(line.get('title'))} | SKU: {_safe_text(line.get('sku'))} | "
-                f"Qty: {_safe_text(line.get('quantity'))} | Size: {_safe_text(line.get('size'))}\n"
-                f"   Unit: {_safe_text(line.get('unit_price'))} | Line total: {_safe_text(line.get('line_total'))} | "
-                f"Coupon: {_safe_text(line.get('coupon'))} | Status: {_safe_text(line.get('status'))}"
+                f"{idx}. 🧾 {_safe_text(line.get('title'))}\n"
+                f"   • SKU: {_safe_text(line.get('sku'))}\n"
+                f"   • Qty: {_safe_text(line.get('quantity'))} | Size: {_safe_text(line.get('size'))}\n"
+                f"   • Unit: {_safe_text(line.get('unit_price'))} | Line total: {_safe_text(line.get('line_total'))}\n"
+                f"   • Coupon: {_safe_text(line.get('coupon'))} | Status: {_safe_text(line.get('status'))}"
             )
         )
     order_lines_text = "\n".join(line_chunks) if line_chunks else "N/A"
 
     message = (
-        "New order placed\n"
-        f"Customer ID: {user.id}\n"
-        f"Full name: {_format_full_name(user)}\n"
-        f"Phone/Username: {_safe_text(user.username)}\n"
-        f"Email: {_safe_text(user.email)}\n"
-        f"Address: {address_text}\n"
-        f"City: {city_text}\n"
-        f"Phone: {phone_text}\n"
-        f"Order IDs: {order_ids_text}\n"
-        f"Order lines: {order_count}\n"
-        f"Total: {order_total:.2f}\n"
-        f"Items:\n{order_lines_text}\n"
-        f"Time: {timestamp}"
+        "🛒 NEW ORDER ALERT\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "👤 Customer\n"
+        f"• ID: {user.id}\n"
+        f"• Full name: {_format_full_name(user)}\n"
+        f"• Phone/Username: {_safe_text(user.username)}\n"
+        f"• Email: {_safe_text(user.email)}\n"
+        "\n"
+        "📍 Delivery\n"
+        f"• Address: {address_text}\n"
+        f"• City: {city_text}\n"
+        f"• Phone: {phone_text}\n"
+        "\n"
+        "💳 Order Summary\n"
+        f"• Order IDs: {order_ids_text}\n"
+        f"• Lines: {order_count}\n"
+        f"• Total: {order_total:.2f}\n"
+        "\n"
+        f"🧺 Items\n{order_lines_text}\n"
+        "\n"
+        f"⏰ Time: {timestamp}"
     )
     return _send_telegram_message(_trim_message(message))
