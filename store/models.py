@@ -17,8 +17,11 @@ def _convert_uploaded_image_to_webp(field_file, quality=80):
     if Image is None or not field_file:
         return None
 
-    # Only process freshly uploaded files assigned in the current request.
-    source_file = getattr(field_file, "_file", None)
+    # Only process new uploads that are not yet stored.
+    if getattr(field_file, "_committed", True):
+        return None
+
+    source_file = getattr(field_file, "file", None)
     if source_file is None or not hasattr(source_file, "read"):
         return None
 

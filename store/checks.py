@@ -1,6 +1,11 @@
 from django.conf import settings
 from django.core.checks import Error, Warning, register
 
+try:
+    from PIL import Image as PILImage
+except ImportError:
+    PILImage = None
+
 
 @register()
 def deployment_safety_checks(app_configs, **kwargs):
@@ -24,6 +29,15 @@ def deployment_safety_checks(app_configs, **kwargs):
                     "Cloudinary configuration is missing or invalid on Vercel.",
                     hint="Set valid CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET values.",
                     id="store.E002",
+                )
+            )
+
+        if PILImage is None:
+            issues.append(
+                Error(
+                    "Pillow is not available in this deployment.",
+                    hint="Install Pillow in requirements.txt so image uploads can be converted to WebP.",
+                    id="store.E003",
                 )
             )
 
