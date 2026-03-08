@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.views import View
 
 from store.models import Address, AffiliateClick, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Coupon, Order, Product
+from store.telegram_notify import notify_new_order, notify_new_signup
 
 from .forms import AddressForm, RegistrationForm
 
@@ -250,7 +251,7 @@ class RegistrationView(View):
         if form.is_valid():
             with transaction.atomic():
                 user = form.save()
-                Address.objects.create(
+                signup_address = Address.objects.create(
                     user=user,
                     address=form.cleaned_data.get("address"),
                     city=form.cleaned_data.get("city"),
@@ -266,6 +267,7 @@ class RegistrationView(View):
             if authenticated_user is not None:
                 login(request, authenticated_user)
 
+            notify_new_signup(user=user, address=signup_address)
             messages.success(request, "Congratulations! Registration Successful!")
             return redirect("store:home")
         return render(request, "account/register.html", {"form": form})
@@ -602,6 +604,12 @@ def checkout(request):
         messages.error(request, "Some items are no longer available: " + ", ".join(unavailable_products))
         return redirect("store:cart")
 
+    order_count = 0
+    order_total = Decimal("0.00")
+    customer_address = Address.objects.filter(user=user).order_by("-id").first()
+    created_order_ids = []
+    order_lines = []
+
     with transaction.atomic():
         commissions_to_create = []
         for c in cart_items:
@@ -614,6 +622,21 @@ def checkout(request):
                 size=c.size,
                 price_at_purchase=effective_price_per_item,
                 line_total=line_total_for_order,
+            )
+            order_count += 1
+            order_total += line_total_for_order
+            created_order_ids.append(order.id)
+            order_lines.append(
+                {
+                    "title": c.product.title,
+                    "sku": c.product.sku,
+                    "quantity": c.quantity,
+                    "size": c.size or "N/A",
+                    "unit_price": f"{effective_price_per_item:.2f}",
+                    "line_total": f"{line_total_for_order:.2f}",
+                    "coupon": c.coupon.code if c.coupon else "N/A",
+                    "status": order.status,
+                }
             )
 
             if affiliate_profile:
@@ -637,6 +660,15 @@ def checkout(request):
         click_id = request.session.get(AFFILIATE_CLICK_SESSION_KEY)
         if click_id:
             AffiliateClick.objects.filter(id=click_id).update(converted=True)
+
+    notify_new_order(
+        user=user,
+        order_count=order_count,
+        order_total=order_total,
+        address=customer_address,
+        order_lines=order_lines,
+        order_ids=created_order_ids,
+    )
 
     messages.success(request, "Order placed successfully.")
     return redirect("store:orders")
