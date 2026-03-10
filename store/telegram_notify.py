@@ -11,18 +11,24 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-def _telegram_settings():
+def _admin_bot_settings():
     token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
     chat_id = (os.getenv("TELEGRAM_ALERT_CHAT_ID") or "").strip()
-    channel_chat_id = (os.getenv("TELEGRAM_CHANNEL_CHAT_ID") or "").strip()
-    bot_username = (os.getenv("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
     if not token:
-        return None, None, None, None
-    return token, chat_id or None, channel_chat_id or None, bot_username or None
+        return None, None
+    return token, chat_id or None
 
 
-def _telegram_api_request(method, payload):
-    token, _, _, _ = _telegram_settings()
+def _customer_bot_settings():
+    token = (os.getenv("TELEGRAM_CUSTOMER_BOT_TOKEN") or "").strip()
+    channel_chat_id = (os.getenv("TELEGRAM_CUSTOMER_CHANNEL_CHAT_ID") or "").strip()
+    bot_username = (os.getenv("TELEGRAM_CUSTOMER_BOT_USERNAME") or "").strip().lstrip("@")
+    if not token:
+        return None, None, None
+    return token, channel_chat_id or None, bot_username or None
+
+
+def _telegram_api_request(method, payload, token):
     if not token:
         return False
 
@@ -38,10 +44,10 @@ def _telegram_api_request(method, payload):
         return False
 
 
-def send_telegram_message(text, chat_id=None, reply_markup=None, parse_mode=None):
-    _, default_chat_id, _, _ = _telegram_settings()
+def send_admin_alert_message(text, chat_id=None, reply_markup=None, parse_mode=None):
+    token, default_chat_id = _admin_bot_settings()
     target_chat_id = (chat_id or default_chat_id or "").strip()
-    if not target_chat_id:
+    if not target_chat_id or not token:
         return False
 
     payload = {
@@ -53,10 +59,28 @@ def send_telegram_message(text, chat_id=None, reply_markup=None, parse_mode=None
         payload["reply_markup"] = json.dumps(reply_markup)
     if parse_mode:
         payload["parse_mode"] = parse_mode
-    return _telegram_api_request("sendMessage", payload)
+    return _telegram_api_request("sendMessage", payload, token)
 
 
-def _send_telegram_photo(photo_url, caption, chat_id, reply_markup=None, parse_mode="HTML"):
+def send_customer_bot_message(text, chat_id, reply_markup=None, parse_mode=None):
+    token, _, _ = _customer_bot_settings()
+    target_chat_id = (chat_id or "").strip()
+    if not target_chat_id or not token:
+        return False
+
+    payload = {
+        "chat_id": target_chat_id,
+        "text": text,
+        "disable_web_page_preview": "true",
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    return _telegram_api_request("sendMessage", payload, token)
+
+
+def _send_telegram_photo(photo_url, caption, chat_id, token, reply_markup=None, parse_mode="HTML"):
     payload = {
         "chat_id": chat_id,
         "photo": photo_url,
@@ -65,15 +89,15 @@ def _send_telegram_photo(photo_url, caption, chat_id, reply_markup=None, parse_m
     }
     if reply_markup:
         payload["reply_markup"] = json.dumps(reply_markup)
-    return _telegram_api_request("sendPhoto", payload)
+    return _telegram_api_request("sendPhoto", payload, token)
 
 
-def _send_telegram_media_group(chat_id, media_items):
+def _send_telegram_media_group(chat_id, media_items, token):
     payload = {
         "chat_id": chat_id,
         "media": json.dumps(media_items),
     }
-    return _telegram_api_request("sendMediaGroup", payload)
+    return _telegram_api_request("sendMediaGroup", payload, token)
 
 
 def _format_full_name(user):
@@ -153,8 +177,8 @@ def _collect_product_image_urls(product, max_images=10):
 
 
 def post_product_to_channel(product):
-    _, _, channel_chat_id, bot_username = _telegram_settings()
-    if not product or not channel_chat_id or not bot_username:
+    token, channel_chat_id, bot_username = _customer_bot_settings()
+    if not product or not channel_chat_id or not bot_username or not token:
         return False
 
     deep_link = f"https://t.me/{bot_username}?start=order_{product.id}"
@@ -180,13 +204,14 @@ def post_product_to_channel(product):
         album_sent = _send_telegram_media_group(
             chat_id=channel_chat_id,
             media_items=media_items,
+            token=token,
         )
         if album_sent:
             cta_text = (
                 "Ready to order this item?\n"
                 "Tap below and choose your size to continue in chat."
             )
-            return send_telegram_message(
+            return send_customer_bot_message(
                 text=cta_text,
                 chat_id=channel_chat_id,
                 reply_markup=reply_markup,
@@ -197,6 +222,7 @@ def post_product_to_channel(product):
             photo_url=image_urls[0],
             caption=caption,
             chat_id=channel_chat_id,
+            token=token,
             reply_markup=reply_markup,
             parse_mode="HTML",
         )
@@ -211,7 +237,7 @@ def post_product_to_channel(product):
         f"Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
         f"Order here: {deep_link}"
     )
-    return send_telegram_message(
+    return send_customer_bot_message(
         text=fallback_text,
         chat_id=channel_chat_id,
         reply_markup=reply_markup,
@@ -243,7 +269,7 @@ def notify_bot_order_lead(lead):
             f"Requested at: {_safe_text(lead.get('requested_at'))}"
         )
     )
-    return send_telegram_message(message)
+    return send_admin_alert_message(message)
 
 
 def notify_customer_delivery_status(bot_order):
@@ -268,7 +294,7 @@ def notify_customer_delivery_status(bot_order):
             "We will continue to notify you as your order progresses."
         )
     )
-    return send_telegram_message(text=message, chat_id=chat_id)
+    return send_customer_bot_message(text=message, chat_id=chat_id)
 
 
 def notify_new_signup(user, address=None):
@@ -295,7 +321,7 @@ def notify_new_signup(user, address=None):
         "\n"
         f"⏰ Time: {timestamp}"
     )
-    return send_telegram_message(_trim_message(message))
+    return send_admin_alert_message(_trim_message(message))
 
 
 def notify_new_order(user, order_count, order_total, address=None, order_lines=None, order_ids=None):
@@ -352,4 +378,4 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         "\n"
         f"⏰ Time: {timestamp}"
     )
-    return send_telegram_message(_trim_message(message))
+    return send_admin_alert_message(_trim_message(message))
