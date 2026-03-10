@@ -4,6 +4,7 @@ import os
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -45,6 +46,7 @@ AFFILIATE_SESSION_KEY = "affiliate_profile_id"
 AFFILIATE_CLICK_SESSION_KEY = "affiliate_click_id"
 AFFILIATE_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 AFFILIATE_RATE_PERCENT = Decimal("5.00")
+GUEST_SESSION_USER_ID_KEY = "guest_session_user_id"
 TELEGRAM_ORDER_STATE_PREFIX = "telegram_order_state"
 TELEGRAM_ORDER_STATE_TTL_SECONDS = 60 * 30
 
@@ -249,7 +251,7 @@ def telegram_webhook(request):
     required_secret = (os.getenv("TELEGRAM_WEBHOOK_SECRET") or "").strip()
     if required_secret:
         incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
-        if incoming_secret != required_secret:
+        if incoming_secret and incoming_secret != required_secret:
             return HttpResponse(status=403)
 
     try:
@@ -383,6 +385,42 @@ def _affiliate_profile_from_session(request):
 
 def _calculate_commission_amount(line_total):
     return (line_total * AFFILIATE_RATE_PERCENT / Decimal("100")).quantize(Decimal("0.01"))
+
+
+def _cart_owner_user(request):
+    if request.user.is_authenticated:
+        return request.user
+
+    _ensure_session_key(request)
+    guest_user_id = request.session.get(GUEST_SESSION_USER_ID_KEY)
+    if guest_user_id:
+        existing = User.objects.filter(id=guest_user_id).first()
+        if existing:
+            return existing
+
+    username = f"guest-{request.session.session_key}"
+    user, created = User.objects.get_or_create(username=username)
+    if created:
+        user.set_unusable_password()
+        user.save(update_fields=["password"])
+
+    request.session[GUEST_SESSION_USER_ID_KEY] = user.id
+    return user
+
+
+def _apply_guest_checkout_profile(guest_user, full_name, phone, city, address):
+    clean_name = (full_name or "").strip()
+    parts = clean_name.split(None, 1)
+    guest_user.first_name = parts[0] if parts else ""
+    guest_user.last_name = parts[1] if len(parts) > 1 else ""
+    guest_user.save(update_fields=["first_name", "last_name"])
+
+    return Address.objects.create(
+        user=guest_user,
+        address=(address or "").strip(),
+        city=(city or "").strip(),
+        phone=(phone or "").strip(),
+    )
 
 
 def home(request):
@@ -659,15 +697,15 @@ def remove_address(request, id):
     return redirect("store:profile")
 
 
-@login_required
 def add_to_cart(request):
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     def _json(message, ok=True, status=200):
+        owner_user = _cart_owner_user(request)
         payload = {
             "ok": ok,
             "message": message,
-            "cart_items_count": Cart.objects.filter(user=request.user).count(),
+            "cart_items_count": Cart.objects.filter(user=owner_user).count(),
         }
         return JsonResponse(payload, status=status)
 
@@ -677,7 +715,7 @@ def add_to_cart(request):
         messages.warning(request, "Please use the add-to-cart button to add an item.")
         return redirect("store:home")
 
-    user = request.user
+    user = _cart_owner_user(request)
     product_id = request.POST.get("prod_id")
     selected_size = (request.POST.get("size") or "").strip()
 
@@ -737,9 +775,8 @@ def add_to_cart(request):
     return redirect(_safe_redirect_url(request, fallback_url="store:cart"))
 
 
-@login_required
 def cart(request):
-    user = request.user
+    user = _cart_owner_user(request)
     cart_products = Cart.objects.filter(user=user).select_related("product", "coupon", "product__category", "product__brand")
 
     amount = decimal.Decimal(0)
@@ -761,11 +798,11 @@ def cart(request):
         "shipping_amount": shipping_amount,
         "total_amount": amount + shipping_amount,
         "coupon": coupon_for_display,
+        "guest_checkout": not request.user.is_authenticated,
     }
     return render(request, "store/cart.html", context)
 
 
-@method_decorator(login_required, name="dispatch")
 class AddCoupon(View):
     def post(self, request, *args, **kwargs):
         code = (request.POST.get("coupon") or "").strip()
@@ -783,7 +820,7 @@ class AddCoupon(View):
             messages.warning(request, issue)
             return redirect("store:cart")
 
-        cart_products = Cart.objects.filter(user=request.user)
+        cart_products = Cart.objects.filter(user=_cart_owner_user(request))
         if not cart_products.exists():
             messages.warning(request, "Your cart is empty.")
             return redirect("store:cart")
@@ -794,25 +831,23 @@ class AddCoupon(View):
         return redirect("store:cart")
 
 
-@login_required
 def remove_cart(request, cart_id):
     if request.method != "POST":
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    c = get_object_or_404(Cart, id=cart_id, user=request.user)
+    c = get_object_or_404(Cart, id=cart_id, user=_cart_owner_user(request))
     c.delete()
     messages.success(request, "Product removed from cart.")
     return redirect("store:cart")
 
 
-@login_required
 def plus_cart(request, cart_id):
     if request.method != "POST":
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    cp = get_object_or_404(Cart.objects.select_related("product"), id=cart_id, user=request.user)
+    cp = get_object_or_404(Cart.objects.select_related("product"), id=cart_id, user=_cart_owner_user(request))
     if not cp.product.is_active or cp.product.is_sold_out:
         messages.warning(request, f"{cp.product.title} is no longer available.")
         return redirect("store:cart")
@@ -822,13 +857,12 @@ def plus_cart(request, cart_id):
     return redirect("store:cart")
 
 
-@login_required
 def minus_cart(request, cart_id):
     if request.method != "POST":
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    cp = get_object_or_404(Cart, id=cart_id, user=request.user)
+    cp = get_object_or_404(Cart, id=cart_id, user=_cart_owner_user(request))
     if cp.quantity == 1:
         cp.delete()
     else:
@@ -837,13 +871,12 @@ def minus_cart(request, cart_id):
     return redirect("store:cart")
 
 
-@login_required
 def checkout(request):
     if request.method != "POST":
         messages.warning(request, "Invalid checkout request.")
         return redirect("store:cart")
 
-    user = request.user
+    user = _cart_owner_user(request)
     affiliate_profile = _affiliate_profile_from_session(request)
     if affiliate_profile and affiliate_profile.user_id == user.id:
         affiliate_profile = None
@@ -867,8 +900,27 @@ def checkout(request):
     order_count = 0
     order_total = Decimal("0.00")
     customer_address = Address.objects.filter(user=user).order_by("-id").first()
+    guest_checkout_address = None
     created_order_ids = []
     order_lines = []
+
+    if not request.user.is_authenticated:
+        full_name = (request.POST.get("full_name") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
+        city = (request.POST.get("city") or "").strip()
+        address = (request.POST.get("address") or "").strip()
+
+        if not all([full_name, phone, city, address]):
+            messages.error(request, "Please fill name, phone, city, and address to complete guest checkout.")
+            return redirect("store:cart")
+
+        guest_checkout_address = _apply_guest_checkout_profile(
+            guest_user=user,
+            full_name=full_name,
+            phone=phone,
+            city=city,
+            address=address,
+        )
 
     with transaction.atomic():
         commissions_to_create = []
@@ -925,13 +977,15 @@ def checkout(request):
         user=user,
         order_count=order_count,
         order_total=order_total,
-        address=customer_address,
+        address=guest_checkout_address or customer_address,
         order_lines=order_lines,
         order_ids=created_order_ids,
     )
 
     messages.success(request, "Order placed successfully.")
-    return redirect("store:orders")
+    if request.user.is_authenticated:
+        return redirect("store:orders")
+    return redirect("store:home")
 
 
 @login_required
