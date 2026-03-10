@@ -1,8 +1,11 @@
 import logging
 import os
+import html
+import json
 from decimal import Decimal
 from urllib import error, parse, request
 
+from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -11,26 +14,21 @@ logger = logging.getLogger(__name__)
 def _telegram_settings():
     token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
     chat_id = (os.getenv("TELEGRAM_ALERT_CHAT_ID") or "").strip()
-    if not token or not chat_id:
-        return None, None
-    return token, chat_id
+    channel_chat_id = (os.getenv("TELEGRAM_CHANNEL_CHAT_ID") or "").strip()
+    bot_username = (os.getenv("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
+    if not token:
+        return None, None, None, None
+    return token, chat_id or None, channel_chat_id or None, bot_username or None
 
 
-def _send_telegram_message(text):
-    token, chat_id = _telegram_settings()
-    if not token or not chat_id:
+def _telegram_api_request(method, payload):
+    token, _, _, _ = _telegram_settings()
+    if not token:
         return False
 
-    endpoint = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = parse.urlencode(
-        {
-            "chat_id": chat_id,
-            "text": text,
-            "disable_web_page_preview": "true",
-        }
-    ).encode("utf-8")
-
-    req = request.Request(endpoint, data=payload, method="POST")
+    endpoint = f"https://api.telegram.org/bot{token}/{method}"
+    encoded = parse.urlencode(payload).encode("utf-8")
+    req = request.Request(endpoint, data=encoded, method="POST")
     try:
         with request.urlopen(req, timeout=6) as resp:
             status = getattr(resp, "status", 0)
@@ -38,6 +36,36 @@ def _send_telegram_message(text):
     except (error.HTTPError, error.URLError, TimeoutError, ValueError) as exc:
         logger.warning("Telegram notification failed: %s", exc)
         return False
+
+
+def send_telegram_message(text, chat_id=None, reply_markup=None, parse_mode=None):
+    _, default_chat_id, _, _ = _telegram_settings()
+    target_chat_id = (chat_id or default_chat_id or "").strip()
+    if not target_chat_id:
+        return False
+
+    payload = {
+        "chat_id": target_chat_id,
+        "text": text,
+        "disable_web_page_preview": "true",
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    return _telegram_api_request("sendMessage", payload)
+
+
+def _send_telegram_photo(photo_url, caption, chat_id, reply_markup=None, parse_mode="HTML"):
+    payload = {
+        "chat_id": chat_id,
+        "photo": photo_url,
+        "caption": caption,
+        "parse_mode": parse_mode,
+    }
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    return _telegram_api_request("sendPhoto", payload)
 
 
 def _format_full_name(user):
@@ -56,6 +84,135 @@ def _trim_message(text, max_len=3900):
     if len(text) <= max_len:
         return text
     return text[:max_len] + "\n...truncated"
+
+
+def _format_money(value):
+    try:
+        amount = Decimal(value)
+    except Exception:
+        return _safe_text(value)
+    return f"{amount:,.2f}"
+
+
+def _absolute_media_url(url):
+    if not url:
+        return None
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    if site_url and url.startswith("/"):
+        return f"{site_url}{url}"
+    return None
+
+
+def _product_caption(product):
+    category = getattr(getattr(product, "category", None), "title", "N/A")
+    brand = getattr(getattr(product, "brand", None), "title", "N/A")
+    sizes = product.available_sizes or "Ask in bot"
+    return _trim_message(
+        (
+            "<b>NEW DROP</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            f"<b>{html.escape(_safe_text(product.title))}</b>\n"
+            f"Price: <b>{_format_money(product.price)} ETB</b>\n"
+            f"Category: {html.escape(_safe_text(category))}\n"
+            f"Brand: {html.escape(_safe_text(brand))}\n"
+            f"Sizes: {html.escape(_safe_text(sizes))}\n"
+            "\n"
+            f"{html.escape(_safe_text(product.short_description, fallback=''))}"
+        )
+    )
+
+
+def post_product_to_channel(product):
+    _, _, channel_chat_id, bot_username = _telegram_settings()
+    if not product or not channel_chat_id or not bot_username:
+        return False
+
+    deep_link = f"https://t.me/{bot_username}?start=order_{product.id}"
+    reply_markup = {
+        "inline_keyboard": [[{"text": "Choose Size", "url": deep_link}]],
+    }
+
+    caption = _product_caption(product)
+    photo_url = _absolute_media_url(getattr(product.product_image, "url", ""))
+    if photo_url:
+        sent = _send_telegram_photo(
+            photo_url=photo_url,
+            caption=caption,
+            chat_id=channel_chat_id,
+            reply_markup=reply_markup,
+            parse_mode="HTML",
+        )
+        if sent:
+            return True
+
+    fallback_text = (
+        "NEW DROP\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"{_safe_text(product.title)}\n"
+        f"Price: {_format_money(product.price)} ETB\n"
+        f"Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
+        f"Order here: {deep_link}"
+    )
+    return send_telegram_message(
+        text=fallback_text,
+        chat_id=channel_chat_id,
+        reply_markup=reply_markup,
+    )
+
+
+def notify_bot_order_lead(lead):
+    if not lead:
+        return False
+
+    message = _trim_message(
+        (
+            "ORDER REQUEST FROM TELEGRAM BOT\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Ref: {_safe_text(lead.get('order_ref'))}\n"
+            f"Customer: {_safe_text(lead.get('full_name'))}\n"
+            f"Phone: {_safe_text(lead.get('phone'))}\n"
+            f"Telegram: {_safe_text(lead.get('telegram_username'))}\n"
+            f"Address: {_safe_text(lead.get('address'))}\n"
+            f"City: {_safe_text(lead.get('city'))}\n"
+            "\n"
+            f"Product: {_safe_text(lead.get('product_title'))}\n"
+            f"SKU: {_safe_text(lead.get('product_sku'))}\n"
+            f"Size: {_safe_text(lead.get('size'))}\n"
+            f"Quantity: {_safe_text(lead.get('quantity'))}\n"
+            f"Unit Price: {_format_money(lead.get('unit_price'))} ETB\n"
+            f"Estimated Total: {_format_money(lead.get('estimated_total'))} ETB\n"
+            "\n"
+            f"Requested at: {_safe_text(lead.get('requested_at'))}"
+        )
+    )
+    return send_telegram_message(message)
+
+
+def notify_customer_delivery_status(bot_order):
+    if not bot_order:
+        return False
+
+    chat_id = _safe_text(getattr(bot_order, "telegram_chat_id", None), fallback="")
+    if not chat_id:
+        return False
+
+    message = _trim_message(
+        (
+            "DELIVERY STATUS UPDATE\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Order Ref: TG-{bot_order.id}\n"
+            f"Product: {_safe_text(bot_order.product_title)}\n"
+            f"SKU: {_safe_text(bot_order.product_sku)}\n"
+            f"Size: {_safe_text(bot_order.size)}\n"
+            f"Quantity: {_safe_text(bot_order.quantity)}\n"
+            f"Status: {_safe_text(bot_order.status)}\n"
+            "\n"
+            "We will continue to notify you as your order progresses."
+        )
+    )
+    return send_telegram_message(text=message, chat_id=chat_id)
 
 
 def notify_new_signup(user, address=None):
@@ -82,7 +239,7 @@ def notify_new_signup(user, address=None):
         "\n"
         f"⏰ Time: {timestamp}"
     )
-    return _send_telegram_message(_trim_message(message))
+    return send_telegram_message(_trim_message(message))
 
 
 def notify_new_order(user, order_count, order_total, address=None, order_lines=None, order_ids=None):
@@ -139,4 +296,4 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         "\n"
         f"⏰ Time: {timestamp}"
     )
-    return _send_telegram_message(_trim_message(message))
+    return send_telegram_message(_trim_message(message))
