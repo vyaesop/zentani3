@@ -1,10 +1,12 @@
 from django.contrib import admin
+from django.contrib import messages
 from django.conf import settings
 from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
-from .models import Address, Category, Product, Cart, Order, ProductImages, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission
+from .models import Address, Category, Product, Cart, Order, ProductImages, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder
+from .telegram_notify import notify_customer_delivery_status
 
 # Register your models here.
 class AddressAdmin(admin.ModelAdmin):
@@ -172,6 +174,56 @@ class AffiliateCommissionAdmin(admin.ModelAdmin):
     def mark_cancelled(self, request, queryset):
         updated_count = queryset.exclude(status="Paid").update(status="Cancelled")
         self.message_user(request, f"{updated_count} commission(s) marked as Cancelled.")
+
+
+class TelegramBotOrderAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "customer_full_name",
+        "customer_phone",
+        "customer_city",
+        "product_title",
+        "size",
+        "quantity",
+        "estimated_total",
+        "status",
+        "created_at",
+    )
+    list_editable = ("status",)
+    list_filter = ("status", "created_at", "customer_city")
+    list_per_page = 30
+    search_fields = (
+        "customer_full_name",
+        "customer_phone",
+        "customer_city",
+        "customer_address",
+        "product_title",
+        "product_sku",
+        "telegram_username",
+        "telegram_chat_id",
+    )
+    readonly_fields = ("created_at", "updated_at")
+
+    def save_model(self, request, obj, form, change):
+        previous_status = None
+        if change:
+            previous_status = TelegramBotOrder.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
+        super().save_model(request, obj, form, change)
+
+        if previous_status and previous_status != obj.status:
+            delivered = notify_customer_delivery_status(obj)
+            if delivered:
+                self.message_user(
+                    request,
+                    f"Customer notified on Telegram: status changed {previous_status} -> {obj.status}.",
+                    level=messages.SUCCESS,
+                )
+            else:
+                self.message_user(
+                    request,
+                    "Status saved but Telegram notification could not be sent.",
+                    level=messages.WARNING,
+                )
     
  
 
@@ -185,3 +237,4 @@ admin.site.register(Order, OrderAdmin)
 admin.site.register(AffiliateProfile, AffiliateProfileAdmin)
 admin.site.register(AffiliateClick, AffiliateClickAdmin)
 admin.site.register(AffiliateCommission, AffiliateCommissionAdmin)
+admin.site.register(TelegramBotOrder, TelegramBotOrderAdmin)

@@ -55,6 +55,9 @@ urlpatterns = [
     # Affiliate links
     path('ref/<slug:code>/', views.track_affiliate_link, name='affiliate-track'),
 
+    # Telegram bot webhook
+    path('telegram/webhook/', views.telegram_webhook, name='telegram-webhook'),
+
 
     
 ]

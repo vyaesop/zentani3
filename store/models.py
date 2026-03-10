@@ -307,3 +307,35 @@ class AffiliateCommission(models.Model):
             models.Index(fields=["affiliate", "status", "created_at"]),
             models.Index(fields=["order", "created_at"]),
         ]
+
+
+class TelegramBotOrder(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="telegram_orders")
+    product_title = models.CharField(max_length=150)
+    product_sku = models.CharField(max_length=255, blank=True)
+    size = models.CharField(max_length=50, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    estimated_total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+
+    customer_full_name = models.CharField(max_length=150)
+    customer_phone = models.CharField(max_length=30)
+    customer_city = models.CharField(max_length=150)
+    customer_address = models.CharField(max_length=255)
+
+    telegram_chat_id = models.CharField(max_length=40, db_index=True)
+    telegram_username = models.CharField(max_length=150, blank=True)
+
+    status = models.CharField(choices=STATUS_CHOICES, max_length=50, default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["telegram_chat_id", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"TG-{self.id} {self.product_title} ({self.customer_full_name})"
