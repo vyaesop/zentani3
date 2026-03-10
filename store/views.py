@@ -509,6 +509,7 @@ def category_products(request, slug):
     product_count = products.count()
     page = request.GET.get("page")
     paged_products = paginator.get_page(page)
+    page_numbers = paginator.get_elided_page_range(number=paged_products.number, on_each_side=1, on_ends=1)
 
     context = {
         "category": category,
@@ -516,6 +517,7 @@ def category_products(request, slug):
         "categories": categories,
         "paginator": paginator,
         "product_count": product_count,
+        "page_numbers": page_numbers,
     }
     return render(request, "store/category_products.html", context)
 
@@ -528,6 +530,7 @@ def brand_products(request, slug):
     product_count = products.count()
     page = request.GET.get("page")
     paged_products = paginator.get_page(page)
+    page_numbers = paginator.get_elided_page_range(number=paged_products.number, on_each_side=1, on_ends=1)
 
     context = {
         "brand": brand,
@@ -535,6 +538,7 @@ def brand_products(request, slug):
         "brands": brands,
         "paginator": paginator,
         "product_count": product_count,
+        "page_numbers": page_numbers,
     }
     return render(request, "store/brand_products.html", context)
 

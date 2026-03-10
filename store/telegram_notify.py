@@ -68,6 +68,14 @@ def _send_telegram_photo(photo_url, caption, chat_id, reply_markup=None, parse_m
     return _telegram_api_request("sendPhoto", payload)
 
 
+def _send_telegram_media_group(chat_id, media_items):
+    payload = {
+        "chat_id": chat_id,
+        "media": json.dumps(media_items),
+    }
+    return _telegram_api_request("sendMediaGroup", payload)
+
+
 def _format_full_name(user):
     full_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
     return full_name or "N/A"
@@ -111,17 +119,37 @@ def _product_caption(product):
     sizes = product.available_sizes or "Ask in bot"
     return _trim_message(
         (
-            "<b>NEW DROP</b>\n"
+            "<b>NEW DROP JUST LANDED</b>\n"
             "━━━━━━━━━━━━━━━━━━\n"
             f"<b>{html.escape(_safe_text(product.title))}</b>\n"
-            f"Price: <b>{_format_money(product.price)} ETB</b>\n"
-            f"Category: {html.escape(_safe_text(category))}\n"
-            f"Brand: {html.escape(_safe_text(brand))}\n"
-            f"Sizes: {html.escape(_safe_text(sizes))}\n"
             "\n"
-            f"{html.escape(_safe_text(product.short_description, fallback=''))}"
+            f"<b>Price</b>: {_format_money(product.price)} ETB\n"
+            f"<b>Category</b>: {html.escape(_safe_text(category))}\n"
+            f"<b>Brand</b>: {html.escape(_safe_text(brand))}\n"
+            f"<b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
+            "\n"
+            "Tap <b>Choose Size</b> below to order in chat.\n"
+            "\n"
+            f"{html.escape(_safe_text(product.short_description, fallback='No description yet.'))}"
         )
     )
+
+
+def _collect_product_image_urls(product, max_images=10):
+    image_urls = []
+
+    primary_url = _absolute_media_url(getattr(product.product_image, "url", ""))
+    if primary_url:
+        image_urls.append(primary_url)
+
+    for extra in product.p_images.only("image")[:max_images]:
+        url = _absolute_media_url(getattr(extra.image, "url", ""))
+        if url and url not in image_urls:
+            image_urls.append(url)
+        if len(image_urls) >= max_images:
+            break
+
+    return image_urls
 
 
 def post_product_to_channel(product):
@@ -135,10 +163,38 @@ def post_product_to_channel(product):
     }
 
     caption = _product_caption(product)
-    photo_url = _absolute_media_url(getattr(product.product_image, "url", ""))
-    if photo_url:
+    image_urls = _collect_product_image_urls(product)
+
+    if len(image_urls) > 1:
+        media_items = []
+        for idx, image_url in enumerate(image_urls):
+            media = {
+                "type": "photo",
+                "media": image_url,
+            }
+            if idx == 0:
+                media["caption"] = caption
+                media["parse_mode"] = "HTML"
+            media_items.append(media)
+
+        album_sent = _send_telegram_media_group(
+            chat_id=channel_chat_id,
+            media_items=media_items,
+        )
+        if album_sent:
+            cta_text = (
+                "Ready to order this item?\n"
+                "Tap below and choose your size to continue in chat."
+            )
+            return send_telegram_message(
+                text=cta_text,
+                chat_id=channel_chat_id,
+                reply_markup=reply_markup,
+            )
+
+    if image_urls:
         sent = _send_telegram_photo(
-            photo_url=photo_url,
+            photo_url=image_urls[0],
             caption=caption,
             chat_id=channel_chat_id,
             reply_markup=reply_markup,
@@ -148,7 +204,7 @@ def post_product_to_channel(product):
             return True
 
     fallback_text = (
-        "NEW DROP\n"
+        "NEW DROP JUST LANDED\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"{_safe_text(product.title)}\n"
         f"Price: {_format_money(product.price)} ETB\n"
