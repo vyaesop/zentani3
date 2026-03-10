@@ -135,6 +135,20 @@
                             <div class="card-footer bg-transparent border-0">
                                 <form action="{% url 'store:checkout' %}" method="POST">
                                     {% csrf_token %}
+                                    {% if guest_checkout %}
+                                    <div class="mb-2">
+                                        <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <input type="text" name="city" class="form-control" placeholder="City" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
+                                    </div>
+                                    {% endif %}
                                     <button type="submit" class="btn btn-primary btn-block btn-lg btn-rounded w-100">Proceed to Checkout <i class="w-icon-long-arrow-right"></i></button>
                                 </form>
                             </div>

@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from django.db.models import Min, Max
+from django.contrib.auth.models import User
 
 from .models import Brand, Cart, Category, Product
 
@@ -42,12 +43,15 @@ def brand_menu(request):
 def cart_menu(request):
     if request.user.is_authenticated:
         cart_items_count = Cart.objects.filter(user=request.user).count()
-        context = {
-            "cart_items_count": cart_items_count,
-        }
-    else:
-        context = {"cart_items_count": 0}
-    return context
+        return {"cart_items_count": cart_items_count}
+
+    guest_user_id = request.session.get("guest_session_user_id")
+    if guest_user_id:
+        guest_user = User.objects.filter(id=guest_user_id).first()
+        if guest_user:
+            return {"cart_items_count": Cart.objects.filter(user=guest_user).count()}
+
+    return {"cart_items_count": 0}
 
 
 def default(request):
