@@ -57,6 +57,7 @@ urlpatterns = [
 
     # Telegram bot webhook
     path('telegram/webhook/', views.telegram_webhook, name='telegram-webhook'),
+    path('telegram/webhook', views.telegram_webhook, name='telegram-webhook-no-slash'),
 
 
     
