@@ -23,7 +23,7 @@ from django.urls import reverse
 from django.views import View
 
 from store.models import Address, AffiliateClick, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Coupon, Order, Product, TelegramBotOrder
-from store.telegram_notify import notify_bot_order_lead, notify_new_order, notify_new_signup, send_telegram_message
+from store.telegram_notify import notify_bot_order_lead, notify_new_order, notify_new_signup, send_customer_bot_message
 
 from .forms import AddressForm, RegistrationForm
 
@@ -68,7 +68,7 @@ def _clear_telegram_order_state(chat_id):
 
 
 def _send_bot_text(chat_id, text):
-    return send_telegram_message(text=text, chat_id=str(chat_id))
+    return send_customer_bot_message(text=text, chat_id=str(chat_id))
 
 
 def _start_order_flow(chat_id, product, telegram_username):
@@ -248,7 +248,10 @@ def telegram_webhook(request):
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    required_secret = (os.getenv("TELEGRAM_WEBHOOK_SECRET") or "").strip()
+    required_secret = (
+        (os.getenv("TELEGRAM_CUSTOMER_WEBHOOK_SECRET") or "").strip()
+        or (os.getenv("TELEGRAM_WEBHOOK_SECRET") or "").strip()
+    )
     if required_secret:
         incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
         if incoming_secret and incoming_secret != required_secret:
