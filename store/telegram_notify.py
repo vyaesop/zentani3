@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 TELEGRAM_MEDIA_GROUP_LIMIT = 10
 
 
+def _normalized_media_name(name):
+    value = str(name or "").replace("\\", "/").lstrip("/")
+    if value.startswith("media/"):
+        return value[len("media/"):]
+    return value
+
+
 def _admin_bot_settings():
     token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
     chat_id = (os.getenv("TELEGRAM_ALERT_CHAT_ID") or "").strip()
@@ -155,14 +162,27 @@ def _format_money(value):
     return f"{amount:,.2f}"
 
 
-def _absolute_media_url(url):
-    if not url:
+def _absolute_media_url(url, storage_name=""):
+    candidate = (url or "").strip()
+    if not candidate and storage_name:
+        normalized_name = _normalized_media_name(storage_name)
+        if normalized_name:
+            candidate = f"/media/{normalized_name}"
+
+    if not candidate:
         return None
-    if url.startswith("http://") or url.startswith("https://"):
-        return url
+
+    if candidate.startswith("/media/media/"):
+        candidate = candidate[len("/media"):]
+    elif candidate.startswith("media/"):
+        candidate = f"/{candidate}"
+
+    if candidate.startswith("http://") or candidate.startswith("https://"):
+        return candidate
+
     site_url = _base_site_url()
-    if site_url and url.startswith("/"):
-        return f"{site_url}{url}"
+    if site_url and candidate.startswith("/"):
+        return f"{site_url}{candidate}"
     return None
 
 
@@ -210,14 +230,20 @@ def _product_caption(product):
 def _collect_product_image_urls(product, max_images=None):
     image_urls = []
 
-    primary_url = _absolute_media_url(getattr(product.product_image, "url", ""))
+    primary_url = _absolute_media_url(
+        getattr(product.product_image, "url", ""),
+        storage_name=getattr(product.product_image, "name", ""),
+    )
     if primary_url:
         image_urls.append(primary_url)
 
     extras_qs = product.p_images.only("image").order_by("id")
     extras = extras_qs[:max_images] if max_images else extras_qs
     for extra in extras:
-        url = _absolute_media_url(getattr(extra.image, "url", ""))
+        url = _absolute_media_url(
+            getattr(extra.image, "url", ""),
+            storage_name=getattr(extra.image, "name", ""),
+        )
         if url and url not in image_urls:
             image_urls.append(url)
         if max_images and len(image_urls) >= max_images:

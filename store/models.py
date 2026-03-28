@@ -12,6 +12,13 @@ except ImportError:
     Image = None
 
 
+def _normalize_legacy_media_name(name):
+    value = str(name or "").replace("\\", "/").lstrip("/")
+    if value.startswith("media/"):
+        return value[len("media/"):]
+    return value
+
+
 def _convert_uploaded_image_to_webp(field_file, quality=80):
     """Return a converted WebP upload for admin/user-uploaded files before storage save."""
     if Image is None or not field_file:
@@ -85,6 +92,8 @@ class Category(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if self.category_image and getattr(self.category_image, "name", ""):
+            self.category_image.name = _normalize_legacy_media_name(self.category_image.name)
         converted = _convert_uploaded_image_to_webp(self.category_image)
         if converted is not None:
             self.category_image = converted
@@ -111,6 +120,8 @@ class Brand(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if self.brand_image and getattr(self.brand_image, "name", ""):
+            self.brand_image.name = _normalize_legacy_media_name(self.brand_image.name)
         converted = _convert_uploaded_image_to_webp(self.brand_image)
         if converted is not None:
             self.brand_image = converted
@@ -150,6 +161,8 @@ class Product(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if self.product_image and getattr(self.product_image, "name", ""):
+            self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
         converted = _convert_uploaded_image_to_webp(self.product_image)
         if converted is not None:
             self.product_image = converted
@@ -164,6 +177,8 @@ class ProductImages(models.Model):
         verbose_name_plural = "Product images"
 
     def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, "name", ""):
+            self.image.name = _normalize_legacy_media_name(self.image.name)
         converted = _convert_uploaded_image_to_webp(self.image)
         if converted is not None:
             self.image = converted
