@@ -57,8 +57,19 @@ def _telegram_api_request(method, payload, token):
         with request.urlopen(req, timeout=6) as resp:
             status = getattr(resp, "status", 0)
             return 200 <= int(status) < 300
-    except (error.HTTPError, error.URLError, TimeoutError, ValueError) as exc:
-        logger.warning("Telegram notification failed: %s", exc)
+    except error.HTTPError as exc:
+        response_body = ""
+        try:
+            response_body = exc.read().decode("utf-8", errors="ignore")
+        except Exception:
+            response_body = ""
+        if response_body:
+            logger.warning("Telegram %s failed: %s | response=%s", method, exc, response_body)
+        else:
+            logger.warning("Telegram %s failed: %s", method, exc)
+        return False
+    except (error.URLError, TimeoutError, ValueError) as exc:
+        logger.warning("Telegram %s failed: %s", method, exc)
         return False
 
 
