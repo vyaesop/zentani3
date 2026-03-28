@@ -23,7 +23,13 @@ from django.urls import reverse
 from django.views import View
 
 from store.models import Address, AffiliateClick, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Coupon, Order, Product, TelegramBotOrder
-from store.telegram_notify import notify_bot_order_lead, notify_new_order, notify_new_signup, send_customer_bot_message
+from store.telegram_notify import (
+    notify_bot_order_lead,
+    notify_new_order,
+    notify_new_signup,
+    send_admin_alert_message,
+    send_customer_bot_message,
+)
 
 from .forms import AddressForm, RegistrationForm
 
@@ -67,8 +73,12 @@ def _clear_telegram_order_state(chat_id):
     cache.delete(_telegram_state_key(chat_id))
 
 
-def _send_bot_text(chat_id, text):
+def _send_customer_bot_text(chat_id, text):
     return send_customer_bot_message(text=text, chat_id=str(chat_id))
+
+
+def _send_admin_bot_text(chat_id, text):
+    return send_admin_alert_message(text=text, chat_id=str(chat_id))
 
 
 def _start_order_flow(chat_id, product, telegram_username):
@@ -83,7 +93,7 @@ def _start_order_flow(chat_id, product, telegram_username):
     _set_telegram_order_state(chat_id, state)
 
     sizes_text = ", ".join(sizes) if sizes else "Any size (type what you need)"
-    _send_bot_text(
+    _send_customer_bot_text(
         chat_id,
         (
             f"Order started for: {product.title}\n"
@@ -121,7 +131,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
     product = Product.objects.filter(id=state.get("product_id"), is_active=True).first()
     if not product:
         _clear_telegram_order_state(chat_id)
-        _send_bot_text(chat_id, "Sorry, this product is no longer available.")
+        _send_customer_bot_text(chat_id, "Sorry, this product is no longer available.")
         return True
 
     step = state.get("step")
@@ -131,29 +141,29 @@ def _handle_telegram_order_reply(chat_id, message_text):
         size = message_text.strip()
         allowed_sizes = state.get("sizes") or []
         if allowed_sizes and size not in allowed_sizes:
-            _send_bot_text(chat_id, f"Please choose one of: {', '.join(allowed_sizes)}")
+            _send_customer_bot_text(chat_id, f"Please choose one of: {', '.join(allowed_sizes)}")
             return True
         data["size"] = size
         state["step"] = "quantity"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, "Great. Reply with quantity (number).")
+        _send_customer_bot_text(chat_id, "Great. Reply with quantity (number).")
         return True
 
     if step == "quantity":
         try:
             quantity = int(message_text.strip())
         except ValueError:
-            _send_bot_text(chat_id, "Quantity must be a number. Please try again.")
+            _send_customer_bot_text(chat_id, "Quantity must be a number. Please try again.")
             return True
         if quantity <= 0 or quantity > 50:
-            _send_bot_text(chat_id, "Please enter a quantity between 1 and 50.")
+            _send_customer_bot_text(chat_id, "Please enter a quantity between 1 and 50.")
             return True
         data["quantity"] = quantity
         state["step"] = "full_name"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, "Please enter your full name.")
+        _send_customer_bot_text(chat_id, "Please enter your full name.")
         return True
 
     if step == "full_name":
@@ -161,7 +171,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "phone"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, "Please enter your phone number.")
+        _send_customer_bot_text(chat_id, "Please enter your phone number.")
         return True
 
     if step == "phone":
@@ -169,7 +179,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "city"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, "Please enter your city.")
+        _send_customer_bot_text(chat_id, "Please enter your city.")
         return True
 
     if step == "city":
@@ -177,7 +187,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "address"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, "Please enter your delivery address.")
+        _send_customer_bot_text(chat_id, "Please enter your delivery address.")
         return True
 
     if step == "address":
@@ -185,7 +195,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "confirm"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_bot_text(chat_id, _format_order_confirmation(product, data))
+        _send_customer_bot_text(chat_id, _format_order_confirmation(product, data))
         return True
 
     if step == "confirm":
@@ -226,7 +236,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
                 }
             )
             _clear_telegram_order_state(chat_id)
-            _send_bot_text(
+            _send_customer_bot_text(
                 chat_id,
                 f"Thanks. Your order request was sent. Reference: TG-{bot_order.id}. We will contact you shortly.",
             )
@@ -234,39 +244,104 @@ def _handle_telegram_order_reply(chat_id, message_text):
 
         if normalized in {"no", "n", "cancel"}:
             _clear_telegram_order_state(chat_id)
-            _send_bot_text(chat_id, "Order cancelled. You can start again from the channel post button.")
+            _send_customer_bot_text(chat_id, "Order cancelled. You can start again from the channel post button.")
             return True
 
-        _send_bot_text(chat_id, "Please reply YES to submit or NO to cancel.")
+        _send_customer_bot_text(chat_id, "Please reply YES to submit or NO to cancel.")
         return True
 
     return False
 
 
+def _accepted_webhook_secrets(*env_var_names):
+    secrets = []
+    for env_var_name in env_var_names:
+        value = (os.getenv(env_var_name) or "").strip()
+        if value and value not in secrets:
+            secrets.append(value)
+    return secrets
+
+
+def _validate_telegram_webhook_secret(request, *env_var_names):
+    accepted_secrets = _accepted_webhook_secrets(*env_var_names)
+    if not accepted_secrets:
+        return True
+
+    incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
+    if not incoming_secret:
+        return True
+    return incoming_secret in accepted_secrets
+
+
+def _telegram_message_context(payload):
+    message = payload.get("message") or {}
+    text = (message.get("text") or "").strip()
+    chat = message.get("chat") or {}
+    from_user = message.get("from") or {}
+    return {
+        "message": message,
+        "text": text,
+        "chat_id": chat.get("id"),
+        "from_user": from_user,
+    }
+
+
+def _customer_bot_welcome_text():
+    return (
+        "Welcome to Zentanee Orders.\n\n"
+        "Use the Choose Size button from our Telegram channel post to start an order."
+    )
+
+
+def _admin_bot_welcome_text():
+    return (
+        "This is the Zentanee admin alert bot.\n\n"
+        "It is used for internal signup and order notifications, not customer shopping.\n"
+        "For product orders, use @zentanee_order_bot."
+    )
+
+
+def _handle_customer_bot_start(chat_id, start_payload, username):
+    if start_payload.startswith("order_"):
+        product_id = start_payload.replace("order_", "", 1)
+        try:
+            product_id = int(product_id)
+        except ValueError:
+            _send_customer_bot_text(chat_id, "Invalid product link.")
+            return
+
+        product = Product.objects.filter(id=product_id, is_active=True, is_sold_out=False).first()
+        if not product:
+            _send_customer_bot_text(chat_id, "Sorry, this product is unavailable right now.")
+            return
+
+        _start_order_flow(chat_id, product, username)
+        return
+
+    _send_customer_bot_text(chat_id, _customer_bot_welcome_text())
+
+
 @csrf_exempt
-def telegram_webhook(request):
+def customer_telegram_webhook(request):
     if request.method != "POST":
         return HttpResponse(status=405)
 
-    required_secret = (
-        (os.getenv("TELEGRAM_CUSTOMER_WEBHOOK_SECRET") or "").strip()
-        or (os.getenv("TELEGRAM_WEBHOOK_SECRET") or "").strip()
-    )
-    if required_secret:
-        incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
-        if incoming_secret and incoming_secret != required_secret:
-            return HttpResponse(status=403)
+    if not _validate_telegram_webhook_secret(
+        request,
+        "TELEGRAM_CUSTOMER_WEBHOOK_SECRET",
+        "TELEGRAM_WEBHOOK_SECRET",
+    ):
+        return HttpResponse(status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         return JsonResponse({"ok": False, "error": "invalid-json"}, status=400)
 
-    message = payload.get("message") or {}
-    text = (message.get("text") or "").strip()
-    chat = message.get("chat") or {}
-    from_user = message.get("from") or {}
-    chat_id = chat.get("id")
+    context = _telegram_message_context(payload)
+    text = context["text"]
+    chat_id = context["chat_id"]
+    from_user = context["from_user"]
 
     if not chat_id:
         return JsonResponse({"ok": True})
@@ -274,26 +349,7 @@ def telegram_webhook(request):
     if text.startswith("/start"):
         parts = text.split(maxsplit=1)
         start_payload = parts[1] if len(parts) > 1 else ""
-        if start_payload.startswith("order_"):
-            product_id = start_payload.replace("order_", "", 1)
-            try:
-                product_id = int(product_id)
-            except ValueError:
-                _send_bot_text(chat_id, "Invalid product link.")
-                return JsonResponse({"ok": True})
-
-            product = Product.objects.filter(id=product_id, is_active=True, is_sold_out=False).first()
-            if not product:
-                _send_bot_text(chat_id, "Sorry, this product is unavailable right now.")
-                return JsonResponse({"ok": True})
-
-            _start_order_flow(chat_id, product, from_user.get("username"))
-            return JsonResponse({"ok": True})
-
-        _send_bot_text(
-            chat_id,
-            "Welcome. To order, tap the Choose Size button from our channel post.",
-        )
+        _handle_customer_bot_start(chat_id, start_payload, from_user.get("username"))
         return JsonResponse({"ok": True})
 
     if text:
@@ -301,11 +357,48 @@ def telegram_webhook(request):
         if handled:
             return JsonResponse({"ok": True})
 
-    _send_bot_text(
+    _send_customer_bot_text(
         chat_id,
         "Please use the channel's Choose Size button to start an order.",
     )
     return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+def admin_telegram_webhook(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if not _validate_telegram_webhook_secret(
+        request,
+        "TELEGRAM_ADMIN_WEBHOOK_SECRET",
+        "TELEGRAM_WEBHOOK_SECRET",
+    ):
+        return HttpResponse(status=403)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid-json"}, status=400)
+
+    context = _telegram_message_context(payload)
+    text = context["text"]
+    chat_id = context["chat_id"]
+
+    if not chat_id:
+        return JsonResponse({"ok": True})
+
+    if text.startswith("/start") or text.startswith("/help"):
+        _send_admin_bot_text(chat_id, _admin_bot_welcome_text())
+        return JsonResponse({"ok": True})
+
+    _send_admin_bot_text(chat_id, _admin_bot_welcome_text())
+    return JsonResponse({"ok": True})
+
+
+def telegram_webhook(request):
+    # Legacy webhook path kept for backward compatibility with the customer bot.
+    return customer_telegram_webhook(request)
 
 
 def _build_product_detail_context(product):
