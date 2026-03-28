@@ -2,6 +2,7 @@ import logging
 import os
 import html
 import json
+import hashlib
 from decimal import Decimal
 from urllib import error, parse, request
 
@@ -9,6 +10,7 @@ from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+TELEGRAM_MEDIA_GROUP_LIMIT = 10
 
 
 def _admin_bot_settings():
@@ -26,6 +28,22 @@ def _customer_bot_settings():
     if not token:
         return None, None, None
     return token, channel_chat_id or None, bot_username or None
+
+
+def _base_site_url():
+    for candidate in (
+        getattr(settings, "SITE_URL", ""),
+        os.getenv("SITE_URL", ""),
+        os.getenv("VERCEL_PROJECT_PRODUCTION_URL", ""),
+        os.getenv("VERCEL_URL", ""),
+    ):
+        value = (candidate or "").strip().rstrip("/")
+        if not value:
+            continue
+        if value.startswith("http://") or value.startswith("https://"):
+            return value
+        return f"https://{value.lstrip('/')}"
+    return ""
 
 
 def _telegram_api_request(method, payload, token):
@@ -131,10 +149,29 @@ def _absolute_media_url(url):
         return None
     if url.startswith("http://") or url.startswith("https://"):
         return url
-    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    site_url = _base_site_url()
     if site_url and url.startswith("/"):
         return f"{site_url}{url}"
     return None
+
+
+def _product_post_signature(product):
+    extra_image_names = list(
+        product.p_images.order_by("id").values_list("image", flat=True)
+    )
+    signature_payload = "|".join(
+        [
+            _safe_text(product.title, fallback=""),
+            _safe_text(product.sku, fallback=""),
+            _safe_text(product.available_sizes, fallback=""),
+            _safe_text(product.price, fallback=""),
+            _safe_text(getattr(product.product_image, "name", ""), fallback=""),
+            "1" if getattr(product, "is_active", False) else "0",
+            "1" if getattr(product, "is_sold_out", False) else "0",
+            *[_safe_text(name, fallback="") for name in extra_image_names],
+        ]
+    )
+    return hashlib.sha256(signature_payload.encode("utf-8")).hexdigest()
 
 
 def _product_caption(product):
@@ -159,26 +196,100 @@ def _product_caption(product):
     )
 
 
-def _collect_product_image_urls(product, max_images=10):
+def _collect_product_image_urls(product, max_images=None):
     image_urls = []
 
     primary_url = _absolute_media_url(getattr(product.product_image, "url", ""))
     if primary_url:
         image_urls.append(primary_url)
 
-    for extra in product.p_images.only("image")[:max_images]:
+    extras_qs = product.p_images.only("image").order_by("id")
+    extras = extras_qs[:max_images] if max_images else extras_qs
+    for extra in extras:
         url = _absolute_media_url(getattr(extra.image, "url", ""))
         if url and url not in image_urls:
             image_urls.append(url)
-        if len(image_urls) >= max_images:
+        if max_images and len(image_urls) >= max_images:
             break
 
     return image_urls
 
 
-def post_product_to_channel(product):
+def _chunked_media_groups(image_urls, intro_caption=None):
+    chunks = []
+    for start in range(0, len(image_urls), TELEGRAM_MEDIA_GROUP_LIMIT):
+        chunk_urls = image_urls[start:start + TELEGRAM_MEDIA_GROUP_LIMIT]
+        media_items = []
+        for idx, image_url in enumerate(chunk_urls):
+            media = {
+                "type": "photo",
+                "media": image_url,
+            }
+            if start == 0 and idx == 0 and intro_caption:
+                media["caption"] = intro_caption
+                media["parse_mode"] = "HTML"
+            media_items.append(media)
+        chunks.append(media_items)
+    return chunks
+
+
+def _send_all_media_groups(chat_id, image_urls, token, intro_caption=None):
+    if not image_urls:
+        return False
+
+    sent_any = False
+    for media_items in _chunked_media_groups(image_urls, intro_caption=intro_caption):
+        group_sent = _send_telegram_media_group(chat_id=chat_id, media_items=media_items, token=token)
+        if not group_sent:
+            return False
+        sent_any = True
+    return sent_any
+
+
+def _product_gallery_intro(product):
+    sizes = product.available_sizes or "Ask in chat"
+    return _trim_message(
+        (
+            f"<b>{html.escape(_safe_text(product.title))}</b>\n"
+            f"Price: {_format_money(product.price)} ETB\n"
+            f"Sizes: {html.escape(_safe_text(sizes))}\n"
+            "\n"
+            "Reply with your size to continue."
+        )
+    )
+
+
+def send_product_gallery_to_customer(product, chat_id):
+    token, _, _ = _customer_bot_settings()
+    target_chat_id = (chat_id or "").strip()
+    if not token or not target_chat_id or not product:
+        return False
+
+    image_urls = _collect_product_image_urls(product)
+    if len(image_urls) > 1:
+        intro = _product_gallery_intro(product)
+        if _send_all_media_groups(chat_id=target_chat_id, image_urls=image_urls, token=token, intro_caption=intro):
+            return True
+
+    if image_urls:
+        return _send_telegram_photo(
+            photo_url=image_urls[0],
+            caption=_product_gallery_intro(product),
+            chat_id=target_chat_id,
+            token=token,
+            parse_mode="HTML",
+        )
+
+    return False
+
+
+def post_product_to_channel(product, force=False):
     token, channel_chat_id, bot_username = _customer_bot_settings()
     if not product or not channel_chat_id or not bot_username or not token:
+        return False
+
+    current_signature = _product_post_signature(product)
+    if not force and current_signature == _safe_text(getattr(product, "telegram_channel_last_post_signature", ""), fallback=""):
         return False
 
     deep_link = f"https://t.me/{bot_username}?start=order_{product.id}"
@@ -190,32 +301,28 @@ def post_product_to_channel(product):
     image_urls = _collect_product_image_urls(product)
 
     if len(image_urls) > 1:
-        media_items = []
-        for idx, image_url in enumerate(image_urls):
-            media = {
-                "type": "photo",
-                "media": image_url,
-            }
-            if idx == 0:
-                media["caption"] = caption
-                media["parse_mode"] = "HTML"
-            media_items.append(media)
-
-        album_sent = _send_telegram_media_group(
+        album_sent = _send_all_media_groups(
             chat_id=channel_chat_id,
-            media_items=media_items,
+            image_urls=image_urls,
             token=token,
+            intro_caption=caption,
         )
         if album_sent:
             cta_text = (
                 "Ready to order this item?\n"
                 "Tap below and choose your size to continue in chat."
             )
-            return send_customer_bot_message(
+            sent = send_customer_bot_message(
                 text=cta_text,
                 chat_id=channel_chat_id,
                 reply_markup=reply_markup,
             )
+            if sent:
+                product.__class__.objects.filter(pk=product.pk).update(
+                    telegram_channel_last_post_signature=current_signature,
+                    telegram_channel_last_posted_at=timezone.now(),
+                )
+            return sent
 
     if image_urls:
         sent = _send_telegram_photo(
@@ -227,6 +334,10 @@ def post_product_to_channel(product):
             parse_mode="HTML",
         )
         if sent:
+            product.__class__.objects.filter(pk=product.pk).update(
+                telegram_channel_last_post_signature=current_signature,
+                telegram_channel_last_posted_at=timezone.now(),
+            )
             return True
 
     fallback_text = (
@@ -237,11 +348,17 @@ def post_product_to_channel(product):
         f"Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
         f"Order here: {deep_link}"
     )
-    return send_customer_bot_message(
+    sent = send_customer_bot_message(
         text=fallback_text,
         chat_id=channel_chat_id,
         reply_markup=reply_markup,
     )
+    if sent:
+        product.__class__.objects.filter(pk=product.pk).update(
+            telegram_channel_last_post_signature=current_signature,
+            telegram_channel_last_posted_at=timezone.now(),
+        )
+    return sent
 
 
 def notify_bot_order_lead(lead):

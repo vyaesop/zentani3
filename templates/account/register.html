@@ -23,6 +23,9 @@
             <form method="post" action="">
               <fieldset>
                 {% csrf_token %}
+                {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+                {% endif %}
 
                 {% for fm in form %}
                     <div class="form-group">
@@ -46,7 +49,7 @@
 
             <hr>
 
-            Already have an account? <a href="{% url 'store:login' %}">Log In </a>
+            Already have an account? <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Log In </a>
             
           </div>
         </div>

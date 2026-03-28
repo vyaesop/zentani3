@@ -1,0 +1,90 @@
+{% if flow_status %}
+<section class="flow-status-banner flow-status-{{ flow_status.tone|default:'info' }} mb-4">
+    <div class="flow-status-content">
+        {% if flow_status.eyebrow %}
+        <p class="flow-status-eyebrow mb-2">{{ flow_status.eyebrow }}</p>
+        {% endif %}
+        <h2 class="flow-status-title mb-2">{{ flow_status.title }}</h2>
+        <p class="flow-status-message mb-0">{{ flow_status.message }}</p>
+        {% if flow_status.meta %}
+        <p class="flow-status-meta mb-0 mt-2">{{ flow_status.meta }}</p>
+        {% endif %}
+    </div>
+    {% if flow_status.primary_url or flow_status.secondary_url %}
+    <div class="flow-status-actions">
+        {% if flow_status.primary_url %}
+        <a href="{{ flow_status.primary_url }}" class="btn btn-sm btn-dark">{{ flow_status.primary_label|default:"Continue" }}</a>
+        {% endif %}
+        {% if flow_status.secondary_url %}
+        <a href="{{ flow_status.secondary_url }}" class="btn btn-sm btn-outline-dark">{{ flow_status.secondary_label|default:"Learn more" }}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<style>
+    .flow-status-banner {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px;
+        border: 1px solid #dbe5f0;
+        background: #f8fbff;
+    }
+
+    .flow-status-info {
+        background: #f5f9ff;
+        border-color: #d6e4ff;
+    }
+
+    .flow-status-success {
+        background: #f4fbf6;
+        border-color: #cfe9d6;
+    }
+
+    .flow-status-warning {
+        background: #fff9f0;
+        border-color: #f0d7ad;
+    }
+
+    .flow-status-muted {
+        background: #f7f7f8;
+        border-color: #e2e5e9;
+    }
+
+    .flow-status-eyebrow {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        color: #6f7a86;
+        font-weight: 700;
+    }
+
+    .flow-status-title {
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+
+    .flow-status-message,
+    .flow-status-meta {
+        color: #51606f;
+        max-width: 60rem;
+    }
+
+    .flow-status-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 767px) {
+        .flow-status-banner {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+{% endif %}

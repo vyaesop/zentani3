@@ -22,6 +22,9 @@
             <form method="post" action="">
               <fieldset>
                 {% csrf_token %}
+                {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+                {% endif %}
 
                 {% for fm in form %}
                     <div class="form-group">
@@ -34,7 +37,7 @@
               </fieldset>
 
               {% if form.non_field_errors %}
-                {% for error in non_field_errors %}
+                {% for error in form.non_field_errors %}
                     <p class="alert alert-danger my-3">
                         {{error}}
                     </p>
