@@ -18,6 +18,9 @@
             <form method="post" action="">
               <fieldset>
                 {% csrf_token %}
+                {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name|default:'next' }}" value="{{ redirect_field_value }}">
+                {% endif %}
 
                 {% for fm in form %}
                     <div class="form-group">
@@ -46,7 +49,7 @@
             <hr>
 
             Forgot Password? <a href="{% url 'store:password-reset' %}">Reset Now</a> <br>
-            New Member? <a href="{% url 'store:register' %}">Create an Account</a> 
+            New Member? <a href="{% url 'store:register' %}{% if redirect_field_value %}?next={{ redirect_field_value|urlencode }}{% endif %}">Create an Account</a> 
             
           </div>
         </div>

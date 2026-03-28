@@ -26,6 +26,8 @@
 
     <div class="page-content">
         <div class="container">
+            {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -33,6 +35,19 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
+            {% endif %}
+
+            {% if orders %}
+                <div class="row mb-4">
+                    {% for item in order_status_summary %}
+                    <div class="col-6 col-md-4 col-xl-2 mb-3">
+                        <div class="status-summary-card h-100">
+                            <p class="status-summary-label mb-1">{{ item.label }}</p>
+                            <strong class="status-summary-count">{{ item.count }}</strong>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             {% endif %}
 
             {% if orders %}
@@ -98,6 +113,20 @@
     .order-card {
         border: 1px solid #e9ecef; /* Softer border */
         border-radius: .375rem; /* Standard Bootstrap radius */
+    }
+    .status-summary-card {
+        padding: 1rem;
+        border-radius: 14px;
+        border: 1px solid #e3e8ef;
+        background: #f7f9fc;
+    }
+    .status-summary-label {
+        color: #697586;
+        font-size: .9rem;
+    }
+    .status-summary-count {
+        font-size: 1.6rem;
+        line-height: 1;
     }
     .order-card .card-header {
         border-bottom: 1px solid #e9ecef;

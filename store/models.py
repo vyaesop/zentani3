@@ -133,6 +133,8 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Date")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Date")
     is_sold_out = models.BooleanField(verbose_name="Is Sold Out?", default=False, null=True)
+    telegram_channel_last_post_signature = models.CharField(max_length=64, blank=True, default="")
+    telegram_channel_last_posted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'Products'

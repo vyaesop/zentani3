@@ -22,11 +22,25 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from django.views import View
 
-from store.models import Address, AffiliateClick, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Coupon, Order, Product, TelegramBotOrder
+from store.models import (
+    STATUS_CHOICES,
+    Address,
+    AffiliateClick,
+    AffiliateCommission,
+    AffiliateProfile,
+    Brand,
+    Cart,
+    Category,
+    Coupon,
+    Order,
+    Product,
+    TelegramBotOrder,
+)
 from store.telegram_notify import (
     notify_bot_order_lead,
     notify_new_order,
     notify_new_signup,
+    send_product_gallery_to_customer,
     send_admin_alert_message,
     send_customer_bot_message,
 )
@@ -92,6 +106,7 @@ def _start_order_flow(chat_id, product, telegram_username):
     }
     _set_telegram_order_state(chat_id, state)
 
+    send_product_gallery_to_customer(product, str(chat_id))
     sizes_text = ", ".join(sizes) if sizes else "Any size (type what you need)"
     _send_customer_bot_text(
         chat_id,
@@ -433,6 +448,145 @@ def _safe_redirect_url(request, fallback_url):
     return fallback_url
 
 
+def _safe_redirect_url_with_query(request, fallback_url):
+    resolved = _safe_redirect_url(request, fallback_url)
+    if resolved.startswith("/"):
+        return resolved
+    try:
+        return reverse(resolved)
+    except Exception:
+        return reverse(fallback_url)
+
+
+def _latest_saved_address(user):
+    if not getattr(user, "is_authenticated", False):
+        return None
+    return Address.objects.filter(user=user).order_by("-id").first()
+
+
+def _address_entry_url(next_url_name="store:profile"):
+    return f"{reverse('store:add-address')}?next={reverse(next_url_name)}"
+
+
+def _build_cart_flow_status(request, cart_products, latest_address):
+    if not cart_products:
+        return {
+            "tone": "muted",
+            "eyebrow": "Cart status",
+            "title": "Your cart is empty",
+            "message": "Browse products and add your favorites before moving to delivery and order confirmation.",
+            "primary_label": "Start shopping",
+            "primary_url": reverse("store:home"),
+        }
+
+    if not request.user.is_authenticated:
+        return {
+            "tone": "info",
+            "eyebrow": "Guest checkout",
+            "title": "You can place this order right here",
+            "message": "Review your items, fill in your full name, phone number, city, and delivery address below, then submit the order.",
+            "meta": "If you already have an account, sign in first to reuse your saved address and view your order history.",
+            "primary_label": "Sign in",
+            "primary_url": f"{reverse('store:login')}?next={reverse('store:cart')}",
+            "secondary_label": "Create account",
+            "secondary_url": f"{reverse('store:register')}?next={reverse('store:cart')}",
+            "checkout_ready": True,
+            "checkout_label": "Place Order as Guest",
+        }
+
+    if latest_address:
+        return {
+            "tone": "success",
+            "eyebrow": "Ready to order",
+            "title": "Your cart and delivery address are set",
+            "message": "Review the cart summary and place the order when you are ready. Your latest saved address will be used for delivery.",
+            "meta": f"Current delivery city: {latest_address.city}. Update it from your account if needed.",
+            "primary_label": "Manage addresses",
+            "primary_url": reverse("store:profile"),
+            "checkout_ready": True,
+            "checkout_label": "Place Order",
+        }
+
+    return {
+        "tone": "warning",
+        "eyebrow": "Action needed",
+        "title": "Add a delivery address before placing your order",
+        "message": "Your account is signed in, but there is no saved delivery address yet. Add one first, then come back here to finish checkout.",
+        "primary_label": "Add address",
+        "primary_url": _address_entry_url("store:cart"),
+        "secondary_label": "Go to account",
+        "secondary_url": reverse("store:profile"),
+        "checkout_ready": False,
+        "checkout_label": "Add Address to Continue",
+    }
+
+
+def _build_profile_flow_status(addresses, orders):
+    if not addresses.exists():
+        return {
+            "tone": "warning",
+            "eyebrow": "Account setup",
+            "title": "Add your delivery address",
+            "message": "A saved address makes checkout faster and prevents order delays.",
+            "primary_label": "Add address",
+            "primary_url": reverse("store:add-address"),
+        }
+
+    if not orders.exists():
+        return {
+            "tone": "info",
+            "eyebrow": "Next step",
+            "title": "Your account is ready for checkout",
+            "message": "Start shopping, add items to your cart, and place your first order when ready.",
+            "primary_label": "Browse products",
+            "primary_url": reverse("store:all-products"),
+            "secondary_label": "Open cart",
+            "secondary_url": reverse("store:cart"),
+        }
+
+    return {
+        "tone": "success",
+        "eyebrow": "Account status",
+        "title": "Your account is active and ready",
+        "message": "Manage addresses here and track your order progress from the orders section.",
+        "primary_label": "View orders",
+        "primary_url": reverse("store:orders"),
+        "secondary_label": "Manage addresses",
+        "secondary_url": reverse("store:profile"),
+    }
+
+
+def _build_order_flow_status(orders_queryset):
+    if not orders_queryset.exists():
+        return {
+            "tone": "info",
+            "eyebrow": "Orders",
+            "title": "No orders yet",
+            "message": "Once you place an order, this page will show its status and item details.",
+            "primary_label": "Start shopping",
+            "primary_url": reverse("store:home"),
+        }
+
+    active_count = orders_queryset.exclude(status__in=["Delivered", "Cancelled"]).count()
+    latest_order = orders_queryset.order_by("-ordered_date").first()
+    return {
+        "tone": "success" if active_count else "info",
+        "eyebrow": "Order tracking",
+        "title": "Track your order progress here",
+        "message": "Pending means we received it, Accepted means confirmed, Packed means preparing, On The Way means out for delivery, and Delivered means completed.",
+        "meta": f"Latest order: #{latest_order.id} on {latest_order.ordered_date.strftime('%Y-%m-%d %H:%M')}.",
+        "primary_label": "Continue shopping",
+        "primary_url": reverse("store:home"),
+    }
+
+
+def _order_status_summary(orders_queryset):
+    return [
+        {"label": label, "count": orders_queryset.filter(status=value).count()}
+        for value, label in STATUS_CHOICES
+    ]
+
+
 def _parse_available_sizes(product):
     if not product.available_sizes:
         return []
@@ -642,7 +796,7 @@ def brand_products(request, slug):
 class RegistrationView(View):
     def get(self, request):
         form = RegistrationForm()
-        return render(request, "account/register.html", {"form": form})
+        return render(request, "account/register.html", {"form": form, "next_url": request.GET.get("next", "")})
 
     def post(self, request):
         form = RegistrationForm(request.POST)
@@ -666,14 +820,14 @@ class RegistrationView(View):
                 login(request, authenticated_user)
 
             notify_new_signup(user=user, address=signup_address)
-            messages.success(request, "Congratulations! Registration Successful!")
-            return redirect("store:home")
-        return render(request, "account/register.html", {"form": form})
+            messages.success(request, "Account created successfully. You can continue with your order now.")
+            return redirect(_safe_redirect_url_with_query(request, "store:profile"))
+        return render(request, "account/register.html", {"form": form, "next_url": request.POST.get("next", "")})
 
 
 @login_required
 def profile(request):
-    addresses = Address.objects.filter(user=request.user)
+    addresses = Address.objects.filter(user=request.user).order_by("-id")
     orders = Order.objects.filter(user=request.user).select_related("product").only(
         "id",
         "quantity",
@@ -687,6 +841,7 @@ def profile(request):
         "product__slug",
     )
     has_affiliate_profile = AffiliateProfile.objects.filter(user=request.user).exists()
+    profile_flow_status = _build_profile_flow_status(addresses, orders)
     return render(
         request,
         "account/profile.html",
@@ -694,6 +849,7 @@ def profile(request):
             "addresses": addresses,
             "orders": orders,
             "has_affiliate_profile": has_affiliate_profile,
+            "profile_flow_status": profile_flow_status,
         },
     )
 
@@ -770,7 +926,7 @@ def track_affiliate_link(request, code):
 class AddressView(View):
     def get(self, request):
         form = AddressForm()
-        return render(request, "account/add_address.html", {"form": form})
+        return render(request, "account/add_address.html", {"form": form, "next_url": request.GET.get("next", "")})
 
     def post(self, request):
         form = AddressForm(request.POST)
@@ -781,8 +937,13 @@ class AddressView(View):
             phone = form.cleaned_data["phone"]
             reg = Address(user=user, address=address, city=city, phone=phone)
             reg.save()
-            messages.success(request, "New Address Added Successfully.")
-        return redirect("store:profile")
+            redirect_target = _safe_redirect_url_with_query(request, "store:profile")
+            if redirect_target == reverse("store:cart"):
+                messages.success(request, "Address saved. You can now return to your cart and place the order.")
+            else:
+                messages.success(request, "New address added successfully.")
+            return redirect(redirect_target)
+        return render(request, "account/add_address.html", {"form": form, "next_url": request.POST.get("next", "")})
 
 
 @login_required
@@ -863,10 +1024,10 @@ def add_to_cart(request):
     if not created:
         cart_item.quantity += 1
         cart_item.save(update_fields=["quantity", "updated_at"])
-        success_message = f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart."
+        success_message = f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart. Open your cart when you are ready to place the order."
         messages.success(request, success_message)
     else:
-        success_message = f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart."
+        success_message = f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart. Open your cart to review delivery details and place the order."
         messages.success(request, success_message)
 
     if is_ajax:
@@ -878,6 +1039,7 @@ def add_to_cart(request):
 def cart(request):
     user = _cart_owner_user(request)
     cart_products = Cart.objects.filter(user=user).select_related("product", "coupon", "product__category", "product__brand")
+    latest_address = _latest_saved_address(request.user)
 
     amount = decimal.Decimal(0)
     for item in cart_products:
@@ -899,6 +1061,8 @@ def cart(request):
         "total_amount": amount + shipping_amount,
         "coupon": coupon_for_display,
         "guest_checkout": not request.user.is_authenticated,
+        "latest_address": latest_address,
+        "flow_status": _build_cart_flow_status(request, cart_products, latest_address),
     }
     return render(request, "store/cart.html", context)
 
@@ -999,7 +1163,7 @@ def checkout(request):
 
     order_count = 0
     order_total = Decimal("0.00")
-    customer_address = Address.objects.filter(user=user).order_by("-id").first()
+    customer_address = _latest_saved_address(request.user)
     guest_checkout_address = None
     created_order_ids = []
     order_lines = []
@@ -1021,6 +1185,9 @@ def checkout(request):
             city=city,
             address=address,
         )
+    elif customer_address is None:
+        messages.error(request, "Add a delivery address before placing your order.")
+        return redirect(_address_entry_url("store:cart"))
 
     with transaction.atomic():
         commissions_to_create = []
@@ -1082,7 +1249,7 @@ def checkout(request):
         order_ids=created_order_ids,
     )
 
-    messages.success(request, "Order placed successfully.")
+    messages.success(request, "Order placed successfully. You can track its status below.")
     if request.user.is_authenticated:
         return redirect("store:orders")
     return redirect("store:home")
@@ -1102,7 +1269,15 @@ def orders(request):
         "product__title",
         "product__slug",
     ).order_by("-ordered_date")
-    return render(request, "store/orders.html", {"orders": all_orders})
+    return render(
+        request,
+        "store/orders.html",
+        {
+            "orders": all_orders,
+            "flow_status": _build_order_flow_status(all_orders),
+            "order_status_summary": _order_status_summary(all_orders),
+        },
+    )
 
 
 def shop(request):
