@@ -19,7 +19,7 @@
               <div class="zent-directory-grid">
                   {% for category in categories %}
                   {% url 'store:category-products' category.slug as category_href %}
-                  {% include 'store/_directory_card.html' with href=category_href image_url=category.category_image.url title=category.title label='Category' %}
+                  {% include 'store/_directory_card.html' with href=category_href image_file=category.category_image title=category.title label='Category' %}
                   {% endfor %}
               </div>
           </section>

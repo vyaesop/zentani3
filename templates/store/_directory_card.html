@@ -1,9 +1,14 @@
+{% load static %}
 {% load image_optim %}
 
 <article class="zent-directory-card">
     <a href="{{ href }}" class="zent-directory-card__link">
         <figure class="zent-directory-card__media">
-            <img loading="lazy" src="{{ image_url|cdn_optimize }}" alt="{{ title }}">
+            {% if image_file %}
+            <img loading="lazy" src="{{ image_file.url|cdn_optimize }}" alt="{{ title }}">
+            {% else %}
+            <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ title }}">
+            {% endif %}
         </figure>
         <div class="zent-directory-card__body">
             <span class="zent-section-kicker">{{ label }}</span>
