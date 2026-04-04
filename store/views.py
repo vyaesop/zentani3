@@ -1281,7 +1281,7 @@ def orders(request):
 
 
 def shop(request):
-    return render(request, "store/shop.html")
+    return redirect("store:all-products")
 
 
 def about(request):
@@ -1293,4 +1293,4 @@ def contact(request):
 
 
 def test(request):
-    return render(request, "store/test.html")
+    return redirect("store:home")

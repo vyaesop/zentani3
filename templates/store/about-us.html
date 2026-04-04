@@ -1,258 +1,82 @@
 {% extends 'base.html' %}
 {% load static %}
+
+{% block title %}Zentanee | About{% endblock %}
+
 {% block content %}
-<body class="about-us">
-    <div class="page-wrapper">
-        
+<main class="main">
+  <nav class="breadcrumb-nav">
+      <div class="container">
+          <ul class="breadcrumb bb-no">
+              <li><a href="{% url 'store:home' %}">Home</a></li>
+              <li>About</li>
+          </ul>
+      </div>
+  </nav>
 
-        <!-- Start of Main -->
-        <main class="main">
-            <!-- Start of Page Header -->
-            <div class="page-header">
-                <div class="container">
-                    <h1 class="page-title mb-0">About Us</h1>
-                </div>
-            </div>
-            <!-- End of Page Header -->
+  <div class="page-content mb-10">
+      <div class="container zent-about-shell">
+          <section class="zent-about-hero">
+              <div>
+                  <span class="zent-section-kicker">Brand signal</span>
+                  <h1>Zentanee is building a faster fashion storefront for shoppers in Addis who still want the experience to feel styled.</h1>
+                  <p>We care about two things at the same time: the pieces need to feel distinct, and the buying flow needs to stay smooth on mobile. That means less clutter, better fit guidance, and support that actually helps instead of slowing the shopper down.</p>
+              </div>
+              <div class="zent-about-hero__meta">
+                  <span>Based in Addis Ababa</span>
+                  <span>Mobile-first storefront</span>
+                  <span>Style + support</span>
+              </div>
+          </section>
 
-            <!-- Start of Breadcrumb -->
-            <nav class="breadcrumb-nav mb-10 pb-8">
-                <div class="container">
-                    <ul class="breadcrumb">
-                        <li><a href="demo1.html">Home</a></li>
-                        <li>About Us</li>
-                    </ul>
-                </div>
-            </nav>
-            <!-- End of Breadcrumb -->
-            
-            <!-- Start of Page Content -->
-            <div class="page-content">
-                <div class="container">
-                    <section class="introduce mb-10 pb-10">
-                        <h2 class="title title-center">
-                            Zentanee is an online retailer based in Addis Ababa
-                        </h2>
-                        <p class=" mx-auto text-center">We offer high-quality products at affordable prices and are committed to providing our customers with the best possible shopping
-                             experience. We take pride in offering a wide selection of clothes, handbags, perfumes, and accessories.</p>
-                        <figure class="br-lg">
-                            <img src="{% static 'asset/images/pages/about_us/1.webp' %}" alt="Banner" 
-                                width="1240" height="540" style="background-color: #D0C1AE;" />
-                        </figure>
-                    </section>
+          <section class="zent-about-grid">
+              <article class="zent-about-card">
+                  <span class="zent-section-kicker">What we curate</span>
+                  <h2>Fashion with a sharper point of view.</h2>
+                  <p>Zentanee focuses on clothing, handbags, perfumes, and accessories that feel current without making the storefront read like a warehouse of random listings.</p>
+              </article>
 
-                    <section class="customer-service mb-7">
-                        <div class="row align-items-center">
-                            <div class="col-md-6 pr-lg-8 mb-8">
-                                <h2 class="title text-left">We Provide Continuous &amp; Kind Service for Customers</h2>
-                                <div class="accordion accordion-simple accordion-plus">
-                                    <div class="card border-no">
-                                        <div class="card-header">
-                                            <a href="#collapse3-1" class="collapse">Mission and Values</a>
-                                        </div>
-                                        <div class="card-body expanded" id="collapse3-1">
-                                            <p class="mb-0">
-                                                At Zentanee, our mission is to provide our customers with 
-                                                high-quality products at affordable prices. We believe that 
-                                                everyone deserves to look and feel their best, and we are
-                                                 committed to making that a reality. Our core values include
-                                                  honesty, integrity, and a commitment to customer satisfaction.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <a href="#collapse3-2" class="expand">Product Quality and Selection</a>
-                                        </div>
-                                        <div class="card-body collapsed" id="collapse3-2">
-                                            <p class="mb-0">
-                                                We take great care in selecting the products we offer on our website. 
-                                                We only work with suppliers who share our commitment to quality, 
-                                                and we are constantly updating our selection to ensure that our 
-                                                customers have access to the latest trends and styles.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <a href="#collapse3-3" class="expand">Delivery and Service</a>
-                                        </div>
-                                        <div class="card-body collapsed" id="collapse3-3">
-                                            <p class="mb-0">
-                                                We offer fast and reliable delivery within Addis Ababa, 
-                                                and our customer service team is always available to answer 
-                                                any questions or concerns you may have. We are committed to 
-                                                providing our customers with the best possible shopping experience, 
-                                                and we will do everything we can to ensure your satisfaction.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-8">
-                                <figure class="br-lg">
-                                    <img src="{% static 'asset/images/pages/about_us/2.webp' %}" alt="Banner"
-                                        width="610" height="500" style="background-color: #CECECC;" />
-                                </figure>
-                            </div>
-                        </div>
-                    </section>
+              <article class="zent-about-card">
+                  <span class="zent-section-kicker">How we sell</span>
+                  <h2>Fast browse, clear fit, easy ordering.</h2>
+                  <p>The site is designed so shoppers can scan quickly, confirm size where needed, move to cart, and finish delivery details without getting lost in generic ecommerce clutter.</p>
+              </article>
 
-                    {% comment %} <section class="count-section mb-10 pb-5">
-                        <div class="swiper-container swiper-theme" data-swiper-options="{
-                            'slidesPerView': 1,
-                            'breakpoints': {
-                                '768': {
-                                    'slidesPerView': 2
-                                },
-                                '992': {
-                                    'slidesPerView': 3
-                                }
-                            }
-                        }">
-                            <div class="swiper-wrapper row cols-lg-3 cols-md-2 cols-1">
-                                <div class="swiper-slide counter-wrap">
-                                    <div class="counter text-center">
-                                        <span class="count-to" data-to="15">400</span>
-                                        <span>+</span>
-                                        <h4 class="title title-center">Products For Sale</h4>
-                                        <p>All from quality suppliers</p>
-                                    </div>
-                                </div>
-                                <div class="swiper-slide counter-wrap">
-                                    <div class="counter text-center">
-                                        <span>$</span>
-                                        <span class="count-to" data-to="25">0</span>
-                                        <span>B+</span>
-                                        <h4 class="title title-center">Community Earnings</h4>
-                                        <p>Diam maecenas ultricies mi eget mauris<br>
-                                            Nibh tellus molestie nunc non</p>
-                                    </div>
-                                </div>
-                                <div class="swiper-slide counter-wrap">
-                                    <div class="counter text-center">
-                                        <span class="count-to" data-to="100">0</span>
-                                        <span>M+</span>
-                                        <h4 class="title title-center">Growing Buyers</h4>
-                                        <p>Diam maecenas ultricies mi eget mauris<br>
-                                            Nibh tellus molestie nunc non</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="swiper-pagination"></div>
-                        </div>
-                    </section> {% endcomment %}
-                </div>
+              <article class="zent-about-card zent-about-card--accent">
+                  <span class="zent-section-kicker">How we support</span>
+                  <h2>Real help stays close to the flow.</h2>
+                  <p>If a shopper needs help on fit, delivery, or availability, support is available through phone, Instagram, and Telegram without breaking the whole shopping rhythm.</p>
+              </article>
+          </section>
 
-                <section class="boost-section pt-10 pb-10">
-                    <div class="container mt-10 mb-9">
-                        <div class="row align-items-center mb-10">
-                            <div class="col-md-6 mb-8">
-                                <figure class="br-lg">
-                                    <img src="{% static 'asset/images/pages/about_us/3.webp' %}" alt="Banner"
-                                        width="610" height="450" style="background-color: #9E9DA2;" />
-                                </figure>
-                            </div>
-                            <div class="col-md-6 pl-lg-8 mb-8">
-                                <h4 class="title text-left"> Contact Information</h4>
-                                <div class="accordion accordion-icon accordion-boxed accordion-plus ">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <a href="#collapse4-1" class="collapse"><i class="w-icon-call"></i>Phone number</a>
-                                        </div>
-                                        <div class="card-body expanded" id="collapse4-1">
-                                            <p class="mb-0">
-                                                +251 933 392 463 
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <a href="#collapse4-2" class="expand"><i class="w-icon-envelop"></i>Email</a>
-                                        </div>
-                                        <div class="card-body collapsed" id="collapse4-2">
-                                            <p class="mb-0">
-                                                zentaneee@gmail.com
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+          <section class="zent-about-story">
+              <div class="zent-about-story__content">
+                  <span class="zent-section-kicker">Why the brand feels different</span>
+                  <h2>We are moving away from “just another ecommerce theme” and toward a store that feels curated, fast, and memorable.</h2>
+                  <p>The goal is not only to show products. The goal is to make the whole path from discovery to order feel more intentional: clearer product pages, better mobile scanning, and support that feels like a premium assist.</p>
+              </div>
+              <div class="zent-about-story__panel">
+                  <span class="zent-section-kicker">Core values</span>
+                  <ul class="zent-rhythm-list mb-0">
+                      <li>Curate pieces that feel current and distinct.</li>
+                      <li>Keep the buying flow fast enough for mobile-first shoppers.</li>
+                      <li>Make support and delivery feel dependable, not improvised.</li>
+                  </ul>
+              </div>
+          </section>
 
-                        {% comment %} <div class="awards-wrapper">
-                            <h4 class="title title-center font-weight-bold mb-10 pb-1 ls-25">Awards</h4>
-                            <div class="swiper-container swiper-theme" data-swiper-options="{
-                                'spaceBetween': 20,
-                                'slidesPerView': 1,
-                                'breakpoints': {
-                                    '768': {
-                                        'slidesPerView': 2
-                                    },
-                                    '992': {
-                                        'slidesPerView': 3
-                                    },
-                                    '1200': {
-                                        'slidesPerView': 4
-                                    }
-                                }
-                            }">
-                                <div class="swiper-wrapper row cols-xl-4 cols-lg-3 cols-md-2 cols-1">
-                                    <div class="swiper-slide image-box-wrapper">
-                                        <div class="image-box text-center">
-                                            <figure>
-                                                <img src="{% static 'asset/images/pages/about_us/1.webp' %}" alt="Award Image" width="109" height="105" />
-                                            </figure>
-                                            <p>Winner Seo Master MAGT<br>
-                                                Smart Start Award 2018</p>
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide image-box-wrapper">
-                                        <div class="image-box text-center">
-                                            <figure>
-                                                <img src="{% static 'asset/images/pages/about_us/2.webp' %}" alt="Award Image" width="109" height="105" />
-                                            </figure>
-                                            <p>Top Social Media Agencies<br>
-                                                Next Partner 2019</p>
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide image-box-wrapper mt-3">
-                                        <div class="image-box text-center">
-                                            <figure>
-                                                <img src="{% static 'asset/images/pages/about_us/3.webp' %}" alt="Award Image" width="109" height="105" />
-                                            </figure>
-                                            <p>5 Fastest Growing Abstract<br>
-                                                Solution Providers 2020</p>
-                                        </div>
-                                    </div>
-                                    <div class="swiper-slide image-box-wrapper">
-                                        <div class="image-box text-center">
-                                            <figure>
-                                                <img src="{% static 'asset/images/pages/about_us/4.webp' %}" alt="Award Image" width="109" height="105" />
-                                            </figure>
-                                            <p>National Excellence Agencie<br>
-                                                Award Winner 2021</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="swiper-pagination"></div>
-                            </div>
-                        </div> {% endcomment %}
-                    </div>
-                </section>
-            </div>
-        </main>
-        <!-- End of Main -->
-
-        
-    </div>
-
-    <!-- Start of Sticky Footer -->
-
-    <!-- End of Mobile Menu -->
-
-    <!-- Plugin JS File -->
-    
-</body>
+          <section class="zent-support-strip">
+              <div>
+                  <span class="zent-section-kicker">Talk to us</span>
+                  <h2 class="mb-2">Need help before or after you order?</h2>
+                  <p class="mb-0">Reach out with the product name, your city, and any fit question. That helps us guide you faster and keep the shopping flow clean.</p>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                  <a href="{% url 'store:contact' %}" class="btn btn-dark">Contact page</a>
+                  <a href="https://instagram.com/zentanee" class="btn btn-outline-dark" target="_blank" rel="noopener">Instagram</a>
+              </div>
+          </section>
+      </div>
+  </div>
+</main>
 {% endblock content %}
-
