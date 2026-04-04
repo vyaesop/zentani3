@@ -1,55 +1,49 @@
 {% extends 'base.html' %}
-{% load static %}
 
-    {% block content %}
+{% block content %}
+<div class="container">
+  <div class="zent-auth-shell">
+    <section class="zent-auth-card">
+      <p class="zent-auth-eyebrow">Delivery details</p>
+      <h1 class="zent-auth-title">Add a delivery address</h1>
+      <p class="zent-auth-copy">Saving an address makes checkout smoother and helps Zentanee confirm delivery faster when you place the order.</p>
 
-      <div class="container py-5">
-        <div class="col-md-8 offset-2">
+      {% include 'partials/_messages.html' %}
 
-        <h1 class="mb-5">Add New Address</h1>
-        
-        
-        <div class="card mb-4" id="forms">
-          <div class="card-header">
-            <small>
-            With a this account, you can save time during checkout, access your shopping bag from any device and view your order history.
-            </small>
-          </div>
-          <div class="card-body">
+      <form method="post" action="" class="zent-auth-form">
+        {% csrf_token %}
+        {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
 
-            {% include 'partials/_messages.html' %}
-
-            <form method="post" action="">
-              <fieldset>
-                {% csrf_token %}
-                {% if next_url %}
-                <input type="hidden" name="next" value="{{ next_url }}">
-                {% endif %}
-
-                {% for fm in form %}
-                    <div class="form-group">
-                        {{fm.label_tag}}
-                        {{fm}}
-                        <small class="text-danger">{{fm.errors|striptags}}</small>
-                    </div>
-                {% endfor %}
-                <button class="btn btn-primary" type="submit">Submit</button>
-              </fieldset>
-
-              {% if form.non_field_errors %}
-                {% for error in form.non_field_errors %}
-                    <p class="alert alert-danger my-3">
-                        {{error}}
-                    </p>
-                {% endfor %}
-              {% endif %}
-
-            </form>
-
-            
-          </div>
+        {% for fm in form %}
+        <div class="form-group">
+          {{ fm.label_tag }}
+          {{ fm }}
+          {% if fm.help_text %}<small class="helptext">{{ fm.help_text|safe }}</small>{% endif %}
+          <small class="text-danger">{{ fm.errors|striptags }}</small>
         </div>
+        {% endfor %}
 
-        </div>       
-      </div>
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}
+          <p class="alert alert-danger my-3">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+
+        <button class="btn btn-dark w-100" type="submit">Save address</button>
+      </form>
+    </section>
+
+    <aside class="zent-auth-side">
+      <p class="zent-auth-eyebrow">Helpful tip</p>
+      <h2 class="h3 mb-3">Use the most recognizable location</h2>
+      <ul>
+        <li>Add a landmark or popular nearby place so delivery confirmation is easier.</li>
+        <li>Use the phone number that should receive the order follow-up.</li>
+        <li>Once saved, you can return straight to cart and complete checkout.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
 {% endblock content %}

@@ -1,0 +1,34 @@
+<aside class="zent-collection-sidebar">
+    <div class="zent-sidebar-card">
+        <span class="zent-section-kicker">Search</span>
+        <h3 class="zent-sidebar-title">Find another item</h3>
+        <form action="{% url 'store:search' %}" method="GET" class="zent-sidebar-search">
+            <input type="text" name="q" class="form-control" placeholder="Search products or brands" value="{{ request.GET.q|default:'' }}" required>
+            <button type="submit" class="btn btn-dark">Search</button>
+        </form>
+    </div>
+
+    <div class="zent-sidebar-card">
+        <span class="zent-section-kicker">Browse</span>
+        <h3 class="zent-sidebar-title">Categories</h3>
+        <div class="zent-sidebar-links">
+            {% for cat_menu in categories_menu %}
+            <a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a>
+            {% empty %}
+            <span class="text-muted">No categories available yet.</span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="zent-sidebar-card">
+        <span class="zent-section-kicker">Brands</span>
+        <h3 class="zent-sidebar-title">Shop by brand</h3>
+        <div class="zent-sidebar-links">
+            {% for brand_link in brands_menu %}
+            <a href="{% url 'store:brand-products' brand_link.slug %}">{{ brand_link.title }}</a>
+            {% empty %}
+            <span class="text-muted">No brands available yet.</span>
+            {% endfor %}
+        </div>
+    </div>
+</aside>

@@ -1,49 +1,29 @@
 {% extends 'base.html' %}
-{% load static %}
-{% load image_optim %}
 
-      {% block content %}
+{% block content %}
+<main class="main">
+  <nav class="breadcrumb-nav">
+      <div class="container">
+          <ul class="breadcrumb mb-8">
+              <li><a href="{% url 'store:home' %}">Home</a></li>
+              <li>Brands</li>
+          </ul>
+      </div>
+  </nav>
 
-      <!-- HERO SECTION-->
-      <main class="main">
-        <!-- Start of Breadcrumb -->
-        <nav class="breadcrumb-nav">
-            <div class="container">
-                <ul class="breadcrumb mb-8">
-                    <li><a href="{% url 'store:home' %}">Home</a></li>
-                    <li><a href="#">Brands</a></li>
-                </ul>
-            </div>
-        </nav>
-        <!-- End of Breadcrumb -->
+  <div class="page-content mb-10">
+      <div class="container zent-directory-shell">
+          {% include 'store/_collection_header.html' with kicker='Browse store' title='All brands' description='Explore products by brand from one clean directory instead of jumping through mixed legacy layouts.' count=brands|length secondary_chip='Brand directory' %}
 
-        <!-- Start of Pgae Contetn -->
-        
-        <div class="page-content mb-4">
-            <div class="container">
-                <div class="row cols-xl-6 cols-lg-5 cols-md-4 cols-sm-3 cols-2">
-                    {% for brand in brands %}
-                    <div class="vendor-brand-wrap mb-8">
-                      
-                        
-                        <div class="vendor-brand">
-                            <a href="{% url 'store:brand-products' brand.slug %}">
-                                <figure class="brand">
-                                    <img loading="lazy" src="{{ brand.brand_image.url|cdn_optimize }}" alt="Brand" width="150"
-                                        height="150" />
-                                </figure>
-                                <h4 class="vendor-name">{{ brand.title }}</h4>
-                            </a>
-                        </div>
-                        
-                          
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        
-        <!-- End of Page Content -->
-    </main>
-
-      {% endblock content %}
+          <section class="zent-collection-board">
+              <div class="zent-directory-grid">
+                  {% for brand in brands %}
+                  {% url 'store:brand-products' brand.slug as brand_href %}
+                  {% include 'store/_directory_card.html' with href=brand_href image_url=brand.brand_image.url title=brand.title label='Brand' %}
+                  {% endfor %}
+              </div>
+          </section>
+      </div>
+  </div>
+</main>
+{% endblock content %}

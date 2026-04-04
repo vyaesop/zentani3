@@ -1,0 +1,19 @@
+<section class="zent-collection-hero">
+    <div class="zent-collection-hero__content">
+        <span class="zent-section-kicker">{{ kicker }}</span>
+        <h1 class="zent-collection-hero__title">{{ title }}</h1>
+        <p class="zent-collection-hero__text">{{ description }}</p>
+        <div class="zent-collection-hero__meta">
+            <span class="zent-collection-chip">{{ count }} item{{ count|pluralize }}</span>
+            {% if secondary_chip %}
+            <span class="zent-collection-chip zent-collection-chip--muted">{{ secondary_chip }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="zent-collection-hero__aside">
+        <div class="zent-collection-callout">
+            <strong>Shop faster</strong>
+            <p class="mb-0">Browse the collection, open a product for size selection if needed, then place the order from cart.</p>
+        </div>
+    </div>
+</section>

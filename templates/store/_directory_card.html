@@ -1,0 +1,14 @@
+{% load image_optim %}
+
+<article class="zent-directory-card">
+    <a href="{{ href }}" class="zent-directory-card__link">
+        <figure class="zent-directory-card__media">
+            <img loading="lazy" src="{{ image_url|cdn_optimize }}" alt="{{ title }}">
+        </figure>
+        <div class="zent-directory-card__body">
+            <span class="zent-section-kicker">{{ label }}</span>
+            <h3 class="zent-directory-card__title">{{ title }}</h3>
+            <span class="zent-directory-card__cta">Explore</span>
+        </div>
+    </a>
+</article>

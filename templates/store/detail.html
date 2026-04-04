@@ -1,1674 +1,257 @@
 {% extends 'base.html' %}
-{% load static %}
 {% load image_optim %}
 
-    {% block content %}
-    <main class="main">
-        <!-- End of Breadcrumb -->
+{% block content %}
+<main class="main">
+  <nav class="breadcrumb-nav">
+      <div class="container">
+          <ul class="breadcrumb bb-no">
+              <li><a href="{% url 'store:home' %}">Home</a></li>
+              <li><a href="{% url 'store:category-products' product.category.slug %}">{{ product.category }}</a></li>
+              <li>{{ product.title }}</li>
+          </ul>
+      </div>
+  </nav>
 
-      <!-- Start of Page Content -->
-      <div class="page-content">
-          <div class="container">
-              <div class="zent-flow-banner">
-                  <div>
-                      <strong>Order flow</strong>
-                      <div class="small text-muted">Review the gallery, choose your size, add to cart, then place the order from cart.</div>
-                  </div>
-                  <div class="zent-flow-steps">
-                      <span class="zent-flow-step">1. Check photos</span>
-                      <span class="zent-flow-step">2. Pick size</span>
-                      <span class="zent-flow-step">3. Add to cart</span>
-                      <span class="zent-flow-step">4. Confirm delivery</span>
-                  </div>
+  <div class="page-content">
+      <div class="container zent-product-page">
+          <div class="zent-flow-banner">
+              <div>
+                  <strong>Order flow</strong>
+                  <div class="small text-muted">Review the gallery, choose a size if needed, add the item to cart, then confirm delivery details during checkout.</div>
               </div>
-              <div class="row gutter-lg">
-                  <div class="main-content">
-                      <div class="product product-single row">
-                        <div class="col-md-6 mb-6">
-                            <div class="product-gallery product-gallery-sticky">
-                                <div class="swiper-container product-single-swiper swiper-theme nav-inner" data-swiper-options="{
-                                    'navigation': {
-                                        'nextEl': '.swiper-button-next',
-                                        'prevEl': '.swiper-button-prev'
-                                    }
-                                }">
-                                    <div class="swiper-wrapper row cols-1 gutter-no">
-                                        <div class="swiper-slide">
-                                            <figure class="product-image">
-                                                <!-- Main product image with an ID for easy targeting -->
-                                                <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}"
-                                                    data-zoom-image="{{ product.product_image.url|cdn_optimize }}"
-                                                    alt="Electronics Black Wrist Watch" width="800" height="900">
-                                            </figure>
-                                        </div>
-                                        {% for p in p_image %}
-                                        <div class="swiper-slide">
-                                            <figure class="product-image">
-                                                <img src="{{ p.image.url|cdn_optimize }}"
-                                                    data-zoom-image="{{ p.image.url|cdn_optimize }}"
-                                                    alt="Electronics Black Wrist Watch" width="488" height="549">
-                                            </figure>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                        
-                                <!-- Thumbs section -->
-                                <div class="product-thumbs-wrap swiper-container" data-swiper-options="{
-                                    'navigation': {
-                                        'nextEl': '.swiper-button-next',
-                                        'prevEl': '.swiper-button-prev'
-                                    }
-                                }">
-                                    <div class="product-thumbs swiper-wrapper row cols-4 gutter-sm">
-                                        <div class="product-thumb swiper-slide">
-                                            <img class="thumbnail" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="800" height="900" data-large="{{ product.product_image.url|cdn_optimize }}">
-                                        </div>
-                                        {% for p in p_image %}
-                                        <div class="product-thumb swiper-slide">
-                                            <!-- Thumbnail images with a custom attribute for large image URLs -->
-                                            <img class="thumbnail" src="{{ p.image.url|cdn_optimize }}" alt="Product Thumb" width="800" height="900" data-large="{{ p.image.url|cdn_optimize }}">
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    <button class="swiper-button-next"></button>
-                                    <button class="swiper-button-prev"></button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- JavaScript to update the main image when a thumbnail is clicked -->
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                // Thumbnail image switcher
-                                // Select all thumbnails
-                                const thumbnails = document.querySelectorAll('.product-thumb img.thumbnail');
-                                
-                                // Select the main product image
-                                const mainImage = document.getElementById('main-product-image');
-                        
-                                // Add event listener for each thumbnail
-                                if (mainImage && thumbnails.length > 0) {
-                                    thumbnails.forEach(function(thumbnail) {
-                                        thumbnail.addEventListener('click', function() {
-                                            const newImageUrl = thumbnail.getAttribute('data-large');
-                                            mainImage.setAttribute('src', newImageUrl);
-                                            mainImage.setAttribute('data-zoom-image', newImageUrl);
-                                        });
-                                    });
-                                }
-
-                                // Quantity control script
-                                const quantityInput = document.getElementById('quantity-input');
-                                const minusButton = document.getElementById('quantity-minus-btn');
-                                const plusButton = document.getElementById('quantity-plus-btn');
-
-                                if (quantityInput && minusButton && plusButton) {
-                                    minusButton.addEventListener('click', function() {
-                                        let currentValue = parseInt(quantityInput.value, 10);
-                                        const minValue = parseInt(quantityInput.min, 10) || 1;
-                                        if (currentValue > minValue) {
-                                            quantityInput.value = currentValue - 1;
-                                        }
-                                    });
-
-                                    plusButton.addEventListener('click', function() {
-                                        let currentValue = parseInt(quantityInput.value, 10);
-                                        const maxValue = parseInt(quantityInput.max, 10) || 1000; // Default max if not set
-                                        if (currentValue < maxValue) {
-                                            quantityInput.value = currentValue + 1;
-                                        }
-                                    });
-
-                                    quantityInput.addEventListener('change', function() {
-                                        let value = parseInt(this.value, 10);
-                                        const minValue = parseInt(this.min, 10) || 1;
-                                        const maxValue = parseInt(this.max, 10) || 1000;
-                                        if (isNaN(value) || value < minValue) {
-                                            this.value = minValue;
-                                        } else if (value > maxValue) {
-                                            this.value = maxValue;
-                                        }
-                                    });
-                                }
-                            });
-                        </script>
-                        
-                          <div class="col-md-6 mb-4 mb-md-6">
-                              <div class="product-details zent-detail-panel" data-sticky-options="{'minWidth': 767}">
-                                  <div class="zent-product-meta mb-3">
-                                      <span class="zent-product-pill">{{ product.category }}</span>
-                                      {% if product.brand %}
-                                      <span class="zent-product-pill zent-product-pill--muted">{{ product.brand }}</span>
-                                      {% endif %}
-                                      <span class="zent-product-pill zent-product-pill--muted">SKU {{ product.sku }}</span>
-                                  </div>
-
-                                  <h1 class="product-title zent-detail-title">{{ product.title }}</h1>
-                                  <div class="product-price mb-3"><ins class="new-price">{{ product.price }} ETB</ins></div>
-
-                                  <p class="zent-detail-summary">{{ product.short_description }}</p>
-
-                                  <div class="zent-trust-grid">
-                                      <div class="zent-trust-item">
-                                          <strong>Delivery flow</strong>
-                                          <span>Place the order, then Zentanee confirms the delivery details with you directly.</span>
-                                      </div>
-                                      <div class="zent-trust-item">
-                                          <strong>Return window</strong>
-                                          <span>Eligible orders can be returned within 3 days if the item is not right for you.</span>
-                                      </div>
-                                      <div class="zent-trust-item">
-                                          <strong>Next step</strong>
-                                          <span>{% if available_sizes %}Pick your preferred size before adding to cart.{% else %}Add this item to cart, then confirm delivery in checkout.{% endif %}</span>
-                                      </div>
-                                  </div>
-
-                                  {% if available_sizes %}
-                                  <div class="zent-size-help">
-                                      Available sizes: {{ product.available_sizes }}. Choose the best fit now so your order can move straight into confirmation.
-                                  </div>
-                                  {% endif %}
-
-                                  <div class="fix-bottom product-sticky-content sticky-content">
-                                      <div class="product-form container zent-product-form-shell">
-                                        <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="d-flex flex-wrap align-items-end gap-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
-                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            {% if available_sizes %}
-                                            <div class="size-chooser-wrap me-3 mb-2 mb-md-0">
-                                                <label class="form-label mb-2 d-block fw-bold">Select size</label>
-                                                <div class="size-options" role="radiogroup" aria-label="Available sizes">
-                                                    {% for size_option in available_sizes %}
-                                                    <label class="size-chip">
-                                                        <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
-                                                        <span>{{ size_option }}</span>
-                                                    </label>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                            {% endif %}
-
-                                            <div class="zent-product-form-actions">
-                                                <button type="submit" class="btn btn-primary btn-sm mt-2 mt-md-0" {% if product.is_sold_out %}disabled{% endif %}>
-                                                    <i class="w-icon-cart"></i>
-                                                    <span>{% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}</span>
-                                                </button>
-                                                <a href="{% url 'store:cart' %}" class="btn btn-outline-dark btn-sm mt-2 mt-md-0">Go to Cart</a>
-                                            </div>
-                                        </form>
-                                        <div id="add-to-cart-feedback" class="mt-2 small"></div>
-                                      </div>
-                                  </div>
-
-                                  <div class="social-links-wrapper mt-4">
-                                      <p class="small text-muted mb-2">Need help before ordering? Reach us on Instagram or LinkedIn and we will guide you.</p>
-                                      <div class="social-links">
-                                          <div class="social-icons social-no-color border-thin">
-                                              <a href="https://www.instagram.com/zentanee/" class="social-icon social-instagram w-icon-instagram"></a>
-                                              <a href="https://www.linkedin.com/company/zentanee/" class="social-icon social-youtube fab fa-linkedin-in"></a>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-
-                                            <style>
-                                                .size-chooser-wrap {
-                                                    min-width: 260px;
-                                                }
-
-                                                .size-options {
-                                                    display: flex;
-                                                    flex-wrap: wrap;
-                                                    gap: 8px;
-                                                }
-
-                                                .size-chip {
-                                                    position: relative;
-                                                    margin: 0;
-                                                }
-
-                                                .size-chip input {
-                                                    position: absolute;
-                                                    opacity: 0;
-                                                    pointer-events: none;
-                                                }
-
-                                                .size-chip span {
-                                                    display: inline-flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                    min-width: 48px;
-                                                    height: 36px;
-                                                    padding: 0 14px;
-                                                    border-radius: 999px;
-                                                    border: 1px solid #d7dce6;
-                                                    background: #f7f9fc;
-                                                    color: #2f3640;
-                                                    font-weight: 600;
-                                                    font-size: 13px;
-                                                    cursor: pointer;
-                                                    transition: all .2s ease;
-                                                }
-
-                                                .size-chip span:hover {
-                                                    border-color: #2b7cff;
-                                                    background: #eef4ff;
-                                                }
-
-                                                .size-chip input:checked + span {
-                                                    border-color: #1f5fcc;
-                                                    background: #2b7cff;
-                                                    color: #fff;
-                                                    box-shadow: 0 6px 14px rgba(43, 124, 255, .24);
-                                                }
-
-                                                #add-to-cart-feedback.text-success {
-                                                    color: #1f8c47 !important;
-                                                    font-weight: 600;
-                                                }
-
-                                                #add-to-cart-feedback.text-danger {
-                                                    color: #cc3344 !important;
-                                                    font-weight: 600;
-                                                }
-                                            </style>
-
-                                            <script>
-                                                document.addEventListener('DOMContentLoaded', function () {
-                                                    const form = document.getElementById('product-add-to-cart-form');
-                                                    const feedback = document.getElementById('add-to-cart-feedback');
-                                                    if (!form || !feedback) return;
-
-                                                    form.addEventListener('submit', async function (event) {
-                                                        event.preventDefault();
-
-                                                        const submitButton = form.querySelector('button[type="submit"]');
-                                                        const originalButtonText = submitButton ? submitButton.innerHTML : '';
-
-                                                        try {
-                                                            if (submitButton) {
-                                                                submitButton.disabled = true;
-                                                                submitButton.innerHTML = '<span>Adding...</span>';
-                                                            }
-
-                                                            const response = await fetch(form.action, {
-                                                                method: 'POST',
-                                                                headers: {
-                                                                    'X-Requested-With': 'XMLHttpRequest',
-                                                                },
-                                                                body: new FormData(form),
-                                                                credentials: 'same-origin',
-                                                            });
-
-                                                            if (response.redirected) {
-                                                                window.location.href = response.url;
-                                                                return;
-                                                            }
-
-                                                            const data = await response.json();
-                                                            feedback.textContent = data.message || 'Request completed.';
-                                                            feedback.className = data.ok ? 'mt-2 small text-success' : 'mt-2 small text-danger';
-
-                                                            if (typeof data.cart_items_count !== 'undefined') {
-                                                                document.querySelectorAll('.cart-count').forEach(function (el) {
-                                                                    el.textContent = data.cart_items_count;
-                                                                });
-                                                            }
-                                                        } catch (error) {
-                                                            feedback.textContent = 'Unable to add item right now. Please try again.';
-                                                            feedback.className = 'mt-2 small text-danger';
-                                                        } finally {
-                                                            if (submitButton) {
-                                                                submitButton.disabled = {{ product.is_sold_out|yesno:'true,false' }};
-                                                                submitButton.innerHTML = originalButtonText;
-                                                            }
-                                                        }
-                                                    });
-                                                });
-                                            </script>
-                      {% comment %} <div class="frequently-bought-together mt-5">
-                          <h2 class="title title-underline">Frequently Bought Together</h2>
-                          <div class="bought-together-products row mt-8 pb-4">
-                              <div class="product product-wrap text-center">
-                                  <figure class="product-media">
-                                      <img src="{% static 'asset/images/products/default/bought-1.webp' %}" alt="Product"
-                                          width="138" height="138" />
-                                      <div class="product-checkbox">
-                                          <input type="checkbox" class="custom-checkbox" id="product_check1"
-                                              name="product_check1">
-                                          <label></label>
-                                      </div>
-                                  </figure>
-                                  <div class="product-details">
-                                      <h4 class="product-name">
-                                          <a href="#">Electronics Black Wrist Watch</a>
-                                      </h4>
-                                      <div class="product-price">$40.00</div>
-                                  </div>
-                              </div>
-                              <div class="product product-wrap text-center">
-                                  <figure class="product-media">
-                                      <img src="{% static 'asset/images/products/default/bought-2.webp' %}" alt="Product"
-                                          width="138" height="138" />
-                                      <div class="product-checkbox">
-                                          <input type="checkbox" class="custom-checkbox" id="product_check2"
-                                              name="product_check2">
-                                          <label></label>
-                                      </div>
-                                  </figure>
-                                  <div class="product-details">
-                                      <h4 class="product-name">
-                                          <a href="#">Apple Laptop</a>
-                                      </h4>
-                                      <div class="product-price">$1,800.00</div>
-                                  </div>
-                              </div>
-                              <div class="product product-wrap text-center">
-                                  <figure class="product-media">
-                                      <img src="{% static 'asset/images/products/default/bought-3.webp' %}" alt="Product"
-                                          width="138" height="138" />
-                                      <div class="product-checkbox">
-                                          <input type="checkbox" class="custom-checkbox" id="product_check3"
-                                              name="product_check3">
-                                          <label></label>
-                                      </div>
-                                  </figure>
-                                  <div class="product-details">
-                                      <h4 class="product-name">
-                                          <a href="#">White Lenovo Headphone</a>
-                                      </h4>
-                                      <div class="product-price">$34.00</div>
-                                  </div>
-                              </div>
-                              <div class="product-button">
-                                  <div class="bought-price font-weight-bolder text-primary ls-50">$1,874.00</div>
-                                  <div class="bought-count">For 3 items</div>
-                                  <a href="cart.html" class="btn btn-dark btn-rounded">Add All To Cart</a>
-                              </div>
-                          </div>
-                      </div> {% endcomment %}
-                      <div class="tab tab-nav-boxed tab-nav-underline product-tabs">
-                          <ul class="nav nav-tabs" role="tablist">
-                              <li class="nav-item">
-                                  <a href="#product-tab-description" class="nav-link active">Why you'll love it</a>
-                              </li>
-                              <li class="nav-item">
-                                  <a href="#product-tab-specification" class="nav-link">Details &amp; delivery</a>
-                              </li>
-                              {% comment %} <li class="nav-item">
-                                  <a href="#product-tab-vendor" class="nav-link">Vendor Info</a>
-                              </li>
-                              <li class="nav-item">
-                                  <a href="#product-tab-reviews" class="nav-link">Customer Reviews (3)</a>
-                              </li> {% endcomment %}
-                          </ul>
-                          <div class="tab-content">
-                              <div class="tab-pane active" id="product-tab-description">
-                                  <div class="row g-4 zent-tabs-copy">
-                                      <div class="col-lg-7">
-                                          <h4 class="title tab-pane-title font-weight-bold mb-3">Product story</h4>
-                                          {% if product.detail_description %}
-                                          <div class="zent-detail-muted">{{ product.detail_description|linebreaks }}</div>
-                                          {% else %}
-                                          <p class="zent-detail-muted mb-0">{{ product.short_description }}</p>
-                                          {% endif %}
-                                      </div>
-                                      <div class="col-lg-5">
-                                          <div class="zent-profile-stat h-100">
-                                              <strong class="h6 mb-2 d-block">Best way to order</strong>
-                                              <p class="mb-2">Review the photos, choose the right size, then add the item to cart.</p>
-                                              <p class="mb-0">You can adjust quantities in cart before placing the final order.</p>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div class="tab-pane" id="product-tab-specification">
-                                  <ul class="list-none">
-                                      <li>
-                                          <label>Category</label>
-                                          <p>{{ product.category }}</p>
-                                      </li>
-                                      <li>
-                                          <label>Brand</label>
-                                          <p>{% if product.brand %}{{ product.brand }}{% else %}Zentanee{% endif %}</p>
-                                      </li>
-                                      <li>
-                                          <label>Sizes</label>
-                                          <p>{% if product.available_sizes %}{{ product.available_sizes }}{% else %}One standard option{% endif %}</p>
-                                      </li>
-                                      <li>
-                                          <label>Delivery</label>
-                                          <p>Orders are confirmed after checkout and coordinated directly for delivery.</p>
-                                      </li>
-                                      <li>
-                                          <label>Returns</label>
-                                          <p>Eligible returns are supported within 3 days.</p>
-                                      </li>
-                                      <li>
-                                          <label>Product code</label>
-                                          <p>{{ product.sku }}</p>
-                                      </li>
-                                  </ul>
-                              </div>
-                              <div class="tab-pane" id="product-tab-vendor">
-                                  <div class="row mb-3">
-                                      <div class="col-md-6 mb-4">
-                                          <figure class="vendor-banner br-sm">
-                                              <img src="{% static 'asset/images/products/vendor-banner.webp' %}"
-                                                  alt="Vendor Banner" width="610" height="295"
-                                                  style="background-color: #353B55;" />
-                                          </figure>
-                                      </div>
-                                      <div class="col-md-6 pl-2 pl-md-6 mb-4">
-                                          <div class="vendor-user">
-                                              <figure class="vendor-logo mr-4">
-                                                  <a href="#">
-                                                      <img src="{% static 'asset/images/products/vendor-logo.webp' %}"
-                                                          alt="Vendor Logo" width="80" height="80" />
-                                                  </a>
-                                              </figure>
-                                              <div>
-                                                  <div class="vendor-name"><a href="#">Jone Doe</a></div>
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 90%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <a href="#" class="rating-reviews">(32 Reviews)</a>
-                                                  </div>
-                                              </div>
-                                          </div>
-                                          <ul class="vendor-info list-style-none">
-                                              <li class="store-name">
-                                                  <label>Store Name:</label>
-                                                  <span class="detail">OAIO Store</span>
-                                              </li>
-                                              <li class="store-address">
-                                                  <label>Address:</label>
-                                                  <span class="detail">Steven Street, El Carjon, CA 92020, United
-                                                      States (US)</span>
-                                              </li>
-                                              <li class="store-phone">
-                                                  <label>Phone:</label>
-                                                  <a href="#tel:">1234567890</a>
-                                              </li>
-                                          </ul>
-                                          <a href="vendor-dokan-store.html"
-                                              class="btn btn-dark btn-link btn-underline btn-icon-right">Visit
-                                              Store<i class="w-icon-long-arrow-right"></i></a>
-                                      </div>
-                                  </div>
-                                  <p class="mb-5"><strong class="text-dark">L</strong>orem ipsum dolor sit amet,
-                                      consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et
-                                      dolore magna aliqua.
-                                      Venenatis tellus in metus vulputate eu scelerisque felis. Vel pretium
-                                      lectus quam id leo in vitae turpis massa. Nunc id cursus metus aliquam.
-                                      Libero id faucibus nisl tincidunt eget. Aliquam id diam maecenas ultricies
-                                      mi eget mauris. Volutpat ac tincidunt vitae semper quis lectus. Vestibulum
-                                      mattis ullamcorper velit sed. A arcu cursus vitae congue mauris.
-                                  </p>
-                                  <p class="mb-2"><strong class="text-dark">A</strong> arcu cursus vitae congue
-                                      mauris. Sagittis id consectetur purus
-                                      ut. Tellus rutrum tellus pellentesque eu tincidunt tortor aliquam nulla.
-                                      Diam in
-                                      arcu cursus euismod quis. Eget sit amet tellus cras adipiscing enim eu. In
-                                      fermentum et sollicitudin ac orci phasellus. A condimentum vitae sapien
-                                      pellentesque
-                                      habitant morbi tristique senectus et. In dictum non consectetur a erat. Nunc
-                                      scelerisque viverra mauris in aliquam sem fringilla.</p>
-                              </div>
-                              <div class="tab-pane" id="product-tab-reviews">
-                                  <div class="row mb-4">
-                                      <div class="col-xl-4 col-lg-5 mb-4">
-                                          <div class="ratings-wrapper">
-                                              <div class="avg-rating-container">
-                                                  <h4 class="avg-mark font-weight-bolder ls-50">3.3</h4>
-                                                  <div class="avg-rating">
-                                                      <p class="text-dark mb-1">Average Rating</p>
-                                                      <div class="ratings-container">
-                                                          <div class="ratings-full">
-                                                              <span class="ratings" style="width: 60%;"></span>
-                                                              <span class="tooltiptext tooltip-top"></span>
-                                                          </div>
-                                                          <a href="#" class="rating-reviews">(3 Reviews)</a>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                              <div
-                                                  class="ratings-value d-flex align-items-center text-dark ls-25">
-                                                  <span
-                                                      class="text-dark font-weight-bold">66.7%</span>Recommended<span
-                                                      class="count">(2 of 3)</span>
-                                              </div>
-                                              <div class="ratings-list">
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 100%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <div class="progress-bar progress-bar-sm ">
-                                                          <span></span>
-                                                      </div>
-                                                      <div class="progress-value">
-                                                          <mark>70%</mark>
-                                                      </div>
-                                                  </div>
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 80%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <div class="progress-bar progress-bar-sm ">
-                                                          <span></span>
-                                                      </div>
-                                                      <div class="progress-value">
-                                                          <mark>30%</mark>
-                                                      </div>
-                                                  </div>
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 60%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <div class="progress-bar progress-bar-sm ">
-                                                          <span></span>
-                                                      </div>
-                                                      <div class="progress-value">
-                                                          <mark>40%</mark>
-                                                      </div>
-                                                  </div>
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 40%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <div class="progress-bar progress-bar-sm ">
-                                                          <span></span>
-                                                      </div>
-                                                      <div class="progress-value">
-                                                          <mark>0%</mark>
-                                                      </div>
-                                                  </div>
-                                                  <div class="ratings-container">
-                                                      <div class="ratings-full">
-                                                          <span class="ratings" style="width: 20%;"></span>
-                                                          <span class="tooltiptext tooltip-top"></span>
-                                                      </div>
-                                                      <div class="progress-bar progress-bar-sm ">
-                                                          <span></span>
-                                                      </div>
-                                                      <div class="progress-value">
-                                                          <mark>0%</mark>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div class="col-xl-8 col-lg-7 mb-4">
-                                          <div class="review-form-wrapper">
-                                              <h3 class="title tab-pane-title font-weight-bold mb-1">Submit Your
-                                                  Review</h3>
-                                              <p class="mb-3">Your email address will not be published. Required
-                                                  fields are marked *</p>
-                                              <form action="#" method="POST" class="review-form">
-                                                  <div class="rating-form">
-                                                      <label for="rating">Your Rating Of This Product :</label>
-                                                      <span class="rating-stars">
-                                                          <a class="star-1" href="#">1</a>
-                                                          <a class="star-2" href="#">2</a>
-                                                          <a class="star-3" href="#">3</a>
-                                                          <a class="star-4" href="#">4</a>
-                                                          <a class="star-5" href="#">5</a>
-                                                      </span>
-                                                      <select name="rating" id="rating" required=""
-                                                          style="display: none;">
-                                                          <option value="">Rate…</option>
-                                                          <option value="5">Perfect</option>
-                                                          <option value="4">Good</option>
-                                                          <option value="3">Average</option>
-                                                          <option value="2">Not that bad</option>
-                                                          <option value="1">Very poor</option>
-                                                      </select>
-                                                  </div>
-                                                  <textarea cols="30" rows="6"
-                                                      placeholder="Write Your Review Here..." class="form-control"
-                                                      id="review"></textarea>
-                                                  <div class="row gutter-md">
-                                                      <div class="col-md-6">
-                                                          <input type="text" class="form-control"
-                                                              placeholder="Your Name" id="author">
-                                                      </div>
-                                                      <div class="col-md-6">
-                                                          <input type="text" class="form-control"
-                                                              placeholder="Your Email" id="email_1">
-                                                      </div>
-                                                  </div>
-                                                  <div class="form-group">
-                                                      <input type="checkbox" class="custom-checkbox"
-                                                          id="save-checkbox">
-                                                      <label for="save-checkbox">Save my name, email, and website
-                                                          in this browser for the next time I comment.</label>
-                                                  </div>
-                                                  <button type="submit" class="btn btn-dark">Submit
-                                                      Review</button>
-                                              </form>
-                                          </div>
-                                      </div>
-                                  </div>
-
-                                  <div class="tab tab-nav-boxed tab-nav-outline tab-nav-center">
-                                      <ul class="nav nav-tabs" role="tablist">
-                                          <li class="nav-item">
-                                              <a href="#show-all" class="nav-link active">Show All</a>
-                                          </li>
-                                          <li class="nav-item">
-                                              <a href="#helpful-positive" class="nav-link">Most Helpful
-                                                  Positive</a>
-                                          </li>
-                                          <li class="nav-item">
-                                              <a href="#helpful-negative" class="nav-link">Most Helpful
-                                                  Negative</a>
-                                          </li>
-                                          <li class="nav-item">
-                                              <a href="#highest-rating" class="nav-link">Highest Rating</a>
-                                          </li>
-                                          <li class="nav-item">
-                                              <a href="#lowest-rating" class="nav-link">Lowest Rating</a>
-                                          </li>
-                                      </ul>
-                                      <div class="tab-content">
-                                          <div class="tab-pane active" id="show-all">
-                                              <ul class="comments list-style-none">
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/1-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:54 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 60%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>pellentesque habitant morbi tristique senectus
-                                                                  et. In dictum non consectetur a erat.
-                                                                  Nunc ultrices eros in cursus turpis massa
-                                                                  tincidunt ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-1.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-1-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/2-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:52 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 80%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>Nullam a magna porttitor, dictum risus nec,
-                                                                  faucibus sapien.
-                                                                  Ultrices eros in cursus turpis massa tincidunt
-                                                                  ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-2.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-2.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-3.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-3.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/3-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:21 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 60%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>In fermentum et sollicitudin ac orci phasellus. A
-                                                                  condimentum vitae
-                                                                  sapien pellentesque habitant morbi tristique
-                                                                  senectus et. In dictum
-                                                                  non consectetur a erat. Nunc scelerisque viverra
-                                                                  mauris in aliquam sem fringilla.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (0)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (1)
-                                                                  </a>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                              </ul>
-                                          </div>
-                                          <div class="tab-pane" id="helpful-positive">
-                                              <ul class="comments list-style-none">
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/1-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:54 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 60%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>pellentesque habitant morbi tristique senectus
-                                                                  et. In dictum non consectetur a erat.
-                                                                  Nunc ultrices eros in cursus turpis massa
-                                                                  tincidunt ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-1.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-1.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/2-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:52 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 80%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>Nullam a magna porttitor, dictum risus nec,
-                                                                  faucibus sapien.
-                                                                  Ultrices eros in cursus turpis massa tincidunt
-                                                                  ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-2.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-2-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-3.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-3-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                              </ul>
-                                          </div>
-                                          <div class="tab-pane" id="helpful-negative">
-                                              <ul class="comments list-style-none">
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/3-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:21 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 60%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>In fermentum et sollicitudin ac orci phasellus. A
-                                                                  condimentum vitae
-                                                                  sapien pellentesque habitant morbi tristique
-                                                                  senectus et. In dictum
-                                                                  non consectetur a erat. Nunc scelerisque viverra
-                                                                  mauris in aliquam sem fringilla.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (0)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (1)
-                                                                  </a>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                              </ul>
-                                          </div>
-                                          <div class="tab-pane" id="highest-rating">
-                                              <ul class="comments list-style-none">
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/2-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:52 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 80%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>Nullam a magna porttitor, dictum risus nec,
-                                                                  faucibus sapien.
-                                                                  Ultrices eros in cursus turpis massa tincidunt
-                                                                  ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-2.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-2-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-3.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-3-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                              </ul>
-                                          </div>
-                                          <div class="tab-pane" id="lowest-rating">
-                                              <ul class="comments list-style-none">
-                                                  <li class="comment">
-                                                      <div class="comment-body">
-                                                          <figure class="comment-avatar">
-                                                              <img src="{% static 'asset/images/agents/1-100x100.webp' %}"
-                                                                  alt="Commenter Avatar" width="90" height="90">
-                                                          </figure>
-                                                          <div class="comment-content">
-                                                              <h4 class="comment-author">
-                                                                  <a href="#">John Doe</a>
-                                                                  <span class="comment-date">March 22, 2021 at
-                                                                      1:54 pm</span>
-                                                              </h4>
-                                                              <div class="ratings-container comment-rating">
-                                                                  <div class="ratings-full">
-                                                                      <span class="ratings"
-                                                                          style="width: 60%;"></span>
-                                                                      <span
-                                                                          class="tooltiptext tooltip-top"></span>
-                                                                  </div>
-                                                              </div>
-                                                              <p>pellentesque habitant morbi tristique senectus
-                                                                  et. In dictum non consectetur a erat.
-                                                                  Nunc ultrices eros in cursus turpis massa
-                                                                  tincidunt ante in nibh mauris cursus mattis.
-                                                                  Cras ornare arcu dui vivamus arcu felis bibendum
-                                                                  ut tristique.</p>
-                                                              <div class="comment-action">
-                                                                  <a href="#"
-                                                                      class="btn btn-secondary btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-up"></i>Helpful (1)
-                                                                  </a>
-                                                                  <a href="#"
-                                                                      class="btn btn-dark btn-link btn-underline sm btn-icon-left font-weight-normal text-capitalize">
-                                                                      <i class="far fa-thumbs-down"></i>Unhelpful
-                                                                      (0)
-                                                                  </a>
-                                                                  <div class="review-image">
-                                                                      <a href="#">
-                                                                          <figure>
-                                                                              <img src="{% static 'asset/images/products/default/review-img-3.webp' %}"
-                                                                                  width="60" height="60"
-                                                                                  alt="Attachment image of John Doe's review on Electronics Black Wrist Watch"
-                                                                                  data-zoom-image="asset/images/products/default/review-img-3-800x900.webp" />
-                                                                          </figure>
-                                                                      </a>
-                                                                  </div>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </li>
-                                              </ul>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      {% comment %} <section class="vendor-product-section">
-                          <div class="title-link-wrapper mb-4">
-                              <h4 class="title text-left">More Products From This Vendor</h4>
-                              <a href="#" class="btn btn-dark btn-link btn-slide-right btn-icon-right">More
-                                  Products<i class="w-icon-long-arrow-right"></i></a>
-                          </div>
-                          <div class="swiper-container swiper-theme" data-swiper-options="{
-                              'spaceBetween': 20,
-                              'slidesPerView': 2,
-                              'breakpoints': {
-                                  '576': {
-                                      'slidesPerView': 3
-                                  },
-                                  '768': {
-                                      'slidesPerView': 4
-                                  },
-                                  '992': {
-                                      'slidesPerView': 3
-                                  }
-                              }
-                          }">
-                              <div class="swiper-wrapper row cols-lg-3 cols-md-4 cols-sm-3 cols-2">
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/1-1.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                              <img src="{% static 'asset/images/products/default/1-2.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <div class="product-cat"><a href="shop-banner-sidebar.html">Accessories</a>
-                                          </div>
-                                          <h4 class="product-name"><a href="product-default.html">Sticky Pencil</a>
-                                          </h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 100%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(3 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">$20.00</div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/2.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <div class="product-cat"><a href="shop-banner-sidebar.html">Electronics</a>
-                                          </div>
-                                          <h4 class="product-name"><a href="product-default.html">Mini
-                                                  Multi-Functional Cooker</a></h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 80%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(5 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">
-                                                  <ins class="new-price">$480.00</ins><del
-                                                      class="old-price">$534.00</del>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/3.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <div class="product-cat"><a href="shop-banner-sidebar.html">Sports</a></div>
-                                          <h4 class="product-name"><a href="product-default.html">Skate Pan</a></h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 100%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(3 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">
-                                                  <ins class="new-price">$278.00</ins><del
-                                                      class="old-price">$310.00</del>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/4-1.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                              <img src="{% static 'asset/images/products/default/4-2.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <div class="product-cat"><a href="shop-banner-sidebar.html">Accessories</a>
-                                          </div>
-                                          <h4 class="product-name"><a href="product-default.html">Clip Attachment</a>
-                                          </h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 100%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(5 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">$40.00</div>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </section> {% endcomment %}
-                      
-                      <section class="related-product-section">
-                          <div class="title-link-wrapper mb-4">
-                              <h4 class="title">Related Products</h4>
-                              <a href="{% url 'store:category-products' product.category.slug %}" class="btn btn-dark btn-link btn-slide-right btn-icon-right">More
-                                  Products<i class="w-icon-long-arrow-right"></i></a>
-                          </div>
-                          
-                          <div class="swiper-container swiper-theme" data-swiper-options="{
-                              'spaceBetween': 20,
-                              'slidesPerView': 2,
-                              'breakpoints': {
-                                  '576': {
-                                      'slidesPerView': 3
-                                  },
-                                  '768': {
-                                      'slidesPerView': 4
-                                  },
-                                  '992': {
-                                      'slidesPerView': 3
-                                  }
-                              }
-                          }">
-                          
-                              <div class="swiper-wrapper row cols-lg-3 cols-md-4 cols-sm-3 cols-2">
-                                  {% if related_products %}
-                                    {% for rp in related_products %}
-                             <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="{% url 'store:product-detail' rp.slug %}">
-                                              <img loading="lazy" src="{{rp.product_image.url|cdn_optimize}}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          {% if rp.is_sold_out %}
-                                    <div class="product-label-group">
-                                        <label class="product-label label-discount">SOLD OUT</label>
-                                    </div>
-                                    {% endif %}
-                                          {% comment %} <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div> {% endcomment %}
-                                          <div class="product-action">
-                                              <a href="{% url 'store:product-detail' rp.slug %}" class="btn-product btn-quickview" title="View product">View
-                                                  Product</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <h4 class="product-name"><a href="{% url 'store:product-detail' rp.slug %}">{{rp.title}}</a></h4>
-                                          
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">{{rp.price}} ETB</div>
-                                          </div>
-                                      </div>
-                                  </div>{% endfor %}
-                          {% endif %}
-                                  {% comment %} <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/6.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <h4 class="product-name"><a href="product-default.html">Official Camera</a>
-                                          </h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 100%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(3 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">
-                                                  <ins class="new-price">$263.00</ins><del
-                                                      class="old-price">$300.00</del>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/7-1.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                              <img src="{% static 'asset/images/products/default/7-2.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <h4 class="product-name"><a href="product-default.html">Phone Charge Pad</a>
-                                          </h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 80%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(8 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">$23.00</div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  <div class="swiper-slide product">
-                                      <figure class="product-media">
-                                          <a href="product-default.html">
-                                              <img src="{% static 'asset/images/products/default/8.webp' %}" alt="Product"
-                                                  width="300" height="338" />
-                                          </a>
-                                          <div class="product-action-vertical">
-                                              <a href="#" class="btn-product-icon btn-cart w-icon-cart"
-                                                  title="Add to cart"></a>
-                                              <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                  title="Add to wishlist"></a>
-                                              <a href="#" class="btn-product-icon btn-compare w-icon-compare"
-                                                  title="Add to Compare"></a>
-                                          </div>
-                                          <div class="product-action">
-                                              <a href="#" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
-                                          </div>
-                                      </figure>
-                                      <div class="product-details">
-                                          <h4 class="product-name"><a href="product-default.html">Fashionalble
-                                                  Pencil</a></h4>
-                                          <div class="ratings-container">
-                                              <div class="ratings-full">
-                                                  <span class="ratings" style="width: 100%;"></span>
-                                                  <span class="tooltiptext tooltip-top"></span>
-                                              </div>
-                                              <a href="product-default.html" class="rating-reviews">(9 reviews)</a>
-                                          </div>
-                                          <div class="product-pa-wrapper">
-                                              <div class="product-price">$50.00</div>
-                                          </div>
-                                      </div>
-                                  </div> {% endcomment %}
-                              </div>
-                              
-                          </div>
-                          
-                      </section>
-                  </div>
-                  <!-- End of Main Content -->
-                  <aside class="sidebar product-sidebar sidebar-fixed right-sidebar sticky-sidebar-wrapper">
-                      <div class="sidebar-overlay"></div>
-                      <a class="sidebar-close" href="#"><i class="close-icon"></i></a>
-                      <a href="#" class="sidebar-toggle d-flex d-lg-none"><i class="fas fa-chevron-left"></i></a>
-                      <div class="sidebar-content scrollable">
-                          <div class="sticky-sidebar">
-                              <div class="widget widget-icon-box mb-6">
-                                  <div class="icon-box icon-box-side">
-                                      <span class="icon-box-icon text-dark">
-                                          <i class="w-icon-truck"></i>
-                                      </span>
-                                      <div class="icon-box-content">
-                                          <h4 class="icon-box-title">Free Shipping & Returns</h4>
-                                          <p>For all orders</p>
-                                      </div>
-                                  </div>
-                                  <div class="icon-box icon-box-side">
-                                      <span class="icon-box-icon text-dark">
-                                          <i class="w-icon-bag"></i>
-                                      </span>
-                                      <div class="icon-box-content">
-                                          <h4 class="icon-box-title">Secure Payment</h4>
-                                          <p>We ensure secure payment</p>
-                                      </div>
-                                  </div>
-                                  <div class="icon-box icon-box-side">
-                                      <span class="icon-box-icon text-dark">
-                                          <i class="w-icon-money"></i>
-                                      </span>
-                                      <div class="icon-box-content">
-                                          <h4 class="icon-box-title">Money Back Guarantee</h4>
-                                          <p>Any product returned within 3 days</p>
-                                      </div>
-                                  </div>
-                              </div>
-                              <!-- End of Widget Icon Box -->
-
-                              {% comment %} <div class="widget widget-banner mb-9">
-                                  <div class="banner banner-fixed br-sm">
-                                      <figure>
-                                          <img src="{% static 'asset/images/shop/banner3.webp' %}" alt="Banner" width="266"
-                                              height="220" style="background-color: #1D2D44;" />
-                                      </figure>
-                                      <div class="banner-content">
-                                          <div class="banner-price-info font-weight-bolder text-white lh-1 ls-25">
-                                              40<sup class="font-weight-bold">%</sup><sub
-                                                  class="font-weight-bold text-uppercase ls-25">Off</sub>
-                                          </div>
-                                          <h4
-                                              class="banner-subtitle text-white font-weight-bolder text-uppercase mb-0">
-                                              Ultimate Sale</h4>
-                                      </div>
-                                  </div>
-                              </div> 
-                              <!-- End of Widget Banner -->
-
-                              <div class="widget widget-products">
-                                  <div class="title-link-wrapper mb-2">
-                                      <h4 class="title title-link font-weight-bold">More Products</h4>
-                                  </div>
-
-                                  <div class="swiper nav-top">
-                                      <div class="swiper-container swiper-theme nav-top" data-swiper-options = "{
-                                          'slidesPerView': 1,
-                                          'spaceBetween': 20,
-                                          'navigation': {
-                                              'prevEl': '.swiper-button-prev',
-                                              'nextEl': '.swiper-button-next'
-                                          }
-                                      }">
-                                          <div class="swiper-wrapper">
-                                              <div class="widget-col swiper-slide">
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/13.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">Smart Watch</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 100%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$80.00 - $90.00</div>
-                                                      </div>
-                                                  </div>
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/14.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">Sky Medical Facility</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 80%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$58.00</div>
-                                                      </div>
-                                                  </div>
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/15.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">Black Stunt Motor</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 60%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$374.00</div>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                              <div class="widget-col swiper-slide">
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/16.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">Skate Pan</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 100%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$278.00</div>
-                                                      </div>
-                                                  </div>
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/17.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">Modern Cooker</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 80%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$324.00</div>
-                                                      </div>
-                                                  </div>
-                                                  <div class="product product-widget">
-                                                      <figure class="product-media">
-                                                          <a href="#">
-                                                              <img src="{% static 'asset/images/shop/18.webp' %}" alt="Product"
-                                                                  width="100" height="113" />
-                                                          </a>
-                                                      </figure>
-                                                      <div class="product-details">
-                                                          <h4 class="product-name">
-                                                              <a href="#">CT Machine</a>
-                                                          </h4>
-                                                          <div class="ratings-container">
-                                                              <div class="ratings-full">
-                                                                  <span class="ratings" style="width: 100%;"></span>
-                                                                  <span class="tooltiptext tooltip-top"></span>
-                                                              </div>
-                                                          </div>
-                                                          <div class="product-price">$236.00</div>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                          </div>
-                                          <button class="swiper-button-next"></button>
-                                          <button class="swiper-button-prev"></button>
-                                      </div>
-                                  </div>
-                              </div>{% endcomment %}
-                          </div>
-                      </div>
-                  </aside>
-                  <!-- End of Sidebar -->
+              <div class="zent-flow-steps">
+                  <span class="zent-flow-step">1. Review photos</span>
+                  <span class="zent-flow-step">2. Choose size</span>
+                  <span class="zent-flow-step">3. Add to cart</span>
+                  <span class="zent-flow-step">4. Place order</span>
               </div>
           </div>
+
+          <div class="zent-product-layout">
+              <section class="zent-gallery-panel">
+                  <figure class="zent-gallery-stage">
+                      <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                  </figure>
+
+                  <div class="zent-thumb-grid">
+                      <button type="button" class="zent-thumb-button is-active" data-image="{{ product.product_image.url|cdn_optimize }}">
+                          <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                      </button>
+                      {% for image in p_image %}
+                      <button type="button" class="zent-thumb-button" data-image="{{ image.image.url|cdn_optimize }}">
+                          <img src="{{ image.image.url|cdn_optimize }}" alt="{{ product.title }}">
+                      </button>
+                      {% endfor %}
+                  </div>
+              </section>
+
+              <section class="zent-detail-surface">
+                  <div class="zent-detail-header">
+                      <div class="zent-product-meta">
+                          <span class="zent-product-pill">{{ product.category }}</span>
+                          {% if product.brand %}
+                          <span class="zent-product-pill zent-product-pill--muted">{{ product.brand }}</span>
+                          {% endif %}
+                          <span class="zent-product-pill zent-product-pill--muted">SKU {{ product.sku }}</span>
+                      </div>
+                      <h1 class="zent-detail-title mb-0">{{ product.title }}</h1>
+                  </div>
+
+                  <div class="zent-detail-price-row">
+                      <div class="product-price mb-0"><ins class="new-price">{{ product.price }} ETB</ins></div>
+                      {% if product.is_sold_out %}
+                      <span class="zent-stock-pill zent-stock-pill--out">Sold out</span>
+                      {% else %}
+                      <span class="zent-stock-pill zent-stock-pill--ok">Ready to order</span>
+                      {% endif %}
+                  </div>
+
+                  <p class="zent-detail-summary">{{ product.short_description }}</p>
+
+                  <div class="zent-detail-checklist">
+                      <div class="zent-detail-checklist-item">
+                          <strong>Delivery</strong>
+                          <span>Zentanee confirms delivery details after checkout so the order can move forward quickly.</span>
+                      </div>
+                      <div class="zent-detail-checklist-item">
+                          <strong>Returns</strong>
+                          <span>Eligible returns are supported within 3 days if the item is not the right fit.</span>
+                      </div>
+                      <div class="zent-detail-checklist-item">
+                          <strong>Sizing</strong>
+                          <span>{% if available_sizes %}Available sizes: {{ product.available_sizes }}.{% else %}This product does not require a size choice.{% endif %}</span>
+                      </div>
+                      <div class="zent-detail-checklist-item">
+                          <strong>Next step</strong>
+                          <span>{% if available_sizes %}Select your size below, then add the item to cart.{% else %}Add the item to cart and continue to delivery confirmation.{% endif %}</span>
+                      </div>
+                  </div>
+
+                  <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST">
+                      {% csrf_token %}
+                      <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+                      {% if available_sizes %}
+                      <div class="zent-size-chooser">
+                          <label class="form-label mb-2 d-block fw-bold">Select size</label>
+                          <div class="size-options" role="radiogroup" aria-label="Available sizes">
+                              {% for size_option in available_sizes %}
+                              <label class="size-chip">
+                                  <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
+                                  <span>{{ size_option }}</span>
+                              </label>
+                              {% endfor %}
+                          </div>
+                      </div>
+                      {% endif %}
+
+                      <div class="zent-detail-actions">
+                          <button type="submit" class="btn btn-dark" {% if product.is_sold_out %}disabled{% endif %}>
+                              {% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}
+                          </button>
+                          <a href="{% url 'store:cart' %}" class="btn btn-outline-dark">Open Cart</a>
+                      </div>
+                      <div id="add-to-cart-feedback" class="mt-3 small"></div>
+                  </form>
+
+                  <div class="zent-detail-support">
+                      <p class="small text-muted mb-2">Need help before ordering? Reach Zentanee through the contact page or social channels and we will guide you.</p>
+                      <div class="d-flex flex-wrap gap-2">
+                          <a href="{% url 'store:contact' %}" class="btn btn-sm btn-outline-dark">Contact page</a>
+                          <a href="https://instagram.com/zentanee" class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener">Instagram</a>
+                      </div>
+                  </div>
+              </section>
+          </div>
+
+          <section class="zent-detail-section">
+              <div class="row g-4">
+                  <div class="col-lg-7">
+                      <span class="zent-section-kicker">Product details</span>
+                      <h2 class="mb-3">About this item</h2>
+                      <div class="zent-detail-muted">
+                          {% if product.detail_description %}
+                          {{ product.detail_description|linebreaks }}
+                          {% else %}
+                          <p>{{ product.short_description }}</p>
+                          {% endif %}
+                      </div>
+                  </div>
+                  <div class="col-lg-5">
+                      <span class="zent-section-kicker">Quick facts</span>
+                      <h2 class="mb-3">Order-ready details</h2>
+                      <div class="zent-spec-list">
+                          <div class="zent-spec-item">
+                              <strong>Category</strong>
+                              <span>{{ product.category }}</span>
+                          </div>
+                          <div class="zent-spec-item">
+                              <strong>Brand</strong>
+                              <span>{% if product.brand %}{{ product.brand }}{% else %}Zentanee{% endif %}</span>
+                          </div>
+                          <div class="zent-spec-item">
+                              <strong>Sizes</strong>
+                              <span>{% if available_sizes %}{{ product.available_sizes }}{% else %}Standard option{% endif %}</span>
+                          </div>
+                          <div class="zent-spec-item">
+                              <strong>Return window</strong>
+                              <span>3 days</span>
+                          </div>
+                          <div class="zent-spec-item">
+                              <strong>Product code</strong>
+                              <span>{{ product.sku }}</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </section>
+
+          <section class="zent-home-section">
+              <div class="zent-home-section-head">
+                  <div>
+                      <span class="zent-section-kicker">Related items</span>
+                      <h2>You may also like</h2>
+                      <p>Keep browsing without leaving the clean purchase flow. These related items come from the same category.</p>
+                  </div>
+                  <a href="{% url 'store:category-products' product.category.slug %}" class="btn btn-outline-dark">More from {{ product.category }}</a>
+              </div>
+
+              <div class="zent-home-product-grid">
+                  {% for rp in related_products %}
+                  <div class="product-wrap">
+                      {% include 'store/_product_card_content.html' with product=rp %}
+                  </div>
+                  {% empty %}
+                  <p class="text-muted mb-0">More products from this category will appear here as the catalog grows.</p>
+                  {% endfor %}
+              </div>
+          </section>
       </div>
-      <!-- End of Page Content -->
-  </main>
-    {% endblock content %}
+  </div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mainImage = document.getElementById('main-product-image');
+    const thumbButtons = document.querySelectorAll('.zent-thumb-button');
+    thumbButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const newImage = button.getAttribute('data-image');
+            if (!newImage || !mainImage) return;
+            mainImage.setAttribute('src', newImage);
+            thumbButtons.forEach(function (item) {
+                item.classList.remove('is-active');
+            });
+            button.classList.add('is-active');
+        });
+    });
+
+    const form = document.getElementById('product-add-to-cart-form');
+    const feedback = document.getElementById('add-to-cart-feedback');
+    if (!form || !feedback) return;
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalLabel = submitButton ? submitButton.textContent : '';
+
+        try {
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Adding...';
+            }
+
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: new FormData(form),
+            });
+
+            const payload = await response.json();
+            feedback.className = 'mt-3 small ' + (payload.ok ? 'text-success' : 'text-danger');
+            feedback.textContent = payload.message || 'Something went wrong. Please try again.';
+
+            if (payload.ok && typeof payload.cart_items_count !== 'undefined') {
+                document.querySelectorAll('.cart-count').forEach(function (node) {
+                    node.textContent = payload.cart_items_count;
+                });
+            }
+        } catch (error) {
+            feedback.className = 'mt-3 small text-danger';
+            feedback.textContent = 'Unable to add this item right now. Please try again.';
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = {{ product.is_sold_out|yesno:"true,false" }};
+                submitButton.textContent = originalLabel;
+            }
+        }
+    });
+});
+</script>
+{% endblock content %}
