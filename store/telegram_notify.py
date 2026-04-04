@@ -16,6 +16,14 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 TELEGRAM_MEDIA_GROUP_LIMIT = 10
 _TELEGRAM_AUTOPUBLISH_SUSPENDED = ContextVar("telegram_autopublish_suspended", default=False)
+_INVALID_CLOUDINARY_VALUES = {
+    "",
+    "untitled",
+    "changeme",
+    "your-cloud-name",
+    "none",
+    "null",
+}
 
 
 def _normalized_media_name(name):
@@ -23,6 +31,24 @@ def _normalized_media_name(name):
     if value.startswith("media/"):
         return value[len("media/"):]
     return value
+
+
+def _cloudinary_cloud_name():
+    value = (os.getenv("CLOUDINARY_CLOUD_NAME") or "").strip()
+    if value.lower() in _INVALID_CLOUDINARY_VALUES:
+        return ""
+    return value
+
+
+def _cloudinary_delivery_url(storage_name):
+    cloud_name = _cloudinary_cloud_name()
+    normalized_name = _normalized_media_name(storage_name)
+    if not cloud_name or not normalized_name:
+        return None
+    return (
+        f"https://res.cloudinary.com/{cloud_name}/image/upload/"
+        f"f_webp,q_auto/v1/media/{normalized_name}"
+    )
 
 
 @contextmanager
@@ -236,8 +262,11 @@ def _field_file_upload(field_file, field_name):
         return None
 
     storage = getattr(field_file, "storage", None)
+    fallback_url = _cloudinary_delivery_url(getattr(field_file, "name", ""))
     for candidate_name in _normalized_storage_candidates(getattr(field_file, "name", "")):
         try:
+            if storage is not None and hasattr(storage, "exists") and not storage.exists(candidate_name):
+                continue
             if storage is not None:
                 opened = storage.open(candidate_name, "rb")
             else:
@@ -248,7 +277,8 @@ def _field_file_upload(field_file, field_name):
             finally:
                 opened.close()
         except Exception as exc:
-            logger.warning("Telegram media open failed for %s: %s", candidate_name, exc)
+            if not fallback_url:
+                logger.warning("Telegram media open failed for %s: %s", candidate_name, exc)
             continue
 
         if not content:
@@ -262,13 +292,25 @@ def _field_file_upload(field_file, field_name):
 
 def _absolute_media_url(url, storage_name=""):
     candidate = (url or "").strip()
+    cloudinary_url = _cloudinary_delivery_url(storage_name)
+
+    if candidate.startswith("https://res.cloudinary.com/"):
+        if "/upload/" in candidate and "f_webp,q_auto" not in candidate:
+            return candidate.replace("/upload/", "/upload/f_webp,q_auto/", 1)
+        return candidate
+
     if not candidate and storage_name:
+        if cloudinary_url:
+            return cloudinary_url
         normalized_name = _normalized_media_name(storage_name)
         if normalized_name:
             candidate = f"/media/{normalized_name}"
 
     if not candidate:
         return None
+
+    if cloudinary_url:
+        return cloudinary_url
 
     if candidate.startswith("/media/media/"):
         candidate = candidate[len("/media"):]
