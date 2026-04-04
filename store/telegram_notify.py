@@ -3,6 +3,8 @@ import os
 import html
 import json
 import hashlib
+import mimetypes
+import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from decimal import Decimal
@@ -70,12 +72,46 @@ def _base_site_url():
 
 
 def _telegram_api_request(method, payload, token):
+    return _telegram_api_request_with_files(method, payload, token, files=None)
+
+
+def _telegram_api_request_with_files(method, payload, token, files=None):
     if not token:
         return False
 
     endpoint = f"https://api.telegram.org/bot{token}/{method}"
-    encoded = parse.urlencode(payload).encode("utf-8")
-    req = request.Request(endpoint, data=encoded, method="POST")
+    if files:
+        boundary = f"----CodexTelegram{uuid.uuid4().hex}"
+        body = bytearray()
+
+        for key, value in payload.items():
+            body.extend(f"--{boundary}\r\n".encode("utf-8"))
+            body.extend(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode("utf-8"))
+            body.extend(str(value).encode("utf-8"))
+            body.extend(b"\r\n")
+
+        for field_name, filename, content, content_type in files:
+            body.extend(f"--{boundary}\r\n".encode("utf-8"))
+            body.extend(
+                (
+                    f'Content-Disposition: form-data; name="{field_name}"; '
+                    f'filename="{filename}"\r\n'
+                ).encode("utf-8")
+            )
+            body.extend(f"Content-Type: {content_type}\r\n\r\n".encode("utf-8"))
+            body.extend(content)
+            body.extend(b"\r\n")
+
+        body.extend(f"--{boundary}--\r\n".encode("utf-8"))
+        req = request.Request(
+            endpoint,
+            data=bytes(body),
+            method="POST",
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+    else:
+        encoded = parse.urlencode(payload).encode("utf-8")
+        req = request.Request(endpoint, data=encoded, method="POST")
     try:
         with request.urlopen(req, timeout=6) as resp:
             status = getattr(resp, "status", 0)
@@ -144,12 +180,12 @@ def _send_telegram_photo(photo_url, caption, chat_id, token, reply_markup=None, 
     return _telegram_api_request("sendPhoto", payload, token)
 
 
-def _send_telegram_media_group(chat_id, media_items, token):
+def _send_telegram_media_group(chat_id, media_items, token, files=None):
     payload = {
         "chat_id": chat_id,
         "media": json.dumps(media_items),
     }
-    return _telegram_api_request("sendMediaGroup", payload, token)
+    return _telegram_api_request_with_files("sendMediaGroup", payload, token, files=files)
 
 
 def _mark_channel_post_success(product, signature):
@@ -183,6 +219,45 @@ def _format_money(value):
     except Exception:
         return _safe_text(value)
     return f"{amount:,.2f}"
+
+
+def _normalized_storage_candidates(name):
+    value = _normalized_media_name(name)
+    candidates = []
+    if name:
+        candidates.append(str(name).replace("\\", "/").lstrip("/"))
+    if value and value not in candidates:
+        candidates.append(value)
+    return candidates
+
+
+def _field_file_upload(field_file, field_name):
+    if not field_file:
+        return None
+
+    storage = getattr(field_file, "storage", None)
+    for candidate_name in _normalized_storage_candidates(getattr(field_file, "name", "")):
+        try:
+            if storage is not None:
+                opened = storage.open(candidate_name, "rb")
+            else:
+                field_file.open("rb")
+                opened = field_file
+            try:
+                content = opened.read()
+            finally:
+                opened.close()
+        except Exception as exc:
+            logger.warning("Telegram media open failed for %s: %s", candidate_name, exc)
+            continue
+
+        if not content:
+            continue
+
+        filename = os.path.basename(candidate_name) or f"{field_name}.jpg"
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        return (field_name, filename, content, content_type)
+    return None
 
 
 def _absolute_media_url(url, storage_name=""):
@@ -280,31 +355,80 @@ def _collect_product_image_urls(product, max_images=None):
     return image_urls
 
 
-def _chunked_media_groups(image_urls, intro_caption=None):
-    chunks = []
-    for start in range(0, len(image_urls), TELEGRAM_MEDIA_GROUP_LIMIT):
-        chunk_urls = image_urls[start:start + TELEGRAM_MEDIA_GROUP_LIMIT]
-        media_items = []
-        for idx, image_url in enumerate(chunk_urls):
-            media = {
-                "type": "photo",
-                "media": image_url,
+def _collect_product_media_entries(product, max_images=None):
+    media_entries = []
+    seen = set()
+
+    def add_entry(field_file):
+        if not field_file:
+            return
+        file_name = _normalized_media_name(getattr(field_file, "name", ""))
+        fallback_url = _absolute_media_url(
+            getattr(field_file, "url", ""),
+            storage_name=getattr(field_file, "name", ""),
+        )
+        dedupe_key = file_name or fallback_url
+        if dedupe_key and dedupe_key in seen:
+            return
+        if dedupe_key:
+            seen.add(dedupe_key)
+        media_entries.append(
+            {
+                "field_file": field_file,
+                "file_name": file_name,
+                "fallback_url": fallback_url,
             }
+        )
+
+    add_entry(getattr(product, "product_image", None))
+
+    extras_qs = product.p_images.only("image").order_by("id")
+    extras = extras_qs[:max_images] if max_images else extras_qs
+    for extra in extras:
+        add_entry(getattr(extra, "image", None))
+        if max_images and len(media_entries) >= max_images:
+            break
+
+    return media_entries
+
+
+def _chunked_media_groups(media_entries, intro_caption=None):
+    chunks = []
+    for start in range(0, len(media_entries), TELEGRAM_MEDIA_GROUP_LIMIT):
+        chunk_entries = media_entries[start:start + TELEGRAM_MEDIA_GROUP_LIMIT]
+        media_items = []
+        files = []
+        for idx, entry in enumerate(chunk_entries):
+            attach_name = f"photo{start + idx}"
+            upload = _field_file_upload(entry.get("field_file"), attach_name)
+            media_ref = entry.get("fallback_url")
+            if upload:
+                files.append(upload)
+                media_ref = f"attach://{attach_name}"
+            if not media_ref:
+                continue
+            media = {"type": "photo", "media": media_ref}
             if start == 0 and idx == 0 and intro_caption:
                 media["caption"] = intro_caption
                 media["parse_mode"] = "HTML"
             media_items.append(media)
-        chunks.append(media_items)
+        if media_items:
+            chunks.append((media_items, files))
     return chunks
 
 
-def _send_all_media_groups(chat_id, image_urls, token, intro_caption=None):
-    if not image_urls:
+def _send_all_media_groups(chat_id, media_entries, token, intro_caption=None):
+    if not media_entries:
         return False
 
     sent_any = False
-    for media_items in _chunked_media_groups(image_urls, intro_caption=intro_caption):
-        group_sent = _send_telegram_media_group(chat_id=chat_id, media_items=media_items, token=token)
+    for media_items, files in _chunked_media_groups(media_entries, intro_caption=intro_caption):
+        group_sent = _send_telegram_media_group(
+            chat_id=chat_id,
+            media_items=media_items,
+            token=token,
+            files=files or None,
+        )
         if not group_sent:
             return False
         sent_any = True
@@ -324,21 +448,46 @@ def _product_gallery_intro(product):
     )
 
 
+def _send_media_entry_photo(entry, caption, chat_id, token, reply_markup=None, parse_mode="HTML"):
+    upload = _field_file_upload(entry.get("field_file"), "photo")
+    if upload:
+        payload = {
+            "chat_id": chat_id,
+            "caption": caption,
+            "parse_mode": parse_mode,
+        }
+        if reply_markup:
+            payload["reply_markup"] = json.dumps(reply_markup)
+        return _telegram_api_request_with_files("sendPhoto", payload, token, files=[upload])
+
+    fallback_url = entry.get("fallback_url")
+    if fallback_url:
+        return _send_telegram_photo(
+            photo_url=fallback_url,
+            caption=caption,
+            chat_id=chat_id,
+            token=token,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode,
+        )
+    return False
+
+
 def send_product_gallery_to_customer(product, chat_id):
     token, _, _ = _customer_bot_settings()
     target_chat_id = (chat_id or "").strip()
     if not token or not target_chat_id or not product:
         return False
 
-    image_urls = _collect_product_image_urls(product)
-    if len(image_urls) > 1:
+    media_entries = _collect_product_media_entries(product)
+    if len(media_entries) > 1:
         intro = _product_gallery_intro(product)
-        if _send_all_media_groups(chat_id=target_chat_id, image_urls=image_urls, token=token, intro_caption=intro):
+        if _send_all_media_groups(chat_id=target_chat_id, media_entries=media_entries, token=token, intro_caption=intro):
             return True
 
-    if image_urls:
-        return _send_telegram_photo(
-            photo_url=image_urls[0],
+    if media_entries:
+        return _send_media_entry_photo(
+            entry=media_entries[0],
             caption=_product_gallery_intro(product),
             chat_id=target_chat_id,
             token=token,
@@ -363,12 +512,12 @@ def post_product_to_channel(product, force=False):
     }
 
     caption = _product_caption(product)
-    image_urls = _collect_product_image_urls(product)
+    media_entries = _collect_product_media_entries(product)
 
-    if len(image_urls) > 1:
+    if len(media_entries) > 1:
         album_sent = _send_all_media_groups(
             chat_id=channel_chat_id,
-            image_urls=image_urls,
+            media_entries=media_entries,
             token=token,
             intro_caption=caption,
         )
@@ -393,9 +542,9 @@ def post_product_to_channel(product, force=False):
                 _mark_channel_post_success(product, current_signature)
             return sent
 
-    if image_urls:
-        sent = _send_telegram_photo(
-            photo_url=image_urls[0],
+    if media_entries:
+        sent = _send_media_entry_photo(
+            entry=media_entries[0],
             caption=caption,
             chat_id=channel_chat_id,
             token=token,
