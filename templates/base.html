@@ -12,297 +12,167 @@
     </script>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-    <meta name="theme-color" content="#0b1220">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111111">
 
     <title>{% block title %}Zentanee{% endblock %}</title>
-
-    <meta name="keywords" content="Zentanee, Addis Ababa fashion, Y2K fashion">
-    <meta name="description" content="Zentanee is a mobile-first fashion storefront with fast browsing, clear size selection, and easy ordering.">
+    <meta name="description" content="Zentanee fashion storefront.">
     <meta name="author" content="Zentanee">
-
     <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
 
-    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
-    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
-    <link rel="preload" href="{% static 'asset/fonts/wolmart87d5.woff' %}" as="font" type="font/woff" crossorigin="anonymous">
+    <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
 
     <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/style.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-storefront.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
+<body class="spring-body">
+    <div class="spring-announcement">
+        <div class="spring-container">
+            <p>Free Addis delivery on selected drops. Shop new arrivals now.</p>
+        </div>
+    </div>
 
-<body class="zent-body">
-    <div class="page-wrapper zent-shell">
-        <h1 class="d-none">Zentanee</h1>
-
-        <header class="header zent-header">
-            <div class="zent-signal-bar">
-                <div class="container zent-signal-bar__inner">
-                    <p class="zent-signal-copy">Addis drop mode: chrome-coded style, fast checkout, clear sizing.</p>
-                    <div class="zent-signal-pills" aria-label="Store highlights">
-                        <span>Mobile first</span>
-                        <span>Size-guided</span>
-                        <span>DM support</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="header-middle">
-                <div class="container zent-header-main">
-                    <div class="zent-header-brand">
-                        <a href="#" class="mobile-menu-toggle w-icon-hamburger" aria-label="Open menu"></a>
-                        <a href="{% url 'store:home' %}" class="logo zent-logo" aria-label="Zentanee home">
-                            <img src="{% static 'asset/images/photo_2023-10-13_14-01-19-removebg-preview.webp' %}" alt="Zentanee" width="144" height="45">
-                        </a>
-                    </div>
-
-                    <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round zent-header-search d-none d-md-flex">
-                        <span class="zent-search-context">Search the drop</span>
-                        <input type="text" class="form-control" name="q" id="search" placeholder="Products, brands, moods" value="{{ request.GET.q|default:'' }}" required>
-                        <button class="btn btn-search" type="submit" aria-label="Search the store">
-                            <i class="w-icon-search"></i>
-                        </button>
-                    </form>
-
-                    <div class="zent-header-cta">
-                        <a href="tel:+251933392463" class="zent-action-link zent-action-link--desktop">
-                            <span class="zent-action-link__eyebrow">Need help?</span>
-                            <strong>+251 933 392 463</strong>
-                        </a>
-
-                        {% if request.user.is_authenticated %}
-                        <a href="{% url 'store:profile' %}" class="zent-icon-action" aria-label="My account">
-                            <i class="w-icon-account"></i>
-                            <span>Account</span>
-                        </a>
-                        {% else %}
-                        <a href="{% url 'store:login' %}" class="zent-icon-action" aria-label="Log in">
-                            <i class="w-icon-account"></i>
-                            <span>Login</span>
-                        </a>
-                        {% endif %}
-
-                        <a href="{% url 'store:cart' %}" class="zent-icon-action zent-icon-action--cart" aria-label="Open cart">
-                            <i class="w-icon-cart">
-                                <span class="cart-count">{{ cart_items_count }}</span>
-                            </i>
-                            <span>Cart</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="header-bottom sticky-content fix-top sticky-header">
-                <div class="container">
-                    <div class="zent-header-nav">
-                        <div class="dropdown category-dropdown has-border zent-category-dropdown" data-visible="true">
-                            <a href="#" class="category-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" data-display="static" title="Browse Categories">
-                                <i class="w-icon-category"></i>
-                                <span>Categories</span>
-                            </a>
-
-                            <div class="dropdown-box">
-                                <ul class="menu vertical-menu category-menu">
-                                    {% if categories_menu %}
-                                        {% for cat_menu in categories_menu %}
-                                        <li>
-                                            <a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a>
-                                        </li>
-                                        {% endfor %}
-                                    {% endif %}
-                                    <li>
-                                        <a href="{% url 'store:all-categories' %}" class="font-weight-bold text-uppercase ls-25">
-                                            View all categories <i class="w-icon-angle-right"></i>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <nav class="main-nav">
-                            <ul class="menu active-underline">
-                                <li><a href="{% url 'store:home' %}">Home</a></li>
-                                <li><a href="{% url 'store:all-products' %}">Shop all</a></li>
-                                <li><a href="{% url 'store:all-categories' %}">Categories</a></li>
-                                <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
-                                <li><a href="{% url 'store:about' %}">About</a></li>
-                                <li><a href="{% url 'store:contact' %}">Support</a></li>
-                            </ul>
-                        </nav>
-
-                        <div class="zent-header-meta">
-                            <span>Fast Addis delivery</span>
-                            <span>New drops weekly</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="container d-md-none">
-                <form action="{% url 'store:search' %}" method="GET" class="input-wrapper zent-mobile-search">
-                    <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products, brands, or moods" value="{{ request.GET.q|default:'' }}" required>
-                    <button class="btn btn-search" type="submit" aria-label="Search">
-                        <i class="w-icon-search"></i>
+    <div class="page-wrapper spring-shell">
+        <header class="spring-header">
+            <div class="spring-header__utility spring-container d-none d-lg-grid">
+                <div class="spring-header__utility-left">
+                    <button type="button" class="spring-link mobile-menu-toggle" aria-label="Open menu">
+                        <i class="fas fa-bars"></i>
+                        <span>Menu</span>
                     </button>
-                </form>
+                    <a href="{% url 'store:search' %}" class="spring-link">
+                        <i class="fas fa-search"></i>
+                        <span>Search</span>
+                    </a>
+                </div>
+
+                <a href="{% url 'store:home' %}" class="spring-logo" aria-label="Zentanee home">Zentanee</a>
+
+                <div class="spring-header__utility-right">
+                    {% if request.user.is_authenticated %}
+                    <a href="{% url 'store:profile' %}" class="spring-link">Account</a>
+                    {% else %}
+                    <a href="{% url 'store:login' %}" class="spring-link">Log in</a>
+                    {% endif %}
+                    <a href="{% url 'store:cart' %}" class="spring-link spring-cart-link">
+                        <span>Cart</span>
+                        <span class="spring-cart-count">{{ cart_items_count }}</span>
+                    </a>
+                </div>
             </div>
+
+            <div class="spring-header__mobile spring-container d-flex d-lg-none">
+                <button type="button" class="spring-mobile-icon mobile-menu-toggle" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a href="{% url 'store:home' %}" class="spring-logo spring-logo--mobile" aria-label="Zentanee home">Zentanee</a>
+                <a href="{% url 'store:cart' %}" class="spring-mobile-icon spring-mobile-icon--cart" aria-label="Open cart">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="spring-cart-count">{{ cart_items_count }}</span>
+                </a>
+            </div>
+
+            <nav class="spring-nav d-none d-lg-block">
+                <div class="spring-container">
+                    <ul class="spring-nav__list">
+                        <li><a href="{% url 'store:home' %}">Home</a></li>
+                        <li><a href="{% url 'store:all-products' %}">Shop All</a></li>
+                        <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
+                        <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
+                        <li><a href="{% url 'store:about' %}">About</a></li>
+                        <li><a href="{% url 'store:contact' %}">Contact</a></li>
+                    </ul>
+                </div>
+            </nav>
         </header>
 
         {% block content %}{% endblock content %}
 
-        <footer class="footer zent-footer">
-            <div class="container">
-                <div class="zent-footer-grid">
-                    <section class="zent-footer-panel zent-footer-panel--brand">
-                        <a href="{% url 'store:home' %}" class="logo-footer">
-                            <img src="{% static 'asset/images/photo_2023-10-13_14-01-19-removebg-preview.webp' %}" alt="Zentanee" width="144" height="45">
-                        </a>
-                        <p>Zentanee is building a sharper, faster fashion storefront for shoppers who want a distinct look without fighting the interface.</p>
-                        <div class="social-icons social-icons-colored">
-                            <a href="https://www.tiktok.com/@zentanee" class="social-icon social-tiktok fab fa-tiktok" target="_blank" rel="noopener" aria-label="TikTok"></a>
-                            <a href="https://www.linkedin.com/company/zentanee/" class="social-icon social-youtube fab fa-linkedin-in" target="_blank" rel="noopener" aria-label="LinkedIn"></a>
-                            <a href="https://www.instagram.com/zentanee/" class="social-icon social-instagram w-icon-instagram" target="_blank" rel="noopener" aria-label="Instagram"></a>
-                        </div>
-                    </section>
+        <footer class="spring-footer">
+            <div class="spring-container">
+                <div class="spring-footer__grid">
+                    <div class="spring-footer__brand">
+                        <a href="{% url 'store:home' %}" class="spring-logo spring-logo--footer">Zentanee</a>
+                        <p>Minimal storefront, clear product pages, and easy ordering for Addis shoppers.</p>
+                    </div>
 
-                    <section class="zent-footer-panel">
+                    <div>
                         <h3>Shop</h3>
-                        <ul class="widget-body">
+                        <ul>
                             <li><a href="{% url 'store:all-products' %}">All products</a></li>
-                            <li><a href="{% url 'store:all-categories' %}">All categories</a></li>
-                            <li><a href="{% url 'store:all-brands' %}">All brands</a></li>
-                            <li><a href="{% url 'store:cart' %}">Cart</a></li>
+                            <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
+                            <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
                         </ul>
-                    </section>
+                    </div>
 
-                    <section class="zent-footer-panel">
+                    <div>
+                        <h3>Information</h3>
+                        <ul>
+                            <li><a href="{% url 'store:about' %}">About</a></li>
+                            <li><a href="{% url 'store:contact' %}">Contact</a></li>
+                            <li><a href="{% url 'store:orders' %}">Orders</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
                         <h3>Account</h3>
-                        <ul class="widget-body">
+                        <ul>
                             {% if request.user.is_authenticated %}
-                            <li><a href="{% url 'store:profile' %}">My profile</a></li>
-                            <li><a href="{% url 'store:orders' %}">Order history</a></li>
+                            <li><a href="{% url 'store:profile' %}">My account</a></li>
                             <li><a href="{% url 'store:add-address' %}">Delivery address</a></li>
                             <li><a href="{% url 'store:logout' %}">Log out</a></li>
                             {% else %}
                             <li><a href="{% url 'store:login' %}">Log in</a></li>
                             <li><a href="{% url 'store:register' %}">Create account</a></li>
-                            <li><a href="{% url 'store:orders' %}">Track orders</a></li>
                             {% endif %}
                         </ul>
-                    </section>
-
-                    <section class="zent-footer-panel">
-                        <h3>Support</h3>
-                        <ul class="widget-body">
-                            <li><a href="{% url 'store:about' %}">About Zentanee</a></li>
-                            <li><a href="{% url 'store:contact' %}">Contact page</a></li>
-                            <li><a href="tel:+251933392463">+251 933 392 463</a></li>
-                            <li><a href="https://instagram.com/zentanee" target="_blank" rel="noopener">Instagram DM</a></li>
-                            <li><a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener">Telegram bot</a></li>
-                        </ul>
-                    </section>
+                    </div>
                 </div>
 
-                <div class="zent-footer-bottom">
-                    <p class="copyright">Copyright &copy; 2026 Zentanee. All rights reserved.</p>
-                    <div class="zent-footer-bottom__meta">
-                        <span>Designed for fast mobile shopping.</span>
-                        <a href="https://instagram.com/mosesyaicob" target="_blank" rel="noopener">Built with care</a>
+                <div class="spring-footer__bottom">
+                    <p>&copy; 2026 Zentanee. All rights reserved.</p>
+                    <div class="spring-footer__social">
+                        <a href="https://instagram.com/zentanee" target="_blank" rel="noopener">Instagram</a>
+                        <a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener">Telegram</a>
                     </div>
                 </div>
             </div>
         </footer>
     </div>
 
-    <div class="sticky-footer sticky-content fix-bottom">
-        <a href="{% url 'store:home' %}" class="sticky-link">
-            <i class="w-icon-home"></i>
-            <p>Home</p>
-        </a>
-        <a href="{% url 'store:all-products' %}" class="sticky-link">
-            <i class="w-icon-grid"></i>
-            <p>Shop</p>
-        </a>
-        <a href="{% url 'store:all-categories' %}" class="sticky-link">
-            <i class="w-icon-category"></i>
-            <p>Browse</p>
-        </a>
-        <a href="{% url 'store:cart' %}" class="sticky-link">
-            <i class="w-icon-cart"></i>
-            <p>Cart</p>
-        </a>
-        <a href="{% url 'store:profile' %}" class="sticky-link">
-            <i class="w-icon-account"></i>
-            <p>Account</p>
-        </a>
-    </div>
-
-    <a id="scroll-top" class="scroll-top" href="#top" title="Top" role="button">
-        <i class="w-icon-angle-up"></i>
-        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70">
-            <circle id="progress-indicator" fill="transparent" stroke="#000000" stroke-miterlimit="10" cx="35" cy="35" r="34" style="stroke-dasharray: 16.4198, 400;"></circle>
-        </svg>
-    </a>
-
     <div class="mobile-menu-wrapper">
         <div class="mobile-menu-overlay"></div>
         <a href="#" class="mobile-menu-close"><i class="close-icon"></i></a>
 
-        <div class="mobile-menu-container scrollable">
-            <div class="zent-mobile-menu-panel">
-                <p class="zent-auth-eyebrow mb-2">Zentanee mobile</p>
-                <h2 class="h4 mb-2">Find the look fast.</h2>
-                <p class="mb-0 text-muted">Browse the newest drop, jump into categories, or continue your cart without digging through theme clutter.</p>
-            </div>
-
-            <form action="{% url 'store:search' %}" method="GET" class="input-wrapper zent-mobile-search">
-                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search the store" required>
-                <button class="btn btn-search" type="submit" aria-label="Search">
-                    <i class="w-icon-search"></i>
-                </button>
+        <div class="mobile-menu-container scrollable spring-mobile-drawer">
+            <form action="{% url 'store:search' %}" method="GET" class="spring-mobile-search">
+                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products" required>
+                <button class="btn btn-dark" type="submit">Search</button>
             </form>
 
-            <div class="tab">
-                <ul class="nav nav-tabs" role="tablist">
-                    <li class="nav-item">
-                        <a href="#main-menu" class="nav-link active">Menu</a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="tab-content">
-                <div class="tab-pane active" id="main-menu">
-                    <ul class="mobile-menu">
-                        <li><a href="{% url 'store:home' %}">Home</a></li>
-                        <li><a href="{% url 'store:all-products' %}">Shop all</a></li>
-                        <li><a href="{% url 'store:all-categories' %}">Categories</a></li>
-                        <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
-                        <li><a href="{% url 'store:about' %}">About</a></li>
-                        <li><a href="{% url 'store:contact' %}">Support</a></li>
-                        {% if request.user.is_authenticated %}
-                        <li><a href="{% url 'store:profile' %}">My account</a></li>
-                        {% else %}
-                        <li><a href="{% url 'store:login' %}">Login</a></li>
-                        <li><a href="{% url 'store:register' %}">Register</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
+            <ul class="spring-mobile-menu">
+                <li><a href="{% url 'store:home' %}">Home</a></li>
+                <li><a href="{% url 'store:all-products' %}">Shop All</a></li>
+                <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
+                <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
+                <li><a href="{% url 'store:about' %}">About</a></li>
+                <li><a href="{% url 'store:contact' %}">Contact</a></li>
+                {% if request.user.is_authenticated %}
+                <li><a href="{% url 'store:profile' %}">Account</a></li>
+                {% else %}
+                <li><a href="{% url 'store:login' %}">Log in</a></li>
+                <li><a href="{% url 'store:register' %}">Create account</a></li>
+                {% endif %}
+            </ul>
         </div>
     </div>
 
     <script src="{% static 'asset/vendor/jquery/jquery.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/sticky/sticky.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/jquery.plugin/jquery.plugin.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/nouislider/nouislider.min.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/jquery.countdown/jquery.countdown.min.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/imagesloaded/imagesloaded.pkgd.min.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/zoom/jquery.zoom.js' %}" defer></script>
-    <script src="{% static 'asset/vendor/magnific-popup/jquery.magnific-popup.min.js' %}" defer></script>
     <script src="{% static 'asset/js/main.min.js' %}" defer></script>
     {% block extra_scripts %}{% endblock %}
 </body>

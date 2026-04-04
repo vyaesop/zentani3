@@ -5,252 +5,138 @@
 {% block title %}Zentanee | {{ product.title }}{% endblock %}
 
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb bb-no">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li><a href="{% url 'store:category-products' product.category.slug %}">{{ product.category }}</a></li>
-              <li>{{ product.title }}</li>
-          </ul>
+<main class="main spring-main">
+  <div class="spring-container spring-product-page">
+      <div class="spring-product-breadcrumb">
+          <a href="{% url 'store:home' %}">Home</a>
+          <span>/</span>
+          <a href="{% url 'store:category-products' product.category.slug %}">{{ product.category }}</a>
+          <span>/</span>
+          <span>{{ product.title }}</span>
       </div>
-  </nav>
 
-  <div class="page-content">
-      <div class="container zent-product-page">
-          <section class="zent-product-radar">
-              <div>
-                  <span class="zent-section-kicker">Product radar</span>
-                  <h1>{{ product.title }}</h1>
-                  <p>{% if product.short_description %}{{ product.short_description }}{% else %}Open the gallery, confirm the fit, and move straight into cart without second-guessing the next step.{% endif %}</p>
-              </div>
-              <div class="zent-product-radar__meta">
-                  <span>{{ product.category }}</span>
-                  {% if product.brand %}<span>{{ product.brand }}</span>{% endif %}
-                  <span>SKU {{ product.sku }}</span>
-                  {% if available_sizes %}<span>{{ available_sizes|length }} size option{{ available_sizes|length|pluralize }}</span>{% endif %}
-              </div>
-          </section>
+      <div class="spring-product-layout">
+          <section class="spring-product-gallery">
+              <figure class="spring-product-gallery__main">
+                  {% if product.product_image %}
+                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                  {% else %}
+                  <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
+                  {% endif %}
+              </figure>
 
-          <div class="zent-flow-banner">
-              <div>
-                  <strong>Order rhythm</strong>
-                  <div class="small text-muted">Review the gallery, lock your fit if needed, add to cart, then confirm delivery details during checkout.</div>
-              </div>
-              <div class="zent-flow-steps">
-                  <span class="zent-flow-step">1. Gallery</span>
-                  <span class="zent-flow-step">2. Fit</span>
-                  <span class="zent-flow-step">3. Cart</span>
-                  <span class="zent-flow-step">4. Delivery</span>
-              </div>
-          </div>
-
-          <div class="zent-product-layout">
-              <section class="zent-gallery-panel">
-                  <figure class="zent-gallery-stage">
+              <div class="spring-product-gallery__thumbs">
+                  <button type="button" class="spring-thumb is-active" data-image="{% if product.product_image %}{{ product.product_image.url|cdn_optimize }}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
                       {% if product.product_image %}
-                      <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                      <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
                       {% else %}
-                      <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
+                      <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                       {% endif %}
-                  </figure>
-
-                  <div class="zent-gallery-meta">
-                      <span class="zent-section-kicker">Gallery</span>
-                      <strong>{{ p_image|length|add:"1" }} image{{ p_image|length|add:"1"|pluralize }}</strong>
-                      <p class="mb-0">Swipe the rail, open the details, and make the fit decision before you ever hit cart.</p>
-                  </div>
-
-                  <div class="zent-thumb-grid">
-                      <button type="button" class="zent-thumb-button is-active" data-image="{% if product.product_image %}{{ product.product_image.url|cdn_optimize }}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
-                          {% if product.product_image %}
-                          <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
-                          {% else %}
-                          <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
-                          {% endif %}
-                      </button>
-                      {% for image in p_image %}
-                      <button type="button" class="zent-thumb-button" data-image="{{ image.image.url|cdn_optimize }}">
-                          <img src="{{ image.image.url|cdn_optimize }}" alt="{{ product.title }}">
-                      </button>
-                      {% endfor %}
-                  </div>
-              </section>
-
-              <section class="zent-detail-surface">
-                  <div class="zent-detail-header">
-                      <div class="zent-product-meta">
-                          <span class="zent-product-pill">{{ product.category }}</span>
-                          {% if product.brand %}
-                          <span class="zent-product-pill zent-product-pill--muted">{{ product.brand }}</span>
-                          {% endif %}
-                          <span class="zent-product-pill zent-product-pill--muted">Code {{ product.sku }}</span>
-                      </div>
-                      <h2 class="zent-detail-title mb-0">{{ product.title }}</h2>
-                  </div>
-
-                  <div class="zent-detail-price-row">
-                      <div class="product-price mb-0"><ins class="new-price">{{ product.price }} ETB</ins></div>
-                      {% if product.is_sold_out %}
-                      <span class="zent-stock-pill zent-stock-pill--out">Archived right now</span>
-                      {% else %}
-                      <span class="zent-stock-pill zent-stock-pill--ok">Ready to order</span>
-                      {% endif %}
-                  </div>
-
-                  <p class="zent-detail-summary">{% if product.short_description %}{{ product.short_description }}{% else %}Designed for a shopper who wants a clear buy path: inspect the piece, confirm fit, and move to checkout fast.{% endif %}</p>
-
-                  <div class="zent-detail-signal-grid">
-                      <div class="zent-detail-signal">
-                          <span class="zent-section-kicker">Fit mode</span>
-                          <strong>{% if available_sizes %}Choose your size first{% else %}No size friction{% endif %}</strong>
-                          <p class="mb-0">{% if available_sizes %}This piece uses a size-led flow so your cart stays accurate from the start.{% else %}You can add this piece straight to cart without a size selection step.{% endif %}</p>
-                      </div>
-                      <div class="zent-detail-signal">
-                          <span class="zent-section-kicker">Delivery</span>
-                          <strong>Addis-ready ordering</strong>
-                          <p class="mb-0">Delivery details are confirmed during checkout so the order can move fast once you commit.</p>
-                      </div>
-                      <div class="zent-detail-signal">
-                          <span class="zent-section-kicker">Returns</span>
-                          <strong>3-day fit window</strong>
-                          <p class="mb-0">Eligible returns are supported within 3 days if the piece is not the right match.</p>
-                      </div>
-                  </div>
-
-                  <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="zent-detail-buybox">
-                      {% csrf_token %}
-                      <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
-                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-
-                      {% if available_sizes %}
-                      <div class="zent-size-chooser">
-                          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                              <label class="form-label mb-0 d-block fw-bold">Choose your fit</label>
-                              <span class="zent-product-note">{{ available_sizes|length }} size option{{ available_sizes|length|pluralize }}</span>
-                          </div>
-                          <div class="size-options" role="radiogroup" aria-label="Available sizes">
-                              {% for size_option in available_sizes %}
-                              <label class="size-chip">
-                                  <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
-                                  <span>{{ size_option }}</span>
-                              </label>
-                              {% endfor %}
-                          </div>
-                      </div>
-                      {% endif %}
-
-                      <div class="zent-detail-actions">
-                          <button type="submit" class="btn btn-dark" {% if product.is_sold_out %}disabled{% endif %}>
-                              {% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}
-                          </button>
-                          <a href="{% url 'store:cart' %}" class="btn btn-outline-dark">Open cart</a>
-                      </div>
-                      <div id="add-to-cart-feedback" class="mt-3 small"></div>
-                  </form>
-
-                  <div class="zent-detail-guidance">
-                      <div>
-                          <span class="zent-section-kicker">Next move</span>
-                          <strong>{% if available_sizes %}Pick the right fit, then add to cart.{% else %}Add it now and finish delivery details in cart.{% endif %}</strong>
-                      </div>
-                      <div>
-                          <span class="zent-section-kicker">Need help?</span>
-                          <strong>Support can help with fit and delivery before you commit.</strong>
-                      </div>
-                  </div>
-
-                  <div class="zent-detail-support">
-                      <p class="small text-muted mb-2">Need a second opinion before ordering? Reach Zentanee through support and we will guide you without breaking the flow.</p>
-                      <div class="d-flex flex-wrap gap-2">
-                          <a href="{% url 'store:contact' %}" class="btn btn-sm btn-outline-dark">Contact page</a>
-                          <a href="https://instagram.com/zentanee" class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener">Instagram</a>
-                      </div>
-                  </div>
-              </section>
-          </div>
-
-          <section class="zent-order-strip">
-              <article class="zent-order-strip__card">
-                  <span class="zent-section-kicker">Step 1</span>
-                  <h2>Study the piece</h2>
-                  <p>Use the image rail to inspect the item before making the fit decision.</p>
-              </article>
-              <article class="zent-order-strip__card">
-                  <span class="zent-section-kicker">Step 2</span>
-                  <h2>Lock the fit</h2>
-                  <p>{% if available_sizes %}Choose a size here so the cart reflects the right option from the start.{% else %}No size selection needed for this piece, so the path stays quick.{% endif %}</p>
-              </article>
-              <article class="zent-order-strip__card">
-                  <span class="zent-section-kicker">Step 3</span>
-                  <h2>Finish cleanly</h2>
-                  <p>Add to cart, confirm delivery details, and track the order from your account once it is placed.</p>
-              </article>
-          </section>
-
-          <section class="zent-detail-section">
-              <div class="row g-4">
-                  <div class="col-lg-7">
-                      <span class="zent-section-kicker">Product story</span>
-                      <h2 class="mb-3">Why this piece works</h2>
-                      <div class="zent-detail-muted">
-                          {% if product.detail_description %}
-                          {{ product.detail_description|linebreaks }}
-                          {% else %}
-                          <p>{{ product.short_description }}</p>
-                          {% endif %}
-                      </div>
-                  </div>
-                  <div class="col-lg-5">
-                      <span class="zent-section-kicker">Specs + support</span>
-                      <h2 class="mb-3">Order-ready facts</h2>
-                      <div class="zent-spec-list">
-                          <div class="zent-spec-item">
-                              <strong>Category</strong>
-                              <span>{{ product.category }}</span>
-                          </div>
-                          <div class="zent-spec-item">
-                              <strong>Brand</strong>
-                              <span>{% if product.brand %}{{ product.brand }}{% else %}Zentanee{% endif %}</span>
-                          </div>
-                          <div class="zent-spec-item">
-                              <strong>Fit options</strong>
-                              <span>{% if available_sizes %}{{ product.available_sizes }}{% else %}Standard option{% endif %}</span>
-                          </div>
-                          <div class="zent-spec-item">
-                              <strong>Return window</strong>
-                              <span>3 days</span>
-                          </div>
-                          <div class="zent-spec-item">
-                              <strong>Product code</strong>
-                              <span>{{ product.sku }}</span>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </section>
-
-          <section class="zent-home-section">
-              <div class="zent-home-section-head">
-                  <div>
-                      <span class="zent-section-kicker">Keep browsing</span>
-                      <h2>More in this lane</h2>
-                      <p>Related pieces from the same category keep the shopper in one mood instead of dropping them back into a generic catalog.</p>
-                  </div>
-                  <a href="{% url 'store:category-products' product.category.slug %}" class="btn btn-outline-dark">More from {{ product.category }}</a>
-              </div>
-
-              <div class="zent-home-product-grid">
-                  {% for rp in related_products %}
-                  <div class="product-wrap">
-                      {% include 'store/_product_card_content.html' with product=rp %}
-                  </div>
-                  {% empty %}
-                  <p class="text-muted mb-0">More products from this category will appear here as the catalog grows.</p>
+                  </button>
+                  {% for image in p_image %}
+                  <button type="button" class="spring-thumb" data-image="{{ image.image.url|cdn_optimize }}">
+                      <img src="{{ image.image.url|cdn_optimize }}" alt="{{ product.title }}">
+                  </button>
                   {% endfor %}
               </div>
           </section>
+
+          <section class="spring-product-info">
+              {% if product.brand %}
+              <p class="spring-product-info__brand">{{ product.brand }}</p>
+              {% endif %}
+              <h1>{{ product.title }}</h1>
+              <p class="spring-product-info__price">
+                  {% if product.is_sold_out %}
+                  Sold out
+                  {% else %}
+                  {{ product.price }} ETB
+                  {% endif %}
+              </p>
+
+              {% if product.short_description %}
+              <div class="spring-product-info__copy">
+                  <p>{{ product.short_description }}</p>
+              </div>
+              {% endif %}
+
+              <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="spring-product-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+
+                  {% if available_sizes %}
+                  <div class="spring-product-form__group">
+                      <label class="spring-product-form__label">Size</label>
+                      <div class="spring-size-options" role="radiogroup" aria-label="Available sizes">
+                          {% for size_option in available_sizes %}
+                          <label class="spring-size-option">
+                              <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
+                              <span>{{ size_option }}</span>
+                          </label>
+                          {% endfor %}
+                      </div>
+                  </div>
+                  {% endif %}
+
+                  <div class="spring-product-form__actions">
+                      <button type="submit" class="btn btn-dark w-100" {% if product.is_sold_out %}disabled{% endif %}>
+                          {% if product.is_sold_out %}Sold Out{% else %}Add to cart{% endif %}
+                      </button>
+                  </div>
+                  <div id="add-to-cart-feedback" class="mt-3 small"></div>
+              </form>
+
+              <div class="spring-product-info__details">
+                  <div>
+                      <strong>Collection</strong>
+                      <span>{{ product.category }}</span>
+                  </div>
+                  <div>
+                      <strong>Product code</strong>
+                      <span>{{ product.sku }}</span>
+                  </div>
+                  <div>
+                      <strong>Sizes</strong>
+                      <span>{% if available_sizes %}{{ product.available_sizes }}{% else %}One option{% endif %}</span>
+                  </div>
+              </div>
+
+              <div class="spring-product-info__support">
+                  <p>Need help with fit or delivery? <a href="{% url 'store:contact' %}">Contact us</a>.</p>
+              </div>
+          </section>
       </div>
+
+      <section class="spring-product-description">
+          <div class="spring-section__head">
+              <h2>Product Details</h2>
+          </div>
+          <div class="spring-product-description__content">
+              {% if product.detail_description %}
+              {{ product.detail_description|linebreaks }}
+              {% elif product.short_description %}
+              <p>{{ product.short_description }}</p>
+              {% endif %}
+          </div>
+      </section>
+
+      <section class="spring-section">
+          <div class="spring-section__head">
+              <h2>You may also like</h2>
+              <a href="{% url 'store:category-products' product.category.slug %}">View collection</a>
+          </div>
+
+          <div class="spring-product-grid">
+              {% for rp in related_products %}
+              <div class="spring-grid-item">
+                  {% include 'store/_product_card_content.html' with product=rp %}
+              </div>
+              {% empty %}
+              <p class="text-muted mb-0">More products from this category will appear here.</p>
+              {% endfor %}
+          </div>
+      </section>
   </div>
 </main>
 {% endblock content %}
@@ -259,7 +145,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const mainImage = document.getElementById('main-product-image');
-    const thumbButtons = document.querySelectorAll('.zent-thumb-button');
+    const thumbButtons = document.querySelectorAll('.spring-thumb');
 
     thumbButtons.forEach(function (button) {
         button.addEventListener('click', function () {
@@ -303,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
             feedback.textContent = payload.message || 'Something went wrong. Please try again.';
 
             if (payload.ok && typeof payload.cart_items_count !== 'undefined') {
-                document.querySelectorAll('.cart-count').forEach(function (node) {
+                document.querySelectorAll('.spring-cart-count, .cart-count').forEach(function (node) {
                     node.textContent = payload.cart_items_count;
                 });
             }

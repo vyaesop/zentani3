@@ -3,7 +3,7 @@
 
 {% if products %}
   {% for product in products %}
-    <div class="col-lg-4 col-sm-6">
+    <div class="spring-grid-item">
       {% include 'store/_product_card_content.html' with product=product %}
     </div>
   {% endfor %}

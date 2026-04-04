@@ -1,22 +1,23 @@
 {% if flow_status %}
-<section class="flow-status-banner flow-status-{{ flow_status.tone|default:'info' }} mb-4">
-    <div class="flow-status-content">
+<section class="spring-flow-status spring-flow-status--{{ flow_status.tone|default:'info' }}">
+    <div>
         {% if flow_status.eyebrow %}
-        <p class="flow-status-eyebrow mb-2">{{ flow_status.eyebrow }}</p>
+        <p class="spring-flow-status__eyebrow">{{ flow_status.eyebrow }}</p>
         {% endif %}
-        <h2 class="flow-status-title mb-2">{{ flow_status.title }}</h2>
-        <p class="flow-status-message mb-0">{{ flow_status.message }}</p>
+        <h2>{{ flow_status.title }}</h2>
+        <p>{{ flow_status.message }}</p>
         {% if flow_status.meta %}
-        <p class="flow-status-meta mb-0 mt-2">{{ flow_status.meta }}</p>
+        <p class="spring-flow-status__meta">{{ flow_status.meta }}</p>
         {% endif %}
     </div>
+
     {% if flow_status.primary_url or flow_status.secondary_url %}
-    <div class="flow-status-actions">
+    <div class="spring-flow-status__actions">
         {% if flow_status.primary_url %}
-        <a href="{{ flow_status.primary_url }}" class="btn btn-sm btn-dark">{{ flow_status.primary_label|default:"Continue" }}</a>
+        <a href="{{ flow_status.primary_url }}" class="btn btn-dark">{{ flow_status.primary_label|default:"Continue" }}</a>
         {% endif %}
         {% if flow_status.secondary_url %}
-        <a href="{{ flow_status.secondary_url }}" class="btn btn-sm btn-outline-dark">{{ flow_status.secondary_label|default:"Learn more" }}</a>
+        <a href="{{ flow_status.secondary_url }}" class="btn btn-outline-dark">{{ flow_status.secondary_label|default:"Learn more" }}</a>
         {% endif %}
     </div>
     {% endif %}

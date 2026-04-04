@@ -1,19 +1,17 @@
 {% load static %}
 {% load image_optim %}
 
-<article class="zent-directory-card">
-    <a href="{{ href }}" class="zent-directory-card__link">
-        <figure class="zent-directory-card__media">
+<article class="spring-collection-card">
+    <a href="{{ href }}">
+        <div class="spring-collection-card__media">
             {% if image_file %}
             <img loading="lazy" src="{{ image_file.url|cdn_optimize }}" alt="{{ title }}">
             {% else %}
             <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ title }}">
             {% endif %}
-        </figure>
-        <div class="zent-directory-card__body">
-            <span class="zent-section-kicker">{{ label }}</span>
-            <h3 class="zent-directory-card__title">{{ title }}</h3>
-            <span class="zent-directory-card__cta">Explore</span>
+        </div>
+        <div class="spring-collection-card__body">
+            <h3>{{ title }}</h3>
         </div>
     </a>
 </article>

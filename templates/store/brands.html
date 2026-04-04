@@ -1,28 +1,19 @@
 {% extends 'base.html' %}
 
+{% block title %}Zentanee | Brands{% endblock %}
+
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb mb-8">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li>Brands</li>
-          </ul>
-      </div>
-  </nav>
+<main class="main spring-main">
+  <div class="spring-container spring-directory">
+      {% include 'store/_collection_header.html' with kicker='Brands' title='All Brands' description='Shop by brand.' count=brands|length %}
 
-  <div class="page-content mb-10">
-      <div class="container zent-directory-shell">
-          {% include 'store/_collection_header.html' with kicker='Browse store' title='All brands' description='Explore products by brand from one clean directory instead of jumping through mixed legacy layouts.' count=brands|length secondary_chip='Brand directory' %}
-
-          <section class="zent-collection-board">
-              <div class="zent-directory-grid">
-                  {% for brand in brands %}
-                  {% url 'store:brand-products' brand.slug as brand_href %}
-                  {% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title label='Brand' %}
-                  {% endfor %}
-              </div>
-          </section>
+      <div class="spring-collection-grid">
+          {% for brand in brands %}
+          {% url 'store:brand-products' brand.slug as brand_href %}
+          {% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title %}
+          {% empty %}
+          <p class="text-muted mb-0">Brands will appear here once they are active in admin.</p>
+          {% endfor %}
       </div>
   </div>
 </main>

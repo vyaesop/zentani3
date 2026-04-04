@@ -2,184 +2,127 @@
 {% load static %}
 {% load image_optim %}
 
-{% block content %}
-<main class="main">
-  <div class="page-content">
-      <div class="container">
-          {% include 'partials/_flow_status.html' with flow_status=flow_status %}
-          {% include 'partials/_messages.html' %}
+{% block title %}Zentanee | Cart{% endblock %}
 
-          <section class="zent-detail-section mb-4">
-              <span class="zent-section-kicker">Checkout</span>
-              <h1 class="mb-2">Your cart</h1>
-              <p class="zent-detail-muted mb-0">Review what you are ordering, confirm the delivery details, and place the order from one clear screen.</p>
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-cart-page">
+      {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+      {% include 'partials/_messages.html' %}
+
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">Cart</p>
+          <h1>Your cart</h1>
+          <p>Review your selected items and continue to checkout.</p>
+      </section>
+
+      {% if cart_products %}
+      <div class="spring-cart-layout">
+          <section class="spring-cart-list">
+              {% for item in cart_products %}
+              <article class="spring-cart-item">
+                  <a href="{% url 'store:product-detail' item.product.slug %}" class="spring-cart-item__media">
+                      {% if item.product.product_image %}
+                      <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}">
+                      {% else %}
+                      <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ item.product.title }}">
+                      {% endif %}
+                  </a>
+
+                  <div class="spring-cart-item__info">
+                      <h2><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h2>
+                      <p>{{ item.product.price|floatformat:2 }} ETB</p>
+                      {% if item.size %}
+                      <p>Size: {{ item.size }}</p>
+                      {% endif %}
+
+                      <div class="spring-cart-item__qty">
+                          <form action="{% url 'store:minus-cart' item.id %}" method="POST">
+                              {% csrf_token %}
+                              <button type="submit" aria-label="Decrease quantity">-</button>
+                          </form>
+                          <input type="text" value="{{ item.quantity }}" readonly>
+                          <form action="{% url 'store:plus-cart' item.id %}" method="POST">
+                              {% csrf_token %}
+                              <button type="submit" aria-label="Increase quantity">+</button>
+                          </form>
+                      </div>
+                  </div>
+
+                  <div class="spring-cart-item__aside">
+                      <strong>{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</strong>
+                      <form action="{% url 'store:remove-cart' item.id %}" method="POST">
+                          {% csrf_token %}
+                          <button type="submit" class="spring-text-link">Remove</button>
+                      </form>
+                  </div>
+              </article>
+              {% endfor %}
           </section>
 
-          {% if cart_products %}
-          <div class="zent-transaction-shell">
-              <div class="zent-transaction-stack">
-                  <section class="zent-transaction-card zent-transaction-card--soft">
-                      <span class="zent-section-kicker">What happens next</span>
-                      <h2 class="h4 mb-3">Order guidance</h2>
-                      {% if guest_checkout %}
-                      <ol class="checkout-steps mb-0">
-                          <li>Review the items and quantities in your cart.</li>
-                          <li>Fill in your delivery details in the order form.</li>
-                          <li>Submit the order and wait for Zentanee to confirm it.</li>
-                      </ol>
-                      {% elif latest_address %}
-                      <ol class="checkout-steps mb-0">
-                          <li>Review the items and quantities in your cart.</li>
-                          <li>Confirm your saved address is still the right delivery location.</li>
-                          <li>Place the order and track progress from your orders page.</li>
-                      </ol>
-                      {% else %}
-                      <ol class="checkout-steps mb-0">
-                          <li>Review the items and quantities in your cart.</li>
-                          <li>Add a delivery address to your account.</li>
-                          <li>Return here and place the order once your address is saved.</li>
-                      </ol>
-                      {% endif %}
-                  </section>
+          <aside class="spring-cart-summary">
+              <h2>Order Summary</h2>
 
-                  <section class="zent-transaction-card">
-                      <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
-                          <div>
-                              <span class="zent-section-kicker">Items</span>
-                              <h2 class="h4 mb-0">Cart items</h2>
-                          </div>
-                          <a href="{% url 'store:home' %}" class="btn btn-outline-dark btn-sm">Continue shopping</a>
-                      </div>
+              {% if not guest_checkout %}
+              <div class="spring-cart-summary__address">
+                  <h3>Delivery address</h3>
+                  {% if latest_address %}
+                  <p>{{ latest_address.address }}</p>
+                  <p>{{ latest_address.city }}</p>
+                  <p>{{ latest_address.phone }}</p>
+                  <a href="{% url 'store:profile' %}" class="spring-text-link">Change address</a>
+                  {% else %}
+                  <p>No saved address yet.</p>
+                  <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-outline-dark">Add address</a>
+                  {% endif %}
+              </div>
+              {% endif %}
 
-                      {% for item in cart_products %}
-                      <div class="zent-transaction-item">
-                          <a href="{% url 'store:product-detail' item.product.slug %}">
-                              {% if item.product.product_image %}
-                              <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}" class="zent-transaction-image">
-                              {% else %}
-                              <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ item.product.title }}" class="zent-transaction-image">
-                              {% endif %}
-                          </a>
-
-                          <div>
-                              <h3 class="h6 mb-1"><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h3>
-                              <p class="mb-1 text-muted small">{{ item.product.price|floatformat:2 }} ETB each</p>
-                              {% if item.size %}
-                              <p class="mb-0 text-muted small">Size: {{ item.size }}</p>
-                              {% endif %}
-                          </div>
-
-                          <div class="zent-quantity-box">
-                              <form action="{% url 'store:minus-cart' item.id %}" method="POST" class="d-inline">
-                                  {% csrf_token %}
-                                  <button type="submit" class="btn btn-sm" aria-label="Decrease quantity">-</button>
-                              </form>
-                              <input type="text" class="form-control form-control-sm" value="{{ item.quantity }}" readonly>
-                              <form action="{% url 'store:plus-cart' item.id %}" method="POST" class="d-inline">
-                                  {% csrf_token %}
-                                  <button type="submit" class="btn btn-sm" aria-label="Increase quantity">+</button>
-                              </form>
-                          </div>
-
-                          <div class="text-end">
-                              <p class="mb-2 fw-bold">{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</p>
-                              <form action="{% url 'store:remove-cart' item.id %}" method="POST" class="d-inline">
-                                  {% csrf_token %}
-                                  <button type="submit" class="btn btn-sm btn-link text-danger p-0">Remove</button>
-                              </form>
-                          </div>
-                      </div>
-                      {% endfor %}
-                  </section>
+              <div class="spring-cart-summary__rows">
+                  <div><span>Subtotal</span><strong>{{ amount|floatformat:2 }} ETB</strong></div>
+                  <div><span>Delivery</span><strong>{% if shipping_amount == 0 %}Free{% else %}{{ shipping_amount|floatformat:2 }} ETB{% endif %}</strong></div>
+                  {% if coupon %}
+                  <div><span>Coupon {{ coupon.code }}</span><strong>-{{ coupon.discount }}%</strong></div>
+                  {% endif %}
+                  <div class="spring-cart-summary__total"><span>Total</span><strong>{{ total_amount|floatformat:2 }} ETB</strong></div>
               </div>
 
-              <aside class="zent-transaction-stack">
-                  <section class="zent-transaction-card zent-transaction-card--soft">
-                      <span class="zent-section-kicker">Summary</span>
-                      <h2 class="h4 mb-3">Order total</h2>
+              <form action="{% url 'store:add-coupon' %}" method="POST" class="spring-cart-summary__coupon">
+                  {% csrf_token %}
+                  <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
+                  <button class="btn btn-outline-dark" type="submit">Apply</button>
+              </form>
 
-                      {% if not guest_checkout %}
-                      <div class="delivery-address-preview mb-3">
-                          <h3 class="h6 mb-2">Delivery address</h3>
-                          {% if latest_address %}
-                          <p class="mb-1"><strong>{{ latest_address.address }}</strong></p>
-                          <p class="mb-1 text-muted">{{ latest_address.city }}</p>
-                          <p class="mb-0 text-muted">{{ latest_address.phone }}</p>
-                          <a href="{% url 'store:profile' %}" class="small d-inline-block mt-2">Change saved address</a>
-                          {% else %}
-                          <p class="mb-2 text-muted">No saved address yet. Add one before placing the order.</p>
-                          <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-sm btn-outline-dark">Add address</a>
-                          {% endif %}
-                      </div>
-                      {% endif %}
+              <form action="{% url 'store:checkout' %}" method="POST" class="spring-cart-summary__checkout">
+                  {% csrf_token %}
+                  {% if guest_checkout %}
+                  <div class="spring-auth__field">
+                      <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
+                  </div>
+                  <div class="spring-auth__field">
+                      <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
+                  </div>
+                  <div class="spring-auth__field">
+                      <input type="text" name="city" class="form-control" placeholder="City" required>
+                  </div>
+                  <div class="spring-auth__field">
+                      <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
+                  </div>
+                  {% endif %}
 
-                      <div class="zent-summary-list">
-                          <div class="zent-summary-row">
-                              <span>Subtotal</span>
-                              <span>{{ amount|floatformat:2 }} ETB</span>
-                          </div>
-                          <div class="zent-summary-row">
-                              <span>Delivery</span>
-                              {% if shipping_amount == 0 %}
-                              <span class="text-success">Free</span>
-                              {% else %}
-                              <span>{{ shipping_amount|floatformat:2 }} ETB</span>
-                              {% endif %}
-                          </div>
-                          {% if coupon %}
-                          <div class="zent-summary-row">
-                              <span>Coupon {{ coupon.code }}</span>
-                              <span>-{{ coupon.discount }}%</span>
-                          </div>
-                          {% endif %}
-                          <div class="zent-summary-row">
-                              <strong>Total</strong>
-                              <strong>{{ total_amount|floatformat:2 }} ETB</strong>
-                          </div>
-                      </div>
-
-                      <form action="{% url 'store:add-coupon' %}" method="POST" class="mb-3">
-                          {% csrf_token %}
-                          <div class="input-group">
-                              <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
-                              <button class="btn btn-outline-dark" type="submit">Use</button>
-                          </div>
-                      </form>
-
-                      <form action="{% url 'store:checkout' %}" method="POST">
-                          {% csrf_token %}
-                          {% if guest_checkout %}
-                          <p class="small text-muted mb-3">Enter the delivery details for this order. We will use them to contact you and complete delivery.</p>
-                          <div class="zent-checkout-fields">
-                              <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
-                              <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
-                              <input type="text" name="city" class="form-control" placeholder="City" required>
-                              <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
-                          </div>
-                          {% endif %}
-
-                          <button type="submit" class="btn btn-dark w-100" {% if not flow_status.checkout_ready %}disabled{% endif %}>
-                              {{ flow_status.checkout_label|default:"Place Order" }}
-                          </button>
-
-                          {% if not flow_status.checkout_ready %}
-                          <p class="small text-muted mt-3 mb-0">Save an address first, then come back here to complete the order.</p>
-                          {% elif not guest_checkout %}
-                          <p class="small text-muted mt-3 mb-0">By placing this order, you confirm that your latest saved address should be used for delivery.</p>
-                          {% endif %}
-                      </form>
-                  </section>
-              </aside>
-          </div>
-          {% else %}
-          <section class="zent-transaction-card text-center">
-              <span class="zent-section-kicker">Cart</span>
-              <h2 class="mb-2">Your cart is empty</h2>
-              <p class="text-muted mb-3">Add products to your cart first, then come back here to complete the order.</p>
-              <a href="{% url 'store:home' %}" class="btn btn-dark">Start shopping</a>
-          </section>
-          {% endif %}
+                  <button type="submit" class="btn btn-dark w-100" {% if not flow_status.checkout_ready %}disabled{% endif %}>
+                      {{ flow_status.checkout_label|default:"Place Order" }}
+                  </button>
+              </form>
+          </aside>
       </div>
+      {% else %}
+      <section class="spring-empty-state">
+          <h2>Your cart is empty</h2>
+          <p>Add products to your cart to continue.</p>
+          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
+      </section>
+      {% endif %}
   </div>
 </main>
 {% endblock content %}

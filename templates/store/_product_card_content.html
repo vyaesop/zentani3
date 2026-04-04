@@ -1,79 +1,29 @@
 {% load static %}
 {% load image_optim %}
 
-<div class="product zent-product-card h-100 {% if product.is_sold_out %}is-sold-out{% endif %}">
-    <figure class="product-media zent-product-media">
-        <a href="{% url 'store:product-detail' product.slug %}" class="zent-product-image-link">
-            {% if product.product_image %}
-            <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="300" height="338">
-            {% else %}
-            <img loading="lazy" src="{% static 'img/product-1.jpg' %}" alt="{{ product.title }}" width="300" height="338">
-            {% endif %}
-        </a>
-        <div class="zent-product-badges">
-            {% if product.is_sold_out %}
-            <span class="zent-product-badge zent-product-badge--soldout">Archive</span>
-            {% else %}
-            <span class="zent-product-badge">Drop live</span>
-            {% endif %}
-            {% if product.available_sizes and not product.is_sold_out %}
-            <span class="zent-product-badge zent-product-badge--subtle">Size grid on</span>
-            {% endif %}
-        </div>
-    </figure>
+<article class="spring-product-card">
+    <a href="{% url 'store:product-detail' product.slug %}" class="spring-product-card__media">
+        {% if product.product_image %}
+        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="420" height="520">
+        {% else %}
+        <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="520">
+        {% endif %}
+    </a>
 
-    <div class="product-details zent-product-details">
-        <div class="zent-product-meta">
-            <span class="zent-product-pill">{{ product.category }}</span>
-            {% if product.brand %}
-            <span class="zent-product-pill zent-product-pill--muted">{{ product.brand }}</span>
-            {% endif %}
-        </div>
+    <div class="spring-product-card__body">
+        <h3><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>
+        {% if product.brand %}
+        <p class="spring-product-card__meta">{{ product.brand }}</p>
+        {% endif %}
 
-        <h3 class="product-name zent-product-name">
-            <a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a>
-        </h3>
+        {% if product.is_sold_out %}
+        <p class="spring-product-card__price spring-product-card__price--soldout">Sold out</p>
+        {% else %}
+        <p class="spring-product-card__price">{{ product.price }} ETB</p>
+        {% endif %}
 
-        <p class="zent-product-summary">
-            {% if product.short_description %}
-            {{ product.short_description|truncatewords:12 }}
-            {% elif product.is_sold_out %}
-            This piece is currently offline. Check back for the next restock.
-            {% elif product.available_sizes %}
-            Open the product, pick a size, and move straight to cart.
-            {% else %}
-            Clean one-tap path: open it or add it straight to cart.
-            {% endif %}
-        </p>
-
-        <div class="zent-product-footer">
-            <div class="zent-product-footer__top">
-                <div class="product-price">
-                    <ins class="new-price">{{ product.price }} ETB</ins>
-                </div>
-                {% if product.available_sizes and not product.is_sold_out %}
-                <span class="zent-product-note">Choose fit</span>
-                {% elif not product.is_sold_out %}
-                <span class="zent-product-note">Quick add</span>
-                {% endif %}
-            </div>
-
-            <div class="zent-product-actions">
-                {% if product.is_sold_out %}
-                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sold out</button>
-                {% elif product.available_sizes %}
-                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-dark">Pick size</a>
-                {% else %}
-                <form action="{% url 'store:add-to-cart' %}" method="POST" class="m-0">
-                    {% csrf_token %}
-                    <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="btn btn-sm btn-dark">Add to cart</button>
-                </form>
-                {% endif %}
-
-                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark">Open</a>
-            </div>
-        </div>
+        {% if product.available_sizes and not product.is_sold_out %}
+        <p class="spring-product-card__sizes">Available sizes: {{ product.available_sizes }}</p>
+        {% endif %}
     </div>
-</div>
+</article>

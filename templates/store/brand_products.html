@@ -1,66 +1,28 @@
 {% extends 'base.html' %}
 
+{% block title %}Zentanee | {{ brand.title }}{% endblock %}
+
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb bb-no">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
-              <li>{{ brand.title }}</li>
-          </ul>
-      </div>
-  </nav>
+<main class="main spring-main">
+  <div class="spring-container spring-directory">
+      {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description=brand.description|default:'Browse everything currently available from this brand.' count=product_count %}
 
-  <div class="page-content mb-10">
-      <div class="container">
-          {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description=brand.description|default:'See the full selection currently available from this brand, then open a product to review the gallery, sizes, and order steps.' count=product_count secondary_chip='Brand-focused browse view' %}
-
-          <section class="zent-collection-radar">
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Brand mood</span>
-                  <h2>{{ brand.title }} in one rail.</h2>
-                  <p>{% if brand.description %}{{ brand.description|truncatewords:24 }}{% else %}This view keeps one brand in focus so shoppers can compare pieces without bouncing across mixed layouts.{% endif %}</p>
-              </article>
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Compare fast</span>
-                  <h2>{{ product_count }} live option{{ product_count|pluralize }}</h2>
-                  <p>Use this page when the label matters first, then open a piece to confirm fit, photos, and price before cart.</p>
-              </article>
-              <article class="zent-radar-card zent-radar-card--accent">
-                  <span class="zent-section-kicker">Quick actions</span>
-                  <h2>Keep the browse tight.</h2>
-                  <div class="d-flex flex-wrap gap-2">
-                      <a href="{% url 'store:all-brands' %}" class="btn btn-dark">More brands</a>
-                      <a href="{% url 'store:search' %}" class="btn btn-outline-dark">Search store</a>
+      <div class="spring-directory__layout">
+          <div class="spring-directory__main">
+              <div class="spring-product-grid">
+                  {% for product in products %}
+                  <div class="spring-grid-item">
+                      {% include 'store/_product_card_content.html' with product=product %}
                   </div>
-              </article>
-          </section>
-
-          <div class="zent-collection-shell">
-              <div class="zent-collection-main">
-                  <section class="zent-collection-board">
-                      <div class="zent-collection-toolbar">
-                          <p>Products from <strong>{{ brand.title }}</strong></p>
-                          <span class="zent-product-pill zent-product-pill--muted">Browse and compare quickly</span>
-                      </div>
-
-                      <div class="zent-collection-grid">
-                          {% for product in products %}
-                          <div class="product-wrap">
-                              {% include 'store/_product_card_content.html' with product=product %}
-                          </div>
-                          {% empty %}
-                          <p class="text-muted mb-0">No products are available for this brand yet.</p>
-                          {% endfor %}
-                      </div>
-
-                      {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Brand product pages' %}
-                  </section>
+                  {% empty %}
+                  <p class="text-muted mb-0">No products are available for this brand yet.</p>
+                  {% endfor %}
               </div>
 
-              {% include 'store/_collection_sidebar.html' %}
+              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Brand product pages' %}
           </div>
+
+          {% include 'store/_collection_sidebar.html' %}
       </div>
   </div>
 </main>

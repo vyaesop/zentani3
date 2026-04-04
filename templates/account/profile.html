@@ -1,127 +1,80 @@
 {% extends 'base.html' %}
-{% load static %}
+
+{% block title %}Zentanee | Account{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-  {% include 'partials/_messages.html' %}
-  {% include 'partials/_flow_status.html' with flow_status=profile_flow_status %}
+<main class="main spring-main">
+  <div class="spring-container spring-account">
+      {% include 'partials/_messages.html' %}
+      {% include 'partials/_flow_status.html' with flow_status=profile_flow_status %}
 
-  <section class="zent-profile-hero mb-4">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-7">
-        <span class="zent-product-pill mb-3">Your Zentanee account</span>
-        <h1 class="zent-profile-title mb-2">{{ request.user.first_name }} {{ request.user.last_name }}</h1>
-        <p class="zent-profile-muted mb-3">
-          Keep your delivery details ready, track recent orders, and jump back into shopping without losing your place.
-        </p>
-        <div class="d-flex flex-wrap gap-2">
-          <a class="btn btn-dark" href="{% url 'store:home' %}">Continue Shopping</a>
-          <a class="btn btn-outline-dark" href="{% url 'store:add-address' %}">Add Address</a>
-          <a class="btn btn-outline-primary" href="{% url 'store:orders' %}">Track Orders</a>
-          <a class="btn btn-outline-secondary" href="{% url 'store:affiliate-dashboard' %}">{% if has_affiliate_profile %}Affiliate Dashboard{% else %}Become an Affiliate{% endif %}</a>
-        </div>
-      </div>
-      <div class="col-lg-5">
-        <div class="zent-profile-stats">
-          <div class="zent-profile-stat">
-            <strong>{{ addresses|length }}</strong>
-            <span>Saved address{{ addresses|length|pluralize }}</span>
-          </div>
-          <div class="zent-profile-stat">
-            <strong>{{ orders|length }}</strong>
-            <span>Order{{ orders|length|pluralize }} placed</span>
-          </div>
-          <div class="zent-profile-stat">
-            <strong>{% if addresses %}Ready{% else %}1 step{% endif %}</strong>
-            <span>{% if addresses %}Checkout can use your saved address{% else %}Add an address to speed up checkout{% endif %}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="row g-4">
-    <div class="col-lg-5">
-      <section class="zent-profile-panel h-100">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <section class="spring-account__hero">
           <div>
-            <span class="zent-product-pill zent-product-pill--muted">Delivery</span>
-            <h3 class="h5 mb-1 mt-2">Saved addresses</h3>
-            <p class="zent-profile-muted mb-0">These details are used to speed up order placement and delivery confirmation.</p>
+              <p class="spring-directory-header__eyebrow">My account</p>
+              <h1>{% firstof request.user.first_name request.user.username %}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
+              <p>View your saved addresses, recent orders, and account shortcuts from one place.</p>
           </div>
-          <a href="{% url 'store:add-address' %}" class="btn btn-sm btn-outline-dark">Add address</a>
-        </div>
+          <div class="spring-account__hero-actions">
+              <a class="btn btn-dark" href="{% url 'store:home' %}">Continue shopping</a>
+              <a class="btn btn-outline-dark" href="{% url 'store:add-address' %}">Add address</a>
+              <a class="btn btn-outline-dark" href="{% url 'store:orders' %}">Orders</a>
+          </div>
+      </section>
 
-        {% if addresses %}
-          <div class="d-flex flex-column gap-3">
-            {% for address in addresses %}
-              <div class="zent-profile-stat">
-                <div class="d-flex justify-content-between align-items-start gap-3">
-                  <div>
-                    <strong class="h6 mb-2 d-block">Address {{ forloop.counter }}</strong>
-                    <p class="mb-1"><strong>Location:</strong> {{ address.address }}</p>
-                    <p class="mb-1"><strong>City:</strong> {{ address.city }}</p>
-                    <p class="mb-0"><strong>Phone:</strong> {{ address.phone }}</p>
-                  </div>
-                  <form action="{% url 'store:remove-address' address.id %}" method="POST" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0">Remove</button>
-                  </form>
-                </div>
+      <div class="spring-account__grid">
+          <section class="spring-account__card">
+              <div class="spring-section__head">
+                  <h2>Saved Addresses</h2>
+                  <a href="{% url 'store:add-address' %}">Add address</a>
               </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="zent-profile-stat">
-            <strong class="h6 mb-2 d-block">No address saved yet</strong>
-            <p class="mb-3">Add your usual delivery address now so the cart flow stays fast and you can place orders without retyping details.</p>
-            <a href="{% url 'store:add-address' %}" class="btn btn-dark btn-sm">Add your first address</a>
-          </div>
-        {% endif %}
-      </section>
-    </div>
 
-    <div class="col-lg-7">
-      <section class="zent-profile-panel h-100">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-          <div>
-            <span class="zent-product-pill zent-product-pill--muted">Orders</span>
-            <h3 class="h5 mb-1 mt-2">Recent order activity</h3>
-            <p class="zent-profile-muted mb-0">A quick view of what you ordered and where each order stands right now.</p>
-          </div>
-          <a href="{% url 'store:orders' %}" class="btn btn-sm btn-outline-dark">Open full history</a>
-        </div>
+              {% if addresses %}
+              <div class="spring-account__stack">
+                  {% for address in addresses %}
+                  <article class="spring-account__item">
+                      <div>
+                          <strong>Address {{ forloop.counter }}</strong>
+                          <p>{{ address.address }}</p>
+                          <p>{{ address.city }}</p>
+                          <p>{{ address.phone }}</p>
+                      </div>
+                      <form action="{% url 'store:remove-address' address.id %}" method="POST">
+                          {% csrf_token %}
+                          <button type="submit" class="spring-text-link">Remove</button>
+                      </form>
+                  </article>
+                  {% endfor %}
+              </div>
+              {% else %}
+              <p class="text-muted mb-3">You have not saved an address yet.</p>
+              <a href="{% url 'store:add-address' %}" class="btn btn-dark">Add your first address</a>
+              {% endif %}
+          </section>
 
-        {% if orders %}
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Item</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for order in orders %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ order.product.title }}</td>
-                    <td><span class="zent-product-pill">{{ order.status }}</span></td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="zent-profile-stat">
-            <strong class="h6 mb-2 d-block">No orders yet</strong>
-            <p class="mb-3">Once you place an order, its progress will appear here so you always know what happens next.</p>
-            <a href="{% url 'store:home' %}" class="btn btn-dark btn-sm">Browse products</a>
-          </div>
-        {% endif %}
-      </section>
-    </div>
+          <section class="spring-account__card">
+              <div class="spring-section__head">
+                  <h2>Recent Orders</h2>
+                  <a href="{% url 'store:orders' %}">View all</a>
+              </div>
+
+              {% if orders %}
+              <div class="spring-account__stack">
+                  {% for order in orders %}
+                  <article class="spring-account__item">
+                      <div>
+                          <strong>{{ order.product.title }}</strong>
+                          <p>Order #{{ order.id }}</p>
+                      </div>
+                      <span>{{ order.status }}</span>
+                  </article>
+                  {% endfor %}
+              </div>
+              {% else %}
+              <p class="text-muted mb-3">You have not placed any orders yet.</p>
+              <a href="{% url 'store:home' %}" class="btn btn-dark">Browse products</a>
+              {% endif %}
+          </section>
+      </div>
   </div>
-</div>
+</main>
 {% endblock content %}
