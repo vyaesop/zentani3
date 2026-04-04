@@ -91,16 +91,19 @@ class ProductAdmin(admin.ModelAdmin):
                 level=messages.WARNING,
             )
 
-    def save_model(self, request, obj, form, change):
-        with suspend_telegram_autopublish():
-            super().save_model(request, obj, form, change)
+    def _queue_product_post(self, request, product):
+        request._telegram_product_post_id = None
+        if product and product.pk and product.is_active and not product.is_sold_out:
+            request._telegram_product_post_id = product.pk
 
-    def save_related(self, request, form, formsets, change):
-        with suspend_telegram_autopublish():
-            super().save_related(request, form, formsets, change)
+    def _post_product_after_admin_save(self, request):
+        product_id = getattr(request, "_telegram_product_post_id", None)
+        request._telegram_product_post_id = None
+        if not product_id:
+            return
 
-        product = form.instance
-        if not product.is_active or product.is_sold_out:
+        product = Product.objects.filter(pk=product_id).select_related("category", "brand").first()
+        if not product or not product.is_active or product.is_sold_out:
             return
 
         posted = post_product_to_channel(product, force=True)
@@ -116,6 +119,23 @@ class ProductAdmin(admin.ModelAdmin):
                 "Product was saved, but Telegram channel posting failed. Check Telegram/media configuration.",
                 level=messages.WARNING,
             )
+
+    def save_model(self, request, obj, form, change):
+        with suspend_telegram_autopublish():
+            super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        with suspend_telegram_autopublish():
+            super().save_related(request, form, formsets, change)
+        self._queue_product_post(request, form.instance)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        self._post_product_after_admin_save(request)
+        return super().response_add(request, obj, post_url_continue=post_url_continue)
+
+    def response_change(self, request, obj):
+        self._post_product_after_admin_save(request)
+        return super().response_change(request, obj)
 
 class CartAdmin(admin.ModelAdmin):
     list_display = ('user', 'product', 'size', 'quantity', 'coupon', 'created_at')

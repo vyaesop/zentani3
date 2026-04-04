@@ -153,7 +153,7 @@ def _telegram_api_request_with_files(method, payload, token, files=None):
         else:
             logger.warning("Telegram %s failed: %s", method, exc)
         return False
-    except (error.URLError, TimeoutError, ValueError) as exc:
+    except (error.URLError, TimeoutError, ValueError, OSError) as exc:
         logger.warning("Telegram %s failed: %s", method, exc)
         return False
 
