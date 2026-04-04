@@ -78,7 +78,11 @@ class AddressForm(forms.ModelForm):
     class Meta:
         model = Address
         fields = ['address', 'city', 'phone']
-        widgets = {'address':forms.TextInput(attrs={'class':'form-control', 'placeholder':'Popular Place like Restaurant, Religious Site, etc.'}), 'city':forms.TextInput(attrs={'class':'form-control', 'placeholder':'City'})}
+        widgets = {
+            'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Popular place like a restaurant, church, mosque, or landmark'}),
+            'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'}),
+        }
 
 
 class PasswordChangeForm(PasswordChangeForm):

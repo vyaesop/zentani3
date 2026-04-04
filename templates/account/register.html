@@ -1,59 +1,53 @@
 {% extends 'base.html' %}
-{% load static %}
 
-    {% block content %}
+{% block content %}
+<div class="container">
+  <div class="zent-auth-shell">
+    <section class="zent-auth-card">
+      <p class="zent-auth-eyebrow">Create account</p>
+      <h1 class="zent-auth-title">Set up your Zentanee account</h1>
+      <p class="zent-auth-copy">Create your account once so checkout is faster, delivery details are saved, and your orders stay easy to track.</p>
 
-      <div class="container py-5">
-        <div class="col-md-8 offset-2">
+      {% include 'partials/_messages.html' %}
 
-        <h1 class="mb-5">Create Your Account</h1>
-        
-        
-        <div class="card mb-4" id="forms">
-          <div class="card-header">
-            <small>
-            With a this account, you can save time during checkout, 
-            access your shopping bag from any device and view your order history.
-            </small>
-          </div>
-          <div class="card-body">
+      <form method="post" action="" class="zent-auth-form">
+        {% csrf_token %}
+        {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
 
-            {% include 'partials/_messages.html' %}
-
-            <form method="post" action="">
-              <fieldset>
-                {% csrf_token %}
-                {% if next_url %}
-                <input type="hidden" name="next" value="{{ next_url }}">
-                {% endif %}
-
-                {% for fm in form %}
-                    <div class="form-group">
-                        {{fm.label_tag}}
-                        {{fm}}
-                        <small class="text-danger">{{fm.errors|striptags}}</small>
-                    </div>
-                {% endfor %}
-                <button class="btn btn-primary" type="submit">Submit</button>
-              </fieldset>
-
-              {% if form.non_field_errors %}
-                {% for error in form.non_field_errors %}
-                    <p class="alert alert-danger alert-dismissible fade show" role="alert" my-3>
-                        {{error}}
-                    </p>
-                {% endfor %}
-              {% endif %}
-
-            </form>
-
-            <hr>
-
-            Already have an account? <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Log In </a>
-            
-          </div>
+        {% for fm in form %}
+        <div class="form-group">
+          {{ fm.label_tag }}
+          {{ fm }}
+          {% if fm.help_text %}<small class="helptext">{{ fm.help_text|safe }}</small>{% endif %}
+          <small class="text-danger">{{ fm.errors|striptags }}</small>
         </div>
+        {% endfor %}
 
-        </div>       
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}
+          <p class="alert alert-danger my-3">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+
+        <button class="btn btn-dark w-100" type="submit">Create account</button>
+      </form>
+
+      <div class="zent-auth-footer">
+        <span>Already have an account? <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Log in</a></span>
       </div>
+    </section>
+
+    <aside class="zent-auth-side">
+      <p class="zent-auth-eyebrow">Included from the start</p>
+      <h2 class="h3 mb-3">Registration helps the whole flow</h2>
+      <ul>
+        <li>Your delivery information is saved immediately instead of being retyped every time.</li>
+        <li>Your cart and orders are easier to manage from the account page.</li>
+        <li>You can return to protected steps without losing your shopping progress.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
 {% endblock content %}

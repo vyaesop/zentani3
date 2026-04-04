@@ -4,290 +4,182 @@
 
 {% block content %}
 <main class="main">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container">
-            <h1 class="page-title mb-0">Shopping Cart</h1>
-        </div>
-    </div>
-    <!-- End of Page Header -->
+  <div class="page-content">
+      <div class="container">
+          {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+          {% include 'partials/_messages.html' %}
 
-    <!-- Breadcrumb -->
-    <nav class="breadcrumb-nav mb-6">
-        <div class="container">
-            <ul class="breadcrumb">
-                <li><a href="{% url 'store:home' %}">Home</a></li>
-                <li>Shopping Cart</li>
-            </ul>
-        </div>
-    </nav>
-    <!-- End of Breadcrumb -->
+          <section class="zent-detail-section mb-4">
+              <span class="zent-section-kicker">Checkout</span>
+              <h1 class="mb-2">Your cart</h1>
+              <p class="zent-detail-muted mb-0">Review what you are ordering, confirm the delivery details, and place the order from one clear screen.</p>
+          </section>
 
-    <div class="page-content">
-        <div class="container">
-            {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+          {% if cart_products %}
+          <div class="zent-transaction-shell">
+              <div class="zent-transaction-stack">
+                  <section class="zent-transaction-card zent-transaction-card--soft">
+                      <span class="zent-section-kicker">What happens next</span>
+                      <h2 class="h4 mb-3">Order guidance</h2>
+                      {% if guest_checkout %}
+                      <ol class="checkout-steps mb-0">
+                          <li>Review the items and quantities in your cart.</li>
+                          <li>Fill in your delivery details in the order form.</li>
+                          <li>Submit the order and wait for Zentanee to confirm it.</li>
+                      </ol>
+                      {% elif latest_address %}
+                      <ol class="checkout-steps mb-0">
+                          <li>Review the items and quantities in your cart.</li>
+                          <li>Confirm your saved address is still the right delivery location.</li>
+                          <li>Place the order and track progress from your orders page.</li>
+                      </ol>
+                      {% else %}
+                      <ol class="checkout-steps mb-0">
+                          <li>Review the items and quantities in your cart.</li>
+                          <li>Add a delivery address to your account.</li>
+                          <li>Return here and place the order once your address is saved.</li>
+                      </ol>
+                      {% endif %}
+                  </section>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+                  <section class="zent-transaction-card">
+                      <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+                          <div>
+                              <span class="zent-section-kicker">Items</span>
+                              <h2 class="h4 mb-0">Cart items</h2>
+                          </div>
+                          <a href="{% url 'store:home' %}" class="btn btn-outline-dark btn-sm">Continue shopping</a>
+                      </div>
 
-            {% if cart_products %}
-            <div class="row gutter-lg">
-                <div class="col-lg-8 pr-lg-4">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-body">
-                            <h5 class="mb-3">What happens next</h5>
-                            {% if guest_checkout %}
-                            <ol class="checkout-steps mb-0">
-                                <li>Review the items and quantities in your cart.</li>
-                                <li>Fill in your delivery details in the order form on the right.</li>
-                                <li>Submit the order and wait for confirmation from Zentanee.</li>
-                            </ol>
-                            {% elif latest_address %}
-                            <ol class="checkout-steps mb-0">
-                                <li>Review the items and quantities in your cart.</li>
-                                <li>Confirm that your saved delivery address is still correct.</li>
-                                <li>Place the order and track its progress from the orders page.</li>
-                            </ol>
-                            {% else %}
-                            <ol class="checkout-steps mb-0">
-                                <li>Review the items and quantities in your cart.</li>
-                                <li>Add a delivery address to your account.</li>
-                                <li>Return here and place the order once your address is saved.</li>
-                            </ol>
-                            {% endif %}
-                        </div>
-                    </div>
+                      {% for item in cart_products %}
+                      <div class="zent-transaction-item">
+                          <a href="{% url 'store:product-detail' item.product.slug %}">
+                              {% if item.product.product_image %}
+                              <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}" class="zent-transaction-image">
+                              {% else %}
+                              <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ item.product.title }}" class="zent-transaction-image">
+                              {% endif %}
+                          </a>
 
-                    <div class="cart-items-list">
-                        {% for item in cart_products %}
-                        <div class="card cart-item-card mb-3 shadow-sm">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col-md-2 col-3 text-center mb-3 mb-md-0">
-                                        <a href="{% url 'store:product-detail' item.product.slug %}">
-                                            {% if item.product.product_image %}
-                                            <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}" class="img-fluid rounded cart-product-image">
-                                            {% else %}
-                                            <img src="{% static 'asset/images/default-product.webp' %}" alt="No image" class="img-fluid rounded cart-product-image">
-                                            {% endif %}
-                                        </a>
-                                    </div>
-                                    <div class="col-md-4 col-9 mb-3 mb-md-0">
-                                        <h6 class="mb-1 product-title-link"><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h6>
-                                        {% if item.size %}
-                                            <p class="mb-0 text-muted"><small>Size: {{ item.size }}</small></p>
-                                        {% endif %}
-                                        <p class="mb-0 text-muted"><small>Price: {{ item.product.price|floatformat:2 }} ETB</small></p>
-                                    </div>
-                                    <div class="col-md-3 col-6 mb-2 mb-md-0">
-                                        <div class="input-group quantity-control">
-                                            <form action="{% url 'store:minus-cart' item.id %}" method="POST" class="d-inline">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary">-</button>
-                                            </form>
-                                            <input type="text" class="form-control form-control-sm text-center" value="{{ item.quantity }}" readonly style="background-color: white;">
-                                            <form action="{% url 'store:plus-cart' item.id %}" method="POST" class="d-inline">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2 col-3 text-md-end">
-                                        <p class="mb-1 fw-bold">{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</p>
-                                    </div>
-                                    <div class="col-md-1 col-3 text-md-end">
-                                        <form action="{% url 'store:remove-cart' item.id %}" method="POST" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Remove item"><i class="fas fa-trash"></i></button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div class="cart-actions d-flex justify-content-between mt-4">
-                        <a href="{% url 'store:home' %}" class="btn btn-outline-primary btn-rounded"><i class="w-icon-long-arrow-left"></i>Continue Shopping</a>
-                        {% comment %} <a href="#" class="btn btn-outline-secondary btn-rounded">Update Cart</a> {% endcomment %}
-                    </div>
-                </div>
+                          <div>
+                              <h3 class="h6 mb-1"><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h3>
+                              <p class="mb-1 text-muted small">{{ item.product.price|floatformat:2 }} ETB each</p>
+                              {% if item.size %}
+                              <p class="mb-0 text-muted small">Size: {{ item.size }}</p>
+                              {% endif %}
+                          </div>
 
-                <div class="col-lg-4 sticky-sidebar-wrapper">
-                    <div class="sticky-sidebar">
-                        <div class="card shadow-sm">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0 card-title">Cart Summary</h5>
-                            </div>
-                            <div class="card-body">
-                                {% if not guest_checkout %}
-                                <div class="delivery-address-preview mb-3">
-                                    <h6 class="mb-2">Delivery address for this order</h6>
-                                    {% if latest_address %}
-                                    <p class="mb-1"><strong>{{ latest_address.address }}</strong></p>
-                                    <p class="mb-1 text-muted">{{ latest_address.city }}</p>
-                                    <p class="mb-0 text-muted">{{ latest_address.phone }}</p>
-                                    <a href="{% url 'store:profile' %}" class="small d-inline-block mt-2">Change saved address</a>
-                                    {% else %}
-                                    <p class="mb-2 text-muted">No saved address yet. Add one before placing the order.</p>
-                                    <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-sm btn-outline-primary">Add address</a>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
+                          <div class="zent-quantity-box">
+                              <form action="{% url 'store:minus-cart' item.id %}" method="POST" class="d-inline">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-sm" aria-label="Decrease quantity">-</button>
+                              </form>
+                              <input type="text" class="form-control form-control-sm" value="{{ item.quantity }}" readonly>
+                              <form action="{% url 'store:plus-cart' item.id %}" method="POST" class="d-inline">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-sm" aria-label="Increase quantity">+</button>
+                              </form>
+                          </div>
 
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Subtotal
-                                        <span>{{ amount|floatformat:2 }} ETB</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        Delivery Charges
-                                        {% if shipping_amount == 0 %}
-                                            <span class="text-success">Free</span>
-                                        {% else %}
-                                            <span>{{ shipping_amount|floatformat:2 }} ETB</span>
-                                        {% endif %}
-                                    </li>
-                                    {% if coupon %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center text-success">
-                                        Coupon Applied ({{coupon.code}})
-                                        <span>- {{ coupon.discount }}%</span>
-                                    </li>
-                                    {% endif %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
-                                        Total
-                                        <span>{{ total_amount|floatformat:2 }} ETB</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="card-body border-top">
-                                <form action="{% url 'store:add-coupon' %}" method="POST">
-                                    {% csrf_token %}
-                                    <div class="input-group">
-                                        <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
-                                        <button class="btn btn-secondary" type="submit">Use</button>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="card-footer bg-transparent border-0">
-                                <form action="{% url 'store:checkout' %}" method="POST">
-                                    {% csrf_token %}
-                                    {% if guest_checkout %}
-                                    <p class="small text-muted mb-3">Enter the delivery details for this order. We will use these details to contact you and deliver the package.</p>
-                                    <div class="mb-2">
-                                        <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <input type="text" name="city" class="form-control" placeholder="City" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
-                                    </div>
-                                    {% endif %}
-                                    <button type="submit" class="btn btn-primary btn-block btn-lg btn-rounded w-100" {% if not flow_status.checkout_ready %}disabled{% endif %}>
-                                        {{ flow_status.checkout_label|default:"Place Order" }} <i class="w-icon-long-arrow-right"></i>
-                                    </button>
-                                    {% if not flow_status.checkout_ready %}
-                                    <p class="small text-muted mt-3 mb-0">Save an address first, then come back here to complete the order.</p>
-                                    {% elif not guest_checkout %}
-                                    <p class="small text-muted mt-3 mb-0">By placing this order, you confirm that your latest saved address should be used for delivery.</p>
-                                    {% endif %}
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <i class="w-icon-cart display-1 text-muted mb-3"></i>
-                    <h4 class="mt-3">Your cart is empty.</h4>
-                    <p>Looks like you haven't added anything to your cart yet.</p>
-                    <a href="{% url 'store:home' %}" class="btn btn-primary btn-rounded mt-2">Start Shopping</a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
+                          <div class="text-end">
+                              <p class="mb-2 fw-bold">{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</p>
+                              <form action="{% url 'store:remove-cart' item.id %}" method="POST" class="d-inline">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-sm btn-link text-danger p-0">Remove</button>
+                              </form>
+                          </div>
+                      </div>
+                      {% endfor %}
+                  </section>
+              </div>
+
+              <aside class="zent-transaction-stack">
+                  <section class="zent-transaction-card zent-transaction-card--soft">
+                      <span class="zent-section-kicker">Summary</span>
+                      <h2 class="h4 mb-3">Order total</h2>
+
+                      {% if not guest_checkout %}
+                      <div class="delivery-address-preview mb-3">
+                          <h3 class="h6 mb-2">Delivery address</h3>
+                          {% if latest_address %}
+                          <p class="mb-1"><strong>{{ latest_address.address }}</strong></p>
+                          <p class="mb-1 text-muted">{{ latest_address.city }}</p>
+                          <p class="mb-0 text-muted">{{ latest_address.phone }}</p>
+                          <a href="{% url 'store:profile' %}" class="small d-inline-block mt-2">Change saved address</a>
+                          {% else %}
+                          <p class="mb-2 text-muted">No saved address yet. Add one before placing the order.</p>
+                          <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-sm btn-outline-dark">Add address</a>
+                          {% endif %}
+                      </div>
+                      {% endif %}
+
+                      <div class="zent-summary-list">
+                          <div class="zent-summary-row">
+                              <span>Subtotal</span>
+                              <span>{{ amount|floatformat:2 }} ETB</span>
+                          </div>
+                          <div class="zent-summary-row">
+                              <span>Delivery</span>
+                              {% if shipping_amount == 0 %}
+                              <span class="text-success">Free</span>
+                              {% else %}
+                              <span>{{ shipping_amount|floatformat:2 }} ETB</span>
+                              {% endif %}
+                          </div>
+                          {% if coupon %}
+                          <div class="zent-summary-row">
+                              <span>Coupon {{ coupon.code }}</span>
+                              <span>-{{ coupon.discount }}%</span>
+                          </div>
+                          {% endif %}
+                          <div class="zent-summary-row">
+                              <strong>Total</strong>
+                              <strong>{{ total_amount|floatformat:2 }} ETB</strong>
+                          </div>
+                      </div>
+
+                      <form action="{% url 'store:add-coupon' %}" method="POST" class="mb-3">
+                          {% csrf_token %}
+                          <div class="input-group">
+                              <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
+                              <button class="btn btn-outline-dark" type="submit">Use</button>
+                          </div>
+                      </form>
+
+                      <form action="{% url 'store:checkout' %}" method="POST">
+                          {% csrf_token %}
+                          {% if guest_checkout %}
+                          <p class="small text-muted mb-3">Enter the delivery details for this order. We will use them to contact you and complete delivery.</p>
+                          <div class="zent-checkout-fields">
+                              <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
+                              <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
+                              <input type="text" name="city" class="form-control" placeholder="City" required>
+                              <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
+                          </div>
+                          {% endif %}
+
+                          <button type="submit" class="btn btn-dark w-100" {% if not flow_status.checkout_ready %}disabled{% endif %}>
+                              {{ flow_status.checkout_label|default:"Place Order" }}
+                          </button>
+
+                          {% if not flow_status.checkout_ready %}
+                          <p class="small text-muted mt-3 mb-0">Save an address first, then come back here to complete the order.</p>
+                          {% elif not guest_checkout %}
+                          <p class="small text-muted mt-3 mb-0">By placing this order, you confirm that your latest saved address should be used for delivery.</p>
+                          {% endif %}
+                      </form>
+                  </section>
+              </aside>
+          </div>
+          {% else %}
+          <section class="zent-transaction-card text-center">
+              <span class="zent-section-kicker">Cart</span>
+              <h2 class="mb-2">Your cart is empty</h2>
+              <p class="text-muted mb-3">Add products to your cart first, then come back here to complete the order.</p>
+              <a href="{% url 'store:home' %}" class="btn btn-dark">Start shopping</a>
+          </section>
+          {% endif %}
+      </div>
+  </div>
 </main>
-
-<style>
-    .cart-item-card {
-        border: 1px solid #e9ecef;
-        border-radius: .375rem;
-    }
-    .cart-item-card .card-body {
-        padding: 1rem; /* Adjust padding as needed */
-    }
-    .cart-product-image {
-        max-width: 80px;
-        max-height: 80px;
-        object-fit: cover;
-    }
-    .product-title-link a {
-        color: inherit;
-        text-decoration: none;
-        font-weight: 500;
-    }
-    .product-title-link a:hover {
-        text-decoration: underline;
-        color: var(--bs-primary);
-    }
-    .quantity-control .form-control {
-        max-width: 50px;
-        text-align: center;
-        border-left: 0;
-        border-right: 0;
-        border-radius: 0;
-    }
-    .quantity-control .btn {
-        border-radius: 0;
-    }
-    .quantity-control .btn:first-child {
-        border-top-left-radius: .25rem;
-        border-bottom-left-radius: .25rem;
-    }
-    .quantity-control .btn:last-child {
-        border-top-right-radius: .25rem;
-        border-bottom-right-radius: .25rem;
-    }
-    .sticky-sidebar-wrapper {
-        position: relative;
-    }
-    .checkout-steps {
-        padding-left: 1.1rem;
-        color: #51606f;
-    }
-    .checkout-steps li + li {
-        margin-top: .5rem;
-    }
-    .delivery-address-preview {
-        padding: 1rem;
-        border-radius: 12px;
-        background: #f7f9fc;
-        border: 1px solid #e3e8ef;
-    }
-    .sticky-sidebar {
-        position: -webkit-sticky; /* Safari */
-        position: sticky;
-        top: 20px; /* Adjust as needed, considering your navbar height */
-    }
-    .card .list-group-item {
-        border-left: 0;
-        border-right: 0;
-    }
-    .card .list-group-item:first-child {
-        border-top: 0;
-    }
-     .card .list-group-item:last-child {
-        border-bottom: 0;
-    }
-</style>
 {% endblock content %}

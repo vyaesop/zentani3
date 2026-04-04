@@ -1,295 +1,46 @@
 {% extends 'base.html' %}
-{% load static %}
-{% load image_optim %}
 
-    {% block content %}
-    
-    <main class="main">
-      <!-- Start of Breadcrumb -->
-      <nav class="breadcrumb-nav">
-          <div class="container">
-              <ul class="breadcrumb bb-no">
-                  <li><a href="{% url 'store:home' %}">Home</a></li>
-                  <li><a href="{% url 'store:all-categories' %}">Categories</a></li>
-                  <li>{{category.title}}</li>
-              </ul>
-          </div>
-      </nav>
-      <!-- End of Breadcrumb -->
+{% block content %}
+<main class="main">
+  <nav class="breadcrumb-nav">
+      <div class="container">
+          <ul class="breadcrumb bb-no">
+              <li><a href="{% url 'store:home' %}">Home</a></li>
+              <li><a href="{% url 'store:all-categories' %}">Categories</a></li>
+              <li>{{ category.title }}</li>
+          </ul>
+      </div>
+  </nav>
 
-      <!-- Start of Page Content -->
-      <div class="page-content mb-10">
-          <div class="container">
-              <!-- Start of Shop Banner -->
-              {% comment %} <div class="shop-default-banner banner d-flex align-items-center mb-5 br-xs"
-                  style="background-image: url(asset/images/shop/banner1.webp); background-color: #FFC74E;">
-                  <div class="banner-content">
-                      <h4 class="banner-subtitle font-weight-bold">Accessories Collection</h4>
-                      <h3 class="banner-title text-white text-uppercase font-weight-bolder ls-normal">Smart Wrist
-                          Watches</h3>
-                      <a href="shop-banner-sidebar.html" class="btn btn-dark btn-rounded btn-icon-right">Discover
-                          Now<i class="w-icon-long-arrow-right"></i></a>
-                  </div>
-              </div>
-              <!-- End of Shop Banner -->
+  <div class="page-content mb-10">
+      <div class="container">
+          {% include 'store/_collection_header.html' with kicker='Category' title=category.title description='Browse everything currently available in this category. Open any item to check details, size options, and the fastest path to order.' count=product_count secondary_chip='Curated product grid' %}
 
-              <div class="shop-default-categories mb-5">
-                  <div class="categories-swiper swiper-container swiper-theme "
-                      data-swiper-options="{
-                          'slidesPerView': 2,
-                          'breakpoints': {
-                              '576': {
-                                  'slidesPerView': 3
-                              },
-                              '768': {
-                                  'slidesPerView': 4
-                              },
-                              '992': {
-                                  'slidesPerView': 6
-                              },
-                              '1200': {
-                                  'slidesPerView': 7
-                              }
-                          },
-                          'autoplay': {
-                              'delay': 4000,
-                              'disableOnInteraction': false
-                          }
-                      }">
-                      <div class="swiper-wrapper row gutter-no cols-xl-7 cols-lg-6 cols-md-4 cols-sm-3 cols-2">
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-1.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-2.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-3.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-4.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-5.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-6.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
-                          <div class="swiper-slide">
-                              <figure>
-                                  <img src="asset/images/categories/category-7.webp" alt="Brand" width="160" height="90" />
-                              </figure>
-                          </div>
+          <div class="zent-collection-shell">
+              <div class="zent-collection-main">
+                  <section class="zent-collection-board">
+                      <div class="zent-collection-toolbar">
+                          <p>Products in <strong>{{ category.title }}</strong></p>
+                          <span class="zent-product-pill zent-product-pill--muted">Newest items first</span>
                       </div>
-                      <div class="swiper-pagination"></div>
-                  </div>
-              </div> {% endcomment %}
-              <!-- End of Shop Brands-->
 
-              <!-- Start of Shop Category -->
-              <div class="shop-default-category category-ellipse-section mb-6">
-                  <div class="swiper-container swiper-theme shadow-swiper"
-                      data-swiper-options="{
-                      'spaceBetween': 20,
-                      'slidesPerView': 2,
-                      'breakpoints': {
-                          '480': {
-                              'slidesPerView': 3
-                          },
-                          '576': {
-                              'slidesPerView': 4
-                          },
-                          '768': {
-                              'slidesPerView': 6
-                          },
-                          '992': {
-                              'slidesPerView': 7
-                          },
-                          '1200': {
-                              'slidesPerView': 8,
-                              'spaceBetween': 30
-                          }
-                      }
-                  }">
-                      <div class="swiper-wrapper row gutter-lg cols-xl-8 cols-lg-7 cols-md-6 cols-sm-4 cols-xs-3 cols-2">
-                        {% for bra in categories %}  
-                        <div class="swiper-slide category-wrap">
-                              <div class="category category-ellipse">
-                                  <figure class="category-media">
-                                      <a href="{% url 'store:category-products' bra.slug %}">
-                                          <img loading="lazy" src="{{ bra.category_image.url|cdn_optimize }}" alt="Categroy"
-                                              width="190" height="190" style="background-color: #5C92C0;" />
-                                      </a>
-                                  </figure>
-                                  <div class="category-content">
-                                      <h4 class="category-name">
-                                          <a href="{% url 'store:category-products' bra.slug %}">{{bra.title}}</a>
-                                      </h4>
-                                  </div>
-                              </div>
+                      <div class="zent-collection-grid">
+                          {% for product in products %}
+                          <div class="product-wrap">
+                              {% include 'store/_product_card_content.html' with product=product %}
                           </div>
-                        {% endfor %}
-                      </div>
-                      <div class="swiper-pagination"></div>
-                  </div>
-              </div>
-              <!-- End of Shop Category -->
-
-              <div class="shop-content">
-                  <!-- Start of Shop Main Content -->
-                  <div class="main-content">
-                      
-                      <div class="product-wrapper row cols-lg-5 cols-md-4 cols-sm-3 cols-2">
-                        {% for product in products %}
-                        <div class="product-wrap">
-                            {% include 'store/_product_card_content.html' with product=product %}
-                          </div>
+                          {% empty %}
+                          <p class="text-muted mb-0">No products are available in this category yet.</p>
                           {% endfor %}
-                        </div>
-                        
-                        {% if products.has_other_pages %}
-                        <nav class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-4" aria-label="Category product pages">
-                            <small class="text-muted">Page {{ products.number }} of {{ products.paginator.num_pages }}</small>
-                            <ul class="pagination mb-0">
-                                {% if products.has_previous %}
-                                <li class="page-item">
-                                    <a href="?page={{ products.previous_page_number }}" class="page-link" aria-label="Previous">Prev</a>
-                                </li>
-                                {% else %}
-                                <li class="page-item disabled"><span class="page-link">Prev</span></li>
-                                {% endif %}
-
-                                {% for p in page_numbers %}
-                                    {% if p == '…' %}
-                                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
-                                    {% elif p == products.number %}
-                                    <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
-                                    {% else %}
-                                    <li class="page-item"><a href="?page={{ p }}" class="page-link">{{ p }}</a></li>
-                                    {% endif %}
-                                {% endfor %}
-
-                                {% if products.has_next %}
-                                <li class="page-item">
-                                    <a href="?page={{ products.next_page_number }}" class="page-link" aria-label="Next">Next</a>
-                                </li>
-                                {% else %}
-                                <li class="page-item disabled"><span class="page-link">Next</span></li>
-                                {% endif %}
-                            </ul>
-                        </nav>
-                        {% endif %}
-                  </div>
-                  <!-- End of Shop Main Content -->
-
-                  <!-- Start of Sidebar, Shop Sidebar -->
-                  <aside class="sidebar shop-sidebar left-sidebar sticky-sidebar-wrapper">
-                      <!-- Start of Sidebar Overlay -->
-                      <div class="sidebar-overlay"></div>
-                      <a class="sidebar-close" href="#"><i class="close-icon"></i></a>
-
-                      <!-- Start of Sidebar Content -->
-                      <div class="sidebar-content scrollable">
-                          <div class="filter-actions">
-                              <label>Filter :</label>
-                              <a href="#" class="btn btn-dark btn-link filter-clean">Clean All</a>
-                          </div>
-                          <!-- Start of Collapsible widget -->
-                          <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>Browse Categories</span></h3>
-                              <ul class="widget-body filter-items search-ul">
-                                  {% for cat_menu in categories_menu %}
-                                  <li><a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a></li>
-                                  {% empty %}
-                                  <li><span class="text-muted">Categories will appear here once available.</span></li>
-                                  {% endfor %}
-                              </ul>
-                          </div>
-                          <!-- End of Collapsible Widget -->
-
-                          <!-- Start of Collapsible Widget -->
-                          <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>Price</span></h3>
-                              <div class="widget-body">
-                                  <ul class="filter-items search-ul">
-                                      <li><a href="#">$0.00 - $100.00</a></li>
-                                      <li><a href="#">$100.00 - $200.00</a></li>
-                                      <li><a href="#">$200.00 - $300.00</a></li>
-                                      <li><a href="#">$300.00 - $500.00</a></li>
-                                      <li><a href="#">$500.00+</a></li>
-                                  </ul>
-                                  <form class="price-range">
-                                      <input type="number" name="min_price" class="min_price text-center"
-                                          placeholder="$min"><span class="delimiter">-</span><input type="number"
-                                          name="max_price" class="max_price text-center" placeholder="$max"><a
-                                          href="#" class="btn btn-primary btn-rounded">Go</a>
-                                  </form>
-                              </div>
-                          </div>
-                          <!-- End of Collapsible Widget -->
-
-                          <!-- Start of Collapsible Widget -->
-                          <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>Size</span></h3>
-                              <ul class="widget-body filter-items item-check mt-1">
-                                  <li><a href="#">Extra Large</a></li>
-                                  <li><a href="#">Large</a></li>
-                                  <li><a href="#">Medium</a></li>
-                                  <li><a href="#">Small</a></li>
-                              </ul>
-                          </div>
-                          <!-- End of Collapsible Widg    et -->
-
-                          <!-- Start of Collapsible Widget -->
-                          <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>Brand</span></h3>
-                              <ul class="widget-body filter-items item-check mt-1">
-                                  <li><a href="#">Elegant Auto Group</a></li>
-                                  <li><a href="#">Green Grass</a></li>
-                                  <li><a href="#">Node Js</a></li>
-                                  <li><a href="#">NS8</a></li>
-                                  <li><a href="#">Red</a></li>
-                                  <li><a href="#">Skysuite Tech</a></li>
-                                  <li><a href="#">Sterling</a></li>
-                              </ul>
-                          </div>
-                          <!-- End of Collapsible Widget -->
-
-                          <!-- Start of Collapsible Widget -->
-                          <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>Color</span></h3>
-                              <ul class="widget-body filter-items item-check">
-                                  <li><a href="#">Black</a></li>
-                                  <li><a href="#">Blue</a></li>
-                                  <li><a href="#">Brown</a></li>
-                                  <li><a href="#">Green</a></li>
-                                  <li><a href="#">Grey</a></li>
-                                  <li><a href="#">Orange</a></li>
-                                  <li><a href="#">Yellow</a></li>
-                              </ul>
-                          </div>
-                          <!-- End of Collapsible Widget -->
                       </div>
-                      <!-- End of Sidebar Content -->
-                  </aside>
-                  <!-- End of Shop Sidebar -->
-              </div>
-              <!-- End of Shop Content -->
 
+                      {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Category product pages' %}
+                  </section>
+              </div>
+
+              {% include 'store/_collection_sidebar.html' %}
           </div>
       </div>
-      <!-- End of Page Content -->
-  </main>
-      {% endblock content %}
+  </div>
+</main>
+{% endblock content %}

@@ -1,59 +1,54 @@
 {% extends 'base.html' %}
-{% load static %}
 
-    {% block content %}
+{% block content %}
+<div class="container">
+  <div class="zent-auth-shell">
+    <section class="zent-auth-card">
+      <p class="zent-auth-eyebrow">Account access</p>
+      <h1 class="zent-auth-title">Log in and continue your order flow</h1>
+      <p class="zent-auth-copy">Sign in to reuse your saved address, track previous orders, and return directly to the page you were trying to finish.</p>
 
-      <div class="container py-5">
-        <div class="col-md-8 offset-2">
+      {% include 'partials/_messages.html' %}
 
-        <h1 class="mb-5">Log In to Your Account</h1>
-        
-        
-        <div class="card mb-4" id="forms">
-          
-          <div class="card-body">
-              
-            {% include 'partials/_messages.html' %}
+      <form method="post" action="" class="zent-auth-form">
+        {% csrf_token %}
+        {% if redirect_field_value %}
+        <input type="hidden" name="{{ redirect_field_name|default:'next' }}" value="{{ redirect_field_value }}">
+        {% endif %}
 
-            <form method="post" action="">
-              <fieldset>
-                {% csrf_token %}
-                {% if redirect_field_value %}
-                <input type="hidden" name="{{ redirect_field_name|default:'next' }}" value="{{ redirect_field_value }}">
-                {% endif %}
-
-                {% for fm in form %}
-                    <div class="form-group">
-                        {{fm.label_tag}}
-                        {{fm}}
-                        <small class="text-danger">{{fm.errors|striptags}}</small>
-                    </div>
-                {% endfor %}
-                <button class="btn btn-primary" type="submit">Login</button>
-              </fieldset>
-
-              {% if form.non_field_errors %}
-                {% for error in form.non_field_errors %}
-                    <p class="alert alert-danger my-3">
-                        {{error}}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </p>
-                {% endfor %}
-              {% endif %}
-
-
-            </form>
-
-            <hr>
-
-            Forgot Password? <a href="{% url 'store:password-reset' %}">Reset Now</a> <br>
-            New Member? <a href="{% url 'store:register' %}{% if redirect_field_value %}?next={{ redirect_field_value|urlencode }}{% endif %}">Create an Account</a> 
-            
-          </div>
+        {% for fm in form %}
+        <div class="form-group">
+          {{ fm.label_tag }}
+          {{ fm }}
+          {% if fm.help_text %}<small class="helptext">{{ fm.help_text|safe }}</small>{% endif %}
+          <small class="text-danger">{{ fm.errors|striptags }}</small>
         </div>
+        {% endfor %}
 
-        </div>       
+        {% if form.non_field_errors %}
+          {% for error in form.non_field_errors %}
+          <p class="alert alert-danger my-3">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+
+        <button class="btn btn-dark w-100" type="submit">Log in</button>
+      </form>
+
+      <div class="zent-auth-footer">
+        <span>Forgot Password? <a href="{% url 'store:password-reset' %}">Reset now</a></span>
+        <span>New here? <a href="{% url 'store:register' %}{% if redirect_field_value %}?next={{ redirect_field_value|urlencode }}{% endif %}">Create an account</a></span>
       </div>
+    </section>
+
+    <aside class="zent-auth-side">
+      <p class="zent-auth-eyebrow">Why log in</p>
+      <h2 class="h3 mb-3">Make checkout faster</h2>
+      <ul>
+        <li>Keep your saved delivery address ready for future orders.</li>
+        <li>Track your order history from one place.</li>
+        <li>Return directly to cart or checkout when a page requires sign-in.</li>
+      </ul>
+    </aside>
+  </div>
+</div>
 {% endblock content %}
