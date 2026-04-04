@@ -73,7 +73,11 @@
           {% for category in categories %}
           <article class="zent-home-category-card">
             <a href="{% url 'store:category-products' category.slug %}">
+              {% if category.category_image %}
               <img loading="lazy" src="{{ category.category_image.url|cdn_optimize }}" alt="{{ category.title }}">
+              {% else %}
+              <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ category.title }}">
+              {% endif %}
               <div class="zent-home-category-body">
                 <span class="zent-section-kicker">Category</span>
                 <h3>{{ category.title }}</h3>
@@ -121,7 +125,7 @@
         <div class="zent-home-brand-grid">
           {% for brand in brands %}
           {% url 'store:brand-products' brand.slug as brand_href %}
-          {% include 'store/_directory_card.html' with href=brand_href image_url=brand.brand_image.url title=brand.title label='Brand' %}
+          {% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title label='Brand' %}
           {% empty %}
           <p class="text-muted mb-0">Featured brands will appear here once they are marked in admin.</p>
           {% endfor %}
