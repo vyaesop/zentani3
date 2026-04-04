@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from .models import Address, Category, Product, Cart, Order, ProductImages, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder
-from .telegram_notify import notify_customer_delivery_status
+from .telegram_notify import notify_customer_delivery_status, post_product_to_channel, suspend_telegram_autopublish
 
 # Register your models here.
 class AddressAdmin(admin.ModelAdmin):
@@ -38,13 +38,14 @@ class ProductImagesAdmin(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImagesAdmin]
     
-    list_display = ('title', 'is_sold_out', 'slug', 'category','brand', 'available_sizes', 'product_image', 'is_active', 'is_featured', 'updated_at')
+    list_display = ('title', 'is_sold_out', 'slug', 'category','brand', 'available_sizes', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
     list_editable = ('slug', 'category','brand', 'available_sizes', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
     search_fields = ('title', 'category', 'short_description')
     prepopulated_fields = {"slug": ("title", )}
     readonly_fields = ("affiliate_link_pattern",)
+    actions = ("post_selected_to_telegram",)
 
     def affiliate_link_pattern(self, obj):
         if not obj:
@@ -62,6 +63,59 @@ class ProductAdmin(admin.ModelAdmin):
         return format_html("Relative: <code>{}</code>", relative_link)
 
     affiliate_link_pattern.short_description = "Affiliate link pattern"
+
+    @admin.action(description="Post selected products to Telegram now")
+    def post_selected_to_telegram(self, request, queryset):
+        posted_count = 0
+        skipped_count = 0
+
+        for product in queryset.select_related("category", "brand"):
+            if not product.is_active or product.is_sold_out:
+                skipped_count += 1
+                continue
+            if post_product_to_channel(product, force=True):
+                posted_count += 1
+            else:
+                skipped_count += 1
+
+        if posted_count:
+            self.message_user(
+                request,
+                f"{posted_count} product(s) were posted to Telegram.",
+                level=messages.SUCCESS,
+            )
+        if skipped_count:
+            self.message_user(
+                request,
+                f"{skipped_count} product(s) could not be posted. Check product availability and Telegram/media configuration.",
+                level=messages.WARNING,
+            )
+
+    def save_model(self, request, obj, form, change):
+        with suspend_telegram_autopublish():
+            super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        with suspend_telegram_autopublish():
+            super().save_related(request, form, formsets, change)
+
+        product = form.instance
+        if not product.is_active or product.is_sold_out:
+            return
+
+        posted = post_product_to_channel(product, force=True)
+        if posted:
+            self.message_user(
+                request,
+                "Telegram channel post sent for this product.",
+                level=messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                "Product was saved, but Telegram channel posting failed. Check Telegram/media configuration.",
+                level=messages.WARNING,
+            )
 
 class CartAdmin(admin.ModelAdmin):
     list_display = ('user', 'product', 'size', 'quantity', 'coupon', 'created_at')

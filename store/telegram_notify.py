@@ -3,6 +3,8 @@ import os
 import html
 import json
 import hashlib
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal
 from urllib import error, parse, request
 
@@ -11,6 +13,7 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 TELEGRAM_MEDIA_GROUP_LIMIT = 10
+_TELEGRAM_AUTOPUBLISH_SUSPENDED = ContextVar("telegram_autopublish_suspended", default=False)
 
 
 def _normalized_media_name(name):
@@ -18,6 +21,19 @@ def _normalized_media_name(name):
     if value.startswith("media/"):
         return value[len("media/"):]
     return value
+
+
+@contextmanager
+def suspend_telegram_autopublish():
+    token = _TELEGRAM_AUTOPUBLISH_SUSPENDED.set(True)
+    try:
+        yield
+    finally:
+        _TELEGRAM_AUTOPUBLISH_SUSPENDED.reset(token)
+
+
+def telegram_autopublish_suspended():
+    return _TELEGRAM_AUTOPUBLISH_SUSPENDED.get()
 
 
 def _admin_bot_settings():
@@ -187,6 +203,8 @@ def _absolute_media_url(url, storage_name=""):
 
 
 def _product_post_signature(product):
+    category_title = getattr(getattr(product, "category", None), "title", "")
+    brand_title = getattr(getattr(product, "brand", None), "title", "")
     extra_image_names = list(
         product.p_images.order_by("id").values_list("image", flat=True)
     )
@@ -194,8 +212,11 @@ def _product_post_signature(product):
         [
             _safe_text(product.title, fallback=""),
             _safe_text(product.sku, fallback=""),
+            _safe_text(product.short_description, fallback=""),
             _safe_text(product.available_sizes, fallback=""),
             _safe_text(product.price, fallback=""),
+            _safe_text(category_title, fallback=""),
+            _safe_text(brand_title, fallback=""),
             _safe_text(getattr(product.product_image, "name", ""), fallback=""),
             "1" if getattr(product, "is_active", False) else "0",
             "1" if getattr(product, "is_sold_out", False) else "0",
