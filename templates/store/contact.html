@@ -1,57 +1,34 @@
 {% extends 'base.html' %}
 
-{% block title %}Zentanee | Support{% endblock %}
+{% block title %}Zentanee | Contact{% endblock %}
 
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb bb-no">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li>Support</li>
-          </ul>
-      </div>
-  </nav>
+<main class="main spring-main">
+  <div class="spring-container spring-static-page">
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">Contact</p>
+          <h1>Get in touch</h1>
+          <p>Questions about fit, delivery, or a current order? Reach out through the channels below.</p>
+      </section>
 
-  <div class="page-content mb-10">
-      <div class="container zent-support-shell">
-          <section class="zent-support-hero">
-              <span class="zent-section-kicker">Support lane</span>
-              <h1>Talk to Zentanee without leaving the flow.</h1>
-              <p>If you need help with fit, delivery, product availability, or your current order, use the fastest support channel below and we will guide you.</p>
-          </section>
+      <div class="spring-static-grid">
+          <article class="spring-static-card">
+              <h2>Instagram</h2>
+              <p>Best for quick product or fit questions.</p>
+              <a href="https://instagram.com/zentanee" class="btn btn-dark" target="_blank" rel="noopener">Open Instagram</a>
+          </article>
 
-          <div class="zent-support-grid">
-              <section class="zent-support-card">
-                  <span class="zent-section-kicker">Fastest reply</span>
-                  <h2>Instagram DM</h2>
-                  <p>Best for style questions, product availability checks, and quick back-and-forth support.</p>
-                  <a href="https://instagram.com/zentanee" class="btn btn-dark" target="_blank" rel="noopener">Open Instagram</a>
-              </section>
+          <article class="spring-static-card">
+              <h2>Phone</h2>
+              <p>Call for urgent help with delivery or an active order.</p>
+              <a href="tel:+251933392463" class="btn btn-outline-dark">+251 933 392 463</a>
+          </article>
 
-              <section class="zent-support-card">
-                  <span class="zent-section-kicker">Direct call</span>
-                  <h2>Phone support</h2>
-                  <p>Call if you want immediate help with delivery details or an active order.</p>
-                  <a href="tel:+251933392463" class="btn btn-outline-dark">+251 933 392 463</a>
-              </section>
-
-              <section class="zent-support-card">
-                  <span class="zent-section-kicker">Telegram</span>
-                  <h2>Order bot</h2>
-                  <p>Use the Telegram bot when you want the bot-led size and order flow from channel posts.</p>
-                  <a href="https://t.me/zentanee_order_bot" class="btn btn-outline-dark" target="_blank" rel="noopener">Open bot</a>
-              </section>
-          </div>
-
-          <section class="zent-support-strip">
-              <div>
-                  <span class="zent-section-kicker">Response expectations</span>
-                  <h2 class="mb-2">What to include when you reach out</h2>
-                  <p class="mb-0">Send the product name or screenshot, your size if known, and your city. That helps support move faster and keeps the shopping flow smooth.</p>
-              </div>
-              <a href="{% url 'store:all-products' %}" class="btn btn-dark">Back to shopping</a>
-          </section>
+          <article class="spring-static-card">
+              <h2>Telegram</h2>
+              <p>Use the Telegram bot for the bot-led order flow.</p>
+              <a href="https://t.me/zentanee_order_bot" class="btn btn-outline-dark" target="_blank" rel="noopener">Open bot</a>
+          </article>
       </div>
   </div>
 </main>

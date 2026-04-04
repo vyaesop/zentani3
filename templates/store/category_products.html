@@ -1,66 +1,28 @@
 {% extends 'base.html' %}
 
+{% block title %}Zentanee | {{ category.title }}{% endblock %}
+
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb bb-no">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li><a href="{% url 'store:all-categories' %}">Categories</a></li>
-              <li>{{ category.title }}</li>
-          </ul>
-      </div>
-  </nav>
+<main class="main spring-main">
+  <div class="spring-container spring-directory">
+      {% include 'store/_collection_header.html' with kicker='Collection' title=category.title description=category.description|default:'Browse everything currently available in this collection.' count=product_count %}
 
-  <div class="page-content mb-10">
-      <div class="container">
-          {% include 'store/_collection_header.html' with kicker='Category' title=category.title description=category.description|default:'Browse everything currently available in this category. Open any item to check details, size options, and the fastest path to order.' count=product_count secondary_chip='Curated product grid' %}
-
-          <section class="zent-collection-radar">
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Category pulse</span>
-                  <h2>{{ category.title }} is live now.</h2>
-                  <p>{% if category.description %}{{ category.description|truncatewords:24 }}{% else %}This collection groups pieces with a shared mood so shoppers can scan the right lane faster.{% endif %}</p>
-              </article>
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Browse mode</span>
-                  <h2>{{ product_count }} live piece{{ product_count|pluralize }}</h2>
-                  <p>Open a product for gallery, fit, and ordering cues. If a piece needs sizing, the product page handles that before cart.</p>
-              </article>
-              <article class="zent-radar-card zent-radar-card--accent">
-                  <span class="zent-section-kicker">Quick actions</span>
-                  <h2>Jump where you need next.</h2>
-                  <div class="d-flex flex-wrap gap-2">
-                      <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
-                      <a href="{% url 'store:cart' %}" class="btn btn-outline-dark">Open cart</a>
+      <div class="spring-directory__layout">
+          <div class="spring-directory__main">
+              <div class="spring-product-grid">
+                  {% for product in products %}
+                  <div class="spring-grid-item">
+                      {% include 'store/_product_card_content.html' with product=product %}
                   </div>
-              </article>
-          </section>
-
-          <div class="zent-collection-shell">
-              <div class="zent-collection-main">
-                  <section class="zent-collection-board">
-                      <div class="zent-collection-toolbar">
-                          <p>Products in <strong>{{ category.title }}</strong></p>
-                          <span class="zent-product-pill zent-product-pill--muted">Newest items first</span>
-                      </div>
-
-                      <div class="zent-collection-grid">
-                          {% for product in products %}
-                          <div class="product-wrap">
-                              {% include 'store/_product_card_content.html' with product=product %}
-                          </div>
-                          {% empty %}
-                          <p class="text-muted mb-0">No products are available in this category yet.</p>
-                          {% endfor %}
-                      </div>
-
-                      {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Category product pages' %}
-                  </section>
+                  {% empty %}
+                  <p class="text-muted mb-0">No products are available in this collection yet.</p>
+                  {% endfor %}
               </div>
 
-              {% include 'store/_collection_sidebar.html' %}
+              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Category product pages' %}
           </div>
+
+          {% include 'store/_collection_sidebar.html' %}
       </div>
   </div>
 </main>

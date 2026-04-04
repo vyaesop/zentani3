@@ -1,34 +1,28 @@
-<aside class="zent-collection-sidebar">
-    <div class="zent-sidebar-card">
-        <span class="zent-section-kicker">Search</span>
-        <h3 class="zent-sidebar-title">Jump to another piece</h3>
-        <form action="{% url 'store:search' %}" method="GET" class="zent-sidebar-search">
-            <input type="text" name="q" class="form-control" placeholder="Search products, brands, or moods" value="{{ request.GET.q|default:'' }}" required>
-            <button type="submit" class="btn btn-dark">Search</button>
-        </form>
-    </div>
+<aside class="spring-directory-sidebar">
+    <form action="{% url 'store:search' %}" method="GET" class="spring-directory-search">
+        <input type="text" name="q" class="form-control" placeholder="Search products" value="{{ request.GET.q|default:'' }}" required>
+        <button type="submit" class="btn btn-dark">Search</button>
+    </form>
 
-    <div class="zent-sidebar-card">
-        <span class="zent-section-kicker">Browse</span>
-        <h3 class="zent-sidebar-title">Category lanes</h3>
-        <div class="zent-sidebar-links">
+    <div class="spring-directory-links">
+        <h3>Collections</h3>
+        <ul>
             {% for cat_menu in categories_menu %}
-            <a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a>
+            <li><a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a></li>
             {% empty %}
-            <span class="text-muted">No categories available yet.</span>
+            <li><span>No collections available.</span></li>
             {% endfor %}
-        </div>
+        </ul>
     </div>
 
-    <div class="zent-sidebar-card">
-        <span class="zent-section-kicker">Brands</span>
-        <h3 class="zent-sidebar-title">Brand scan</h3>
-        <div class="zent-sidebar-links">
+    <div class="spring-directory-links">
+        <h3>Brands</h3>
+        <ul>
             {% for brand_link in brands_menu %}
-            <a href="{% url 'store:brand-products' brand_link.slug %}">{{ brand_link.title }}</a>
+            <li><a href="{% url 'store:brand-products' brand_link.slug %}">{{ brand_link.title }}</a></li>
             {% empty %}
-            <span class="text-muted">No brands available yet.</span>
+            <li><span>No brands available.</span></li>
             {% endfor %}
-        </div>
+        </ul>
     </div>
 </aside>

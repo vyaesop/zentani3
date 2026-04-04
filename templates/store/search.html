@@ -1,74 +1,30 @@
 {% extends 'base.html' %}
 
+{% block title %}Zentanee | Search{% endblock %}
+
 {% block content %}
-<main class="main">
-  <nav class="breadcrumb-nav">
-      <div class="container">
-          <ul class="breadcrumb bb-no">
-              <li><a href="{% url 'store:home' %}">Home</a></li>
-              <li><a href="{% url 'store:search' %}">Search</a></li>
-              <li>{% if query %}{{ query }}{% else %}Results{% endif %}</li>
-          </ul>
-      </div>
-  </nav>
+<main class="main spring-main">
+  <div class="spring-container spring-directory">
+      {% if query %}
+      {% include 'store/_collection_header.html' with kicker='Search' title=query description='Products matching your search.' count=products.count %}
+      {% else %}
+      {% include 'store/_collection_header.html' with kicker='Search' title='Search the store' description='Use search to jump straight into products, collections, or brands.' count=products.count %}
+      {% endif %}
 
-  <div class="page-content mb-10">
-      <div class="container">
-          {% if query %}
-            {% include 'store/_collection_header.html' with kicker='Search results' title=query description='These are the products that match your search right now. Open a product to review the gallery, choose size if needed, and continue to cart.' count=products.count secondary_chip='Search across the store' %}
-          {% else %}
-            {% include 'store/_collection_header.html' with kicker='Search results' title='Search the store' description='Use search to quickly jump into products, categories, and brands without browsing page by page.' count=products.count secondary_chip='Try a product name or brand' %}
-          {% endif %}
-
-          <section class="zent-collection-radar">
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Search radar</span>
-                  <h2>{% if query %}You searched for {{ query }}.{% else %}Start with a product name, brand, or mood.{% endif %}</h2>
-                  <p>{% if query %}Search is the fastest lane when you already know roughly what you want. Open a result to check photos, fit, and order cues.{% else %}Try a product name, a category, or a brand to jump into the catalog without scrolling through every section.{% endif %}</p>
-              </article>
-              <article class="zent-radar-card">
-                  <span class="zent-section-kicker">Result count</span>
-                  <h2>{{ products.count }} result{{ products.count|pluralize }}</h2>
-                  <p>Good results should help the shopper decide quickly, not force them through another generic browse page.</p>
-              </article>
-              <article class="zent-radar-card zent-radar-card--accent">
-                  <span class="zent-section-kicker">Next move</span>
-                  <h2>Still not seeing it?</h2>
-                  <div class="d-flex flex-wrap gap-2">
-                      <a href="{% url 'store:all-categories' %}" class="btn btn-dark">Browse categories</a>
-                      <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">Ask support</a>
+      <div class="spring-directory__layout">
+          <div class="spring-directory__main">
+              <div class="spring-product-grid">
+                  {% for product in products %}
+                  <div class="spring-grid-item">
+                      {% include 'store/_product_card_content.html' with product=product %}
                   </div>
-              </article>
-          </section>
-
-          <div class="zent-collection-shell">
-              <div class="zent-collection-main">
-                  <section class="zent-collection-board">
-                      <div class="zent-collection-toolbar">
-                          <p>
-                              {% if query %}
-                              Showing matches for <strong>{{ query }}</strong>
-                              {% else %}
-                              Enter a search term to explore products
-                              {% endif %}
-                          </p>
-                          <span class="zent-product-pill zent-product-pill--muted">{{ products.count }} result{{ products.count|pluralize }}</span>
-                      </div>
-
-                      <div class="zent-collection-grid">
-                          {% for product in products %}
-                          <div class="product-wrap">
-                              {% include 'store/_product_card_content.html' with product=product %}
-                          </div>
-                          {% empty %}
-                          <p class="text-muted mb-0">No products matched that search. Try a different product name, category, or brand.</p>
-                          {% endfor %}
-                      </div>
-                  </section>
+                  {% empty %}
+                  <p class="text-muted mb-0">No products matched that search.</p>
+                  {% endfor %}
               </div>
-
-              {% include 'store/_collection_sidebar.html' %}
           </div>
+
+          {% include 'store/_collection_sidebar.html' %}
       </div>
   </div>
 </main>

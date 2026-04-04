@@ -2,85 +2,60 @@
 {% load static %}
 {% load image_optim %}
 
+{% block title %}Zentanee | Orders{% endblock %}
+
 {% block content %}
-<main class="main">
-  <div class="page-content">
-      <div class="container">
-          {% include 'partials/_flow_status.html' with flow_status=flow_status %}
-          {% include 'partials/_messages.html' %}
+<main class="main spring-main">
+  <div class="spring-container spring-orders-page">
+      {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+      {% include 'partials/_messages.html' %}
 
-          <section class="zent-detail-section mb-4">
-              <span class="zent-section-kicker">Orders</span>
-              <h1 class="mb-2">Track your order history</h1>
-              <p class="zent-detail-muted mb-0">See what you ordered, where each order stands, and what to expect next without digging through a cluttered dashboard.</p>
-          </section>
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">Orders</p>
+          <h1>Your orders</h1>
+          <p>Track current and previous orders from one place.</p>
+      </section>
 
-          {% if orders %}
-          <section class="zent-transaction-card zent-transaction-card--soft mb-4">
-              <span class="zent-section-kicker">Overview</span>
-              <h2 class="h4 mb-3">Status summary</h2>
-              <div class="zent-status-grid">
-                  {% for item in order_status_summary %}
-                  <div class="zent-status-card">
-                      <span class="text-muted">{{ item.label }}</span>
-                      <strong>{{ item.count }}</strong>
-                  </div>
-                  {% endfor %}
+      {% if orders %}
+      <section class="spring-orders-summary">
+          {% for item in order_status_summary %}
+          <article class="spring-orders-summary__card">
+              <strong>{{ item.count }}</strong>
+              <span>{{ item.label }}</span>
+          </article>
+          {% endfor %}
+      </section>
+
+      <section class="spring-orders-list">
+          {% for order in orders %}
+          <article class="spring-order-item">
+              {% if order.product.product_image %}
+              <img loading="lazy" src="{{ order.product.product_image.url|cdn_optimize }}" alt="{{ order.product.title }}">
+              {% else %}
+              <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ order.product.title }}">
+              {% endif %}
+
+              <div class="spring-order-item__info">
+                  <h2><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h2>
+                  <p>Placed {{ order.ordered_date|date:"F d, Y, P" }}</p>
+                  <p>Order #{{ order.id }}</p>
+                  <p>Qty {{ order.quantity }}{% if order.size %} / Size {{ order.size }}{% endif %}</p>
               </div>
-          </section>
 
-          <section class="zent-transaction-card">
-              <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
-                  <div>
-                      <span class="zent-section-kicker">History</span>
-                      <h2 class="h4 mb-0">Your recent orders</h2>
-                  </div>
-                  <a href="{% url 'store:home' %}" class="btn btn-outline-dark btn-sm">Browse more products</a>
+              <div class="spring-order-item__aside">
+                  <span>{{ order.status }}</span>
+                  <strong>{{ order.line_total|default:0|floatformat:2 }} ETB</strong>
               </div>
-
-              {% for order in orders %}
-              <div class="zent-order-card">
-                  {% if order.product.product_image %}
-                  <img loading="lazy" src="{{ order.product.product_image.url|cdn_optimize }}" alt="{{ order.product.title }}" class="zent-transaction-image">
-                  {% else %}
-                  <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ order.product.title }}" class="zent-transaction-image">
-                  {% endif %}
-
-                  <div>
-                      <h3 class="h6 mb-1"><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h3>
-                      <div class="zent-order-meta">
-                          <span>Placed {{ order.ordered_date|date:"F d, Y, P" }}</span>
-                          <span>Order #{{ order.id }}</span>
-                          <span>Qty {{ order.quantity }}</span>
-                          {% if order.size %}<span>Size {{ order.size }}</span>{% endif %}
-                      </div>
-                  </div>
-
-                  <div class="text-end">
-                      {% if order.status == 'Delivered' %}
-                      <span class="zent-order-status zent-order-status--delivered">{{ order.status }}</span>
-                      {% elif order.status == 'Cancelled' %}
-                      <span class="zent-order-status zent-order-status--cancelled">{{ order.status }}</span>
-                      {% elif order.status == 'Accepted' or order.status == 'Packed' or order.status == 'On The Way' %}
-                      <span class="zent-order-status zent-order-status--progress">{{ order.status }}</span>
-                      {% else %}
-                      <span class="zent-order-status zent-order-status--pending">{{ order.status }}</span>
-                      {% endif %}
-                      <p class="mb-0 mt-2 fw-bold">{{ order.line_total|default:0|floatformat:2 }} ETB</p>
-                      <p class="mb-0 small text-muted">{{ order.price_at_purchase|default:0|floatformat:2 }} ETB each</p>
-                  </div>
-              </div>
-              {% endfor %}
-          </section>
-          {% else %}
-          <section class="zent-transaction-card text-center">
-              <span class="zent-section-kicker">Orders</span>
-              <h2 class="mb-2">You have no orders yet</h2>
-              <p class="text-muted mb-3">Once you place an order, its progress will appear here so you always know what happens next.</p>
-              <a href="{% url 'store:home' %}" class="btn btn-dark">Start shopping</a>
-          </section>
-          {% endif %}
-      </div>
+          </article>
+          {% endfor %}
+      </section>
+      {% else %}
+      <section class="spring-empty-state">
+          <h2>You have no orders yet</h2>
+          <p>Once you place an order, it will appear here.</p>
+          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
+      </section>
+      {% endif %}
   </div>
 </main>
 {% endblock content %}

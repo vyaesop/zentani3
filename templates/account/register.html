@@ -1,53 +1,45 @@
 {% extends 'base.html' %}
 
+{% block title %}Zentanee | Create account{% endblock %}
+
 {% block content %}
-<div class="container">
-  <div class="zent-auth-shell">
-    <section class="zent-auth-card">
-      <p class="zent-auth-eyebrow">Create account</p>
-      <h1 class="zent-auth-title">Set up your Zentanee account</h1>
-      <p class="zent-auth-copy">Create your account once so checkout is faster, delivery details are saved, and your orders stay easy to track.</p>
+<main class="main spring-main">
+  <div class="spring-container spring-auth">
+      <section class="spring-auth__panel">
+          <p class="spring-directory-header__eyebrow">Account</p>
+          <h1>Create an account</h1>
+          <p class="spring-auth__copy">Create your account so delivery details, orders, and checkout stay in one place.</p>
 
-      {% include 'partials/_messages.html' %}
+          {% include 'partials/_messages.html' %}
 
-      <form method="post" action="" class="zent-auth-form">
-        {% csrf_token %}
-        {% if next_url %}
-        <input type="hidden" name="next" value="{{ next_url }}">
-        {% endif %}
+          <form method="post" action="" class="spring-auth__form">
+              {% csrf_token %}
+              {% if next_url %}
+              <input type="hidden" name="next" value="{{ next_url }}">
+              {% endif %}
 
-        {% for fm in form %}
-        <div class="form-group">
-          {{ fm.label_tag }}
-          {{ fm }}
-          {% if fm.help_text %}<small class="helptext">{{ fm.help_text|safe }}</small>{% endif %}
-          <small class="text-danger">{{ fm.errors|striptags }}</small>
-        </div>
-        {% endfor %}
+              {% for fm in form %}
+              <div class="spring-auth__field">
+                  {{ fm.label_tag }}
+                  {{ fm }}
+                  {% if fm.help_text %}<small>{{ fm.help_text|safe }}</small>{% endif %}
+                  <small class="text-danger">{{ fm.errors|striptags }}</small>
+              </div>
+              {% endfor %}
 
-        {% if form.non_field_errors %}
-          {% for error in form.non_field_errors %}
-          <p class="alert alert-danger my-3">{{ error }}</p>
-          {% endfor %}
-        {% endif %}
+              {% if form.non_field_errors %}
+              {% for error in form.non_field_errors %}
+              <p class="alert alert-danger my-3">{{ error }}</p>
+              {% endfor %}
+              {% endif %}
 
-        <button class="btn btn-dark w-100" type="submit">Create account</button>
-      </form>
+              <button class="btn btn-dark w-100" type="submit">Create account</button>
+          </form>
 
-      <div class="zent-auth-footer">
-        <span>Already have an account? <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Log in</a></span>
-      </div>
-    </section>
-
-    <aside class="zent-auth-side">
-      <p class="zent-auth-eyebrow">Included from the start</p>
-      <h2 class="h3 mb-3">Registration helps the whole flow</h2>
-      <ul>
-        <li>Your delivery information is saved immediately instead of being retyped every time.</li>
-        <li>Your cart and orders are easier to manage from the account page.</li>
-        <li>You can return to protected steps without losing your shopping progress.</li>
-      </ul>
-    </aside>
+          <div class="spring-auth__footer">
+              <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">Already have an account? Log in</a>
+          </div>
+      </section>
   </div>
-</div>
+</main>
 {% endblock content %}

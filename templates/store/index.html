@@ -2,183 +2,85 @@
 {% load static %}
 {% load image_optim %}
 
-{% block title %}Zentanee | Chrome-coded fashion{% endblock %}
+{% block title %}Zentanee | Home{% endblock %}
 
 {% block content %}
-<main class="main">
-  <div class="page-content">
-    <div class="container zent-home-stack">
-      <section class="zent-home-hero">
-        <div class="zent-home-grid">
-          <div>
-            <span class="zent-section-kicker">Addis // Y2K drop</span>
-            <h1 class="zent-home-title">Chrome-cut looks, fast mobile browsing, and a checkout flow that keeps up.</h1>
-            <p class="zent-home-subtitle">
-              Zentanee is built for shoppers who want the style to feel distinct and the flow to feel effortless. Open a drop, pick your size, and move to cart without wandering through filler.
-            </p>
+<main class="main spring-main">
+  <section class="spring-hero spring-container">
+      <p class="spring-hero__eyebrow">New arrivals</p>
+      <h1>Curated denim, statement layers, and everyday pieces worth repeating.</h1>
+      <p class="spring-hero__copy">Shop the latest drop from Zentanee with a cleaner, simpler storefront inspired by Springy.</p>
+      <div class="spring-hero__actions">
+          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
+          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Shop collections</a>
+      </div>
+  </section>
 
-            <div class="zent-home-actions">
-              <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop the drop</a>
-              <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Browse categories</a>
-              <a href="{% url 'store:contact' %}" class="btn btn-outline-secondary">Need help?</a>
-            </div>
+  <section class="spring-section spring-container">
+      <div class="spring-section__head">
+          <h2>Featured Products</h2>
+          <a href="{% url 'store:all-products' %}">View all</a>
+      </div>
 
-            <form action="{% url 'store:search' %}" method="GET" class="zent-home-hero-search">
-              <input type="text" name="q" class="form-control" placeholder="Search products, brands, or moods" required>
-              <button type="submit" class="btn btn-dark">Search</button>
-            </form>
-          </div>
-
-          <aside class="zent-home-aside">
-            <div class="zent-home-panel">
-              <strong>Fast lane</strong>
-              <ul>
-                <li>Thumb-first search and browse flow.</li>
-                <li>Size selection is visible before checkout gets messy.</li>
-                <li>Cart and order status stay clear all the way through.</li>
-              </ul>
-            </div>
-            <div class="zent-home-panel">
-              <strong>Store rhythm</strong>
-              <p>Think curated drop energy, not warehouse overload. The experience should feel tight, glossy, and quick on mobile.</p>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section class="zent-home-stats">
-        <div class="zent-home-stat">
-          <strong>{{ categories|length }}</strong>
-          <span>Featured collections ready to open from one consistent browse system.</span>
-        </div>
-        <div class="zent-home-stat">
-          <strong>{{ products|length }}</strong>
-          <span>Highlighted products picked to get shoppers into the catalog fast.</span>
-        </div>
-        <div class="zent-home-stat">
-          <strong>{{ brands|length }}</strong>
-          <span>Brand entry points for shoppers who already know the vibe they want.</span>
-        </div>
-      </section>
-
-      <section class="zent-home-radar">
-        <article class="zent-radar-card">
-          <span class="zent-section-kicker">Drop radar</span>
-          <h2>Find the lane that matches your mood first.</h2>
-          <p>Start from a category if you are browsing, start from a brand if you already know the energy, or search directly if you came for something specific.</p>
-          <div class="zent-inline-pills">
-            {% for category in categories|slice:":4" %}
-            <a href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a>
-            {% endfor %}
-          </div>
-        </article>
-
-        <article class="zent-radar-card">
-          <span class="zent-section-kicker">Quick order rhythm</span>
-          <h2>Scan. Open. Pick fit. Cart out.</h2>
-          <ol class="zent-rhythm-list mb-0">
-            <li>Use search or collections to open the right piece fast.</li>
-            <li>Check the gallery and fit options before adding to cart.</li>
-            <li>Place the order with delivery details and track it from your account.</li>
-          </ol>
-        </article>
-
-        <article class="zent-radar-card zent-radar-card--accent">
-          <span class="zent-section-kicker">Need backup?</span>
-          <h2>Support stays inside the flow.</h2>
-          <p>Ask about sizing, availability, or delivery without losing your place in the storefront.</p>
-          <div class="d-flex flex-wrap gap-2">
-            <a href="{% url 'store:contact' %}" class="btn btn-dark">Open support</a>
-            <a href="https://instagram.com/zentanee" class="btn btn-outline-dark" target="_blank" rel="noopener">Instagram DM</a>
-          </div>
-        </article>
-      </section>
-
-      <section class="zent-home-section">
-        <div class="zent-home-section-head">
-          <div>
-            <span class="zent-section-kicker">Entry points</span>
-            <h2>Start from the collection that matches your mood</h2>
-            <p>These category tiles act like fast lanes into the catalog instead of sending people through a generic homepage maze.</p>
-          </div>
-          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">All categories</a>
-        </div>
-
-        <div class="zent-home-categories">
-          {% for category in categories %}
-          <article class="zent-home-category-card">
-            <a href="{% url 'store:category-products' category.slug %}">
-              {% if category.category_image %}
-              <img loading="lazy" src="{{ category.category_image.url|cdn_optimize }}" alt="{{ category.title }}">
-              {% else %}
-              <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ category.title }}">
-              {% endif %}
-              <div class="zent-home-category-body">
-                <span class="zent-section-kicker">Category</span>
-                <h3>{{ category.title }}</h3>
-                <p>Open the rail and scan what is live right now.</p>
-              </div>
-            </a>
-          </article>
-          {% empty %}
-          <p class="text-muted mb-0">Featured categories will appear here once they are marked in admin.</p>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="zent-home-section" id="featured-products">
-        <div class="zent-home-section-head">
-          <div>
-            <span class="zent-section-kicker">Featured drop</span>
-            <h2>Open these pieces first</h2>
-            <p>The fastest homepage is one that gets the shopper into a product they might actually buy, not into decorative filler.</p>
-          </div>
-          <a href="{% url 'store:all-products' %}" class="btn btn-outline-dark">All products</a>
-        </div>
-
-        <div class="zent-home-product-grid">
+      <div class="spring-product-grid">
           {% for product in products %}
-          <div class="product-wrap">
-            {% include 'store/_product_card_content.html' with product=product %}
+          <div class="spring-grid-item">
+              {% include 'store/_product_card_content.html' with product=product %}
           </div>
           {% empty %}
           <p class="text-muted mb-0">Featured products will appear here once they are marked in admin.</p>
           {% endfor %}
-        </div>
-      </section>
+      </div>
+  </section>
 
-      <section class="zent-home-section">
-        <div class="zent-home-section-head">
-          <div>
-            <span class="zent-section-kicker">Brand scan</span>
-            <h2>Shop by label when you already know the energy</h2>
-            <p>Featured brands stay in one compact directory instead of being scattered through theme-style banners and random carousels.</p>
-          </div>
-          <a href="{% url 'store:all-brands' %}" class="btn btn-outline-dark">All brands</a>
-        </div>
+  <section class="spring-section spring-container">
+      <div class="spring-section__head">
+          <h2>Shop Collections</h2>
+          <a href="{% url 'store:all-categories' %}">View all</a>
+      </div>
 
-        <div class="zent-home-brand-grid">
+      <div class="spring-collection-grid">
+          {% for category in categories %}
+          <article class="spring-collection-card">
+              <a href="{% url 'store:category-products' category.slug %}">
+                  <div class="spring-collection-card__media">
+                      {% if category.category_image %}
+                      <img loading="lazy" src="{{ category.category_image.url|cdn_optimize }}" alt="{{ category.title }}">
+                      {% else %}
+                      <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ category.title }}">
+                      {% endif %}
+                  </div>
+                  <div class="spring-collection-card__body">
+                      <h3>{{ category.title }}</h3>
+                  </div>
+              </a>
+          </article>
+          {% empty %}
+          <p class="text-muted mb-0">Featured collections will appear here once they are marked in admin.</p>
+          {% endfor %}
+      </div>
+  </section>
+
+  <section class="spring-section spring-container">
+      <div class="spring-section__head">
+          <h2>Featured Brands</h2>
+          <a href="{% url 'store:all-brands' %}">View all</a>
+      </div>
+
+      <div class="spring-brand-grid">
           {% for brand in brands %}
-          {% url 'store:brand-products' brand.slug as brand_href %}
-          {% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title label='Brand' %}
+          <a href="{% url 'store:brand-products' brand.slug %}" class="spring-brand-card">
+              {% if brand.brand_image %}
+              <img loading="lazy" src="{{ brand.brand_image.url|cdn_optimize }}" alt="{{ brand.title }}">
+              {% else %}
+              <span>{{ brand.title }}</span>
+              {% endif %}
+              <strong>{{ brand.title }}</strong>
+          </a>
           {% empty %}
           <p class="text-muted mb-0">Featured brands will appear here once they are marked in admin.</p>
           {% endfor %}
-        </div>
-      </section>
-
-      <section class="zent-home-contact">
-        <div>
-          <span class="zent-section-kicker">Support lane</span>
-          <h2 class="mb-2">Need a second opinion before you buy?</h2>
-          <p>When customers want help on fit, availability, or delivery, support should feel like a premium assist, not a workaround for a confusing storefront.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-          <a href="https://instagram.com/zentanee" class="btn btn-dark" target="_blank" rel="noopener">Instagram</a>
-          <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">Contact page</a>
-        </div>
-      </section>
-    </div>
-  </div>
+      </div>
+  </section>
 </main>
 {% endblock content %}
