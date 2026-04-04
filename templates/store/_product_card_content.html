@@ -5,19 +5,19 @@
     <figure class="product-media zent-product-media">
         <a href="{% url 'store:product-detail' product.slug %}" class="zent-product-image-link">
             {% if product.product_image %}
-            <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="300" height="338" />
+            <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="300" height="338">
             {% else %}
-            <img loading="lazy" src="{% static 'img/product-1.jpg' %}" alt="{{ product.title }}" width="300" height="338" />
+            <img loading="lazy" src="{% static 'img/product-1.jpg' %}" alt="{{ product.title }}" width="300" height="338">
             {% endif %}
         </a>
         <div class="zent-product-badges">
             {% if product.is_sold_out %}
-            <span class="zent-product-badge zent-product-badge--soldout">Sold out</span>
+            <span class="zent-product-badge zent-product-badge--soldout">Archive</span>
             {% else %}
-            <span class="zent-product-badge">Ready to order</span>
+            <span class="zent-product-badge">Drop live</span>
             {% endif %}
             {% if product.available_sizes and not product.is_sold_out %}
-            <span class="zent-product-badge zent-product-badge--subtle">Sizes: {{ product.available_sizes }}</span>
+            <span class="zent-product-badge zent-product-badge--subtle">Size grid on</span>
             {% endif %}
         </div>
     </figure>
@@ -35,35 +35,44 @@
         </h3>
 
         <p class="zent-product-summary">
-            {% if product.is_sold_out %}
-            This item is currently unavailable. Browse similar pieces or check back soon.
+            {% if product.short_description %}
+            {{ product.short_description|truncatewords:12 }}
+            {% elif product.is_sold_out %}
+            This piece is currently offline. Check back for the next restock.
             {% elif product.available_sizes %}
-            Choose your size on the product page, then add it to cart and place the order in a few steps.
+            Open the product, pick a size, and move straight to cart.
             {% else %}
-            Ready to add straight to cart. Delivery details are confirmed during checkout.
+            Clean one-tap path: open it or add it straight to cart.
             {% endif %}
         </p>
 
         <div class="zent-product-footer">
-            <div class="product-price">
-                <ins class="new-price">{{ product.price }} ETB</ins>
+            <div class="zent-product-footer__top">
+                <div class="product-price">
+                    <ins class="new-price">{{ product.price }} ETB</ins>
+                </div>
+                {% if product.available_sizes and not product.is_sold_out %}
+                <span class="zent-product-note">Choose fit</span>
+                {% elif not product.is_sold_out %}
+                <span class="zent-product-note">Quick add</span>
+                {% endif %}
             </div>
 
             <div class="zent-product-actions">
                 {% if product.is_sold_out %}
-                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sold Out</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sold out</button>
                 {% elif product.available_sizes %}
-                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-dark">Choose Size</a>
+                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-dark">Pick size</a>
                 {% else %}
                 <form action="{% url 'store:add-to-cart' %}" method="POST" class="m-0">
                     {% csrf_token %}
                     <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="btn btn-sm btn-dark">Add to Cart</button>
+                    <button type="submit" class="btn btn-sm btn-dark">Add to cart</button>
                 </form>
                 {% endif %}
 
-                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark">View</a>
+                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark">Open</a>
             </div>
         </div>
     </div>

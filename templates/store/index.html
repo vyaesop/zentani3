@@ -2,6 +2,8 @@
 {% load static %}
 {% load image_optim %}
 
+{% block title %}Zentanee | Chrome-coded fashion{% endblock %}
+
 {% block content %}
 <main class="main">
   <div class="page-content">
@@ -9,36 +11,36 @@
       <section class="zent-home-hero">
         <div class="zent-home-grid">
           <div>
-            <span class="zent-section-kicker">Zentanee storefront</span>
-            <h1 class="zent-home-title">Browse fashion faster, choose your size clearly, and place orders without guessing the next step.</h1>
+            <span class="zent-section-kicker">Addis // Y2K drop</span>
+            <h1 class="zent-home-title">Chrome-cut looks, fast mobile browsing, and a checkout flow that keeps up.</h1>
             <p class="zent-home-subtitle">
-              Zentanee is now moving toward a cleaner shopping experience: discover featured pieces, jump into categories, and go from product to cart with clearer guidance and less clutter.
+              Zentanee is built for shoppers who want the style to feel distinct and the flow to feel effortless. Open a drop, pick your size, and move to cart without wandering through filler.
             </p>
 
             <div class="zent-home-actions">
-              <a href="{% url 'store:all-categories' %}" class="btn btn-dark">Shop Categories</a>
-              <a href="#featured-products" class="btn btn-outline-dark">See Featured Products</a>
-              <a href="{% url 'store:all-brands' %}" class="btn btn-outline-secondary">Browse Brands</a>
+              <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop the drop</a>
+              <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Browse categories</a>
+              <a href="{% url 'store:contact' %}" class="btn btn-outline-secondary">Need help?</a>
             </div>
 
             <form action="{% url 'store:search' %}" method="GET" class="zent-home-hero-search">
-              <input type="text" name="q" class="form-control" placeholder="Search for products, brands, or styles" required>
-              <button type="submit" class="btn btn-dark">Search the store</button>
+              <input type="text" name="q" class="form-control" placeholder="Search products, brands, or moods" required>
+              <button type="submit" class="btn btn-dark">Search</button>
             </form>
           </div>
 
           <aside class="zent-home-aside">
             <div class="zent-home-panel">
-              <strong>How ordering works</strong>
+              <strong>Fast lane</strong>
               <ul>
-                <li>Browse a collection or search directly.</li>
-                <li>Open a product to review photos and choose size if needed.</li>
-                <li>Add to cart and place the order with delivery details.</li>
+                <li>Thumb-first search and browse flow.</li>
+                <li>Size selection is visible before checkout gets messy.</li>
+                <li>Cart and order status stay clear all the way through.</li>
               </ul>
             </div>
             <div class="zent-home-panel">
-              <strong>Why this is changing</strong>
-              <p>The old homepage mixed theme-demo content with real products. This rebuild focuses the page around real shopping actions and real store sections.</p>
+              <strong>Store rhythm</strong>
+              <p>Think curated drop energy, not warehouse overload. The experience should feel tight, glossy, and quick on mobile.</p>
             </div>
           </aside>
         </div>
@@ -47,24 +49,57 @@
       <section class="zent-home-stats">
         <div class="zent-home-stat">
           <strong>{{ categories|length }}</strong>
-          <span>Featured categories ready to explore from one consistent browse flow.</span>
+          <span>Featured collections ready to open from one consistent browse system.</span>
         </div>
         <div class="zent-home-stat">
           <strong>{{ products|length }}</strong>
-          <span>Featured products highlighted with stronger next-step guidance.</span>
+          <span>Highlighted products picked to get shoppers into the catalog fast.</span>
         </div>
         <div class="zent-home-stat">
           <strong>{{ brands|length }}</strong>
-          <span>Featured brands grouped into a cleaner directory instead of scattered sections.</span>
+          <span>Brand entry points for shoppers who already know the vibe they want.</span>
         </div>
+      </section>
+
+      <section class="zent-home-radar">
+        <article class="zent-radar-card">
+          <span class="zent-section-kicker">Drop radar</span>
+          <h2>Find the lane that matches your mood first.</h2>
+          <p>Start from a category if you are browsing, start from a brand if you already know the energy, or search directly if you came for something specific.</p>
+          <div class="zent-inline-pills">
+            {% for category in categories|slice:":4" %}
+            <a href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="zent-radar-card">
+          <span class="zent-section-kicker">Quick order rhythm</span>
+          <h2>Scan. Open. Pick fit. Cart out.</h2>
+          <ol class="zent-rhythm-list mb-0">
+            <li>Use search or collections to open the right piece fast.</li>
+            <li>Check the gallery and fit options before adding to cart.</li>
+            <li>Place the order with delivery details and track it from your account.</li>
+          </ol>
+        </article>
+
+        <article class="zent-radar-card zent-radar-card--accent">
+          <span class="zent-section-kicker">Need backup?</span>
+          <h2>Support stays inside the flow.</h2>
+          <p>Ask about sizing, availability, or delivery without losing your place in the storefront.</p>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'store:contact' %}" class="btn btn-dark">Open support</a>
+            <a href="https://instagram.com/zentanee" class="btn btn-outline-dark" target="_blank" rel="noopener">Instagram DM</a>
+          </div>
+        </article>
       </section>
 
       <section class="zent-home-section">
         <div class="zent-home-section-head">
           <div>
-            <span class="zent-section-kicker">Collections</span>
-            <h2>Start from a category</h2>
-            <p>These featured collections help shoppers begin with the kind of product they want before narrowing down to a specific piece.</p>
+            <span class="zent-section-kicker">Entry points</span>
+            <h2>Start from the collection that matches your mood</h2>
+            <p>These category tiles act like fast lanes into the catalog instead of sending people through a generic homepage maze.</p>
           </div>
           <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">All categories</a>
         </div>
@@ -81,7 +116,7 @@
               <div class="zent-home-category-body">
                 <span class="zent-section-kicker">Category</span>
                 <h3>{{ category.title }}</h3>
-                <p>Open the collection and browse its current featured products.</p>
+                <p>Open the rail and scan what is live right now.</p>
               </div>
             </a>
           </article>
@@ -94,9 +129,9 @@
       <section class="zent-home-section" id="featured-products">
         <div class="zent-home-section-head">
           <div>
-            <span class="zent-section-kicker">Featured now</span>
-            <h2>Products worth opening first</h2>
-            <p>The homepage should push shoppers into real products quickly. These featured items now use the same stronger card system as the browse pages.</p>
+            <span class="zent-section-kicker">Featured drop</span>
+            <h2>Open these pieces first</h2>
+            <p>The fastest homepage is one that gets the shopper into a product they might actually buy, not into decorative filler.</p>
           </div>
           <a href="{% url 'store:all-products' %}" class="btn btn-outline-dark">All products</a>
         </div>
@@ -115,9 +150,9 @@
       <section class="zent-home-section">
         <div class="zent-home-section-head">
           <div>
-            <span class="zent-section-kicker">Brands</span>
-            <h2>Shop by brand</h2>
-            <p>Instead of pushing random demo banners, the homepage now gives shoppers a direct route into real featured brands.</p>
+            <span class="zent-section-kicker">Brand scan</span>
+            <h2>Shop by label when you already know the energy</h2>
+            <p>Featured brands stay in one compact directory instead of being scattered through theme-style banners and random carousels.</p>
           </div>
           <a href="{% url 'store:all-brands' %}" class="btn btn-outline-dark">All brands</a>
         </div>
@@ -134,9 +169,9 @@
 
       <section class="zent-home-contact">
         <div>
-          <span class="zent-section-kicker">Need help?</span>
-          <h2 class="mb-2">Support customers who prefer messaging, without making the homepage feel like a workaround.</h2>
-          <p>If a customer wants help before ordering, direct contact is still available. The page now frames that as support, not as a substitute for a broken storefront.</p>
+          <span class="zent-section-kicker">Support lane</span>
+          <h2 class="mb-2">Need a second opinion before you buy?</h2>
+          <p>When customers want help on fit, availability, or delivery, support should feel like a premium assist, not a workaround for a confusing storefront.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
           <a href="https://instagram.com/zentanee" class="btn btn-dark" target="_blank" rel="noopener">Instagram</a>

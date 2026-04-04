@@ -14,7 +14,28 @@
 
   <div class="page-content mb-10">
       <div class="container">
-          {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description='See the full selection currently available from this brand, then open a product to review the gallery, sizes, and order steps.' count=product_count secondary_chip='Brand-focused browse view' %}
+          {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description=brand.description|default:'See the full selection currently available from this brand, then open a product to review the gallery, sizes, and order steps.' count=product_count secondary_chip='Brand-focused browse view' %}
+
+          <section class="zent-collection-radar">
+              <article class="zent-radar-card">
+                  <span class="zent-section-kicker">Brand mood</span>
+                  <h2>{{ brand.title }} in one rail.</h2>
+                  <p>{% if brand.description %}{{ brand.description|truncatewords:24 }}{% else %}This view keeps one brand in focus so shoppers can compare pieces without bouncing across mixed layouts.{% endif %}</p>
+              </article>
+              <article class="zent-radar-card">
+                  <span class="zent-section-kicker">Compare fast</span>
+                  <h2>{{ product_count }} live option{{ product_count|pluralize }}</h2>
+                  <p>Use this page when the label matters first, then open a piece to confirm fit, photos, and price before cart.</p>
+              </article>
+              <article class="zent-radar-card zent-radar-card--accent">
+                  <span class="zent-section-kicker">Quick actions</span>
+                  <h2>Keep the browse tight.</h2>
+                  <div class="d-flex flex-wrap gap-2">
+                      <a href="{% url 'store:all-brands' %}" class="btn btn-dark">More brands</a>
+                      <a href="{% url 'store:search' %}" class="btn btn-outline-dark">Search store</a>
+                  </div>
+              </article>
+          </section>
 
           <div class="zent-collection-shell">
               <div class="zent-collection-main">

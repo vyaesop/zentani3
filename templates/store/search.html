@@ -20,6 +20,27 @@
             {% include 'store/_collection_header.html' with kicker='Search results' title='Search the store' description='Use search to quickly jump into products, categories, and brands without browsing page by page.' count=products.count secondary_chip='Try a product name or brand' %}
           {% endif %}
 
+          <section class="zent-collection-radar">
+              <article class="zent-radar-card">
+                  <span class="zent-section-kicker">Search radar</span>
+                  <h2>{% if query %}You searched for {{ query }}.{% else %}Start with a product name, brand, or mood.{% endif %}</h2>
+                  <p>{% if query %}Search is the fastest lane when you already know roughly what you want. Open a result to check photos, fit, and order cues.{% else %}Try a product name, a category, or a brand to jump into the catalog without scrolling through every section.{% endif %}</p>
+              </article>
+              <article class="zent-radar-card">
+                  <span class="zent-section-kicker">Result count</span>
+                  <h2>{{ products.count }} result{{ products.count|pluralize }}</h2>
+                  <p>Good results should help the shopper decide quickly, not force them through another generic browse page.</p>
+              </article>
+              <article class="zent-radar-card zent-radar-card--accent">
+                  <span class="zent-section-kicker">Next move</span>
+                  <h2>Still not seeing it?</h2>
+                  <div class="d-flex flex-wrap gap-2">
+                      <a href="{% url 'store:all-categories' %}" class="btn btn-dark">Browse categories</a>
+                      <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">Ask support</a>
+                  </div>
+              </article>
+          </section>
+
           <div class="zent-collection-shell">
               <div class="zent-collection-main">
                   <section class="zent-collection-board">
