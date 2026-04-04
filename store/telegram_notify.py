@@ -152,6 +152,13 @@ def _send_telegram_media_group(chat_id, media_items, token):
     return _telegram_api_request("sendMediaGroup", payload, token)
 
 
+def _mark_channel_post_success(product, signature):
+    product.__class__.objects.filter(pk=product.pk).update(
+        telegram_channel_last_post_signature=signature,
+        telegram_channel_last_posted_at=timezone.now(),
+    )
+
+
 def _format_full_name(user):
     full_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
     return full_name or "N/A"
@@ -376,10 +383,14 @@ def post_product_to_channel(product, force=False):
                 reply_markup=reply_markup,
             )
             if sent:
-                product.__class__.objects.filter(pk=product.pk).update(
-                    telegram_channel_last_post_signature=current_signature,
-                    telegram_channel_last_posted_at=timezone.now(),
-                )
+                _mark_channel_post_success(product, current_signature)
+                return True
+            sent = send_customer_bot_message(
+                text=f"{cta_text}\n\nOrder link: {deep_link}",
+                chat_id=channel_chat_id,
+            )
+            if sent:
+                _mark_channel_post_success(product, current_signature)
             return sent
 
     if image_urls:
@@ -392,10 +403,7 @@ def post_product_to_channel(product, force=False):
             parse_mode="HTML",
         )
         if sent:
-            product.__class__.objects.filter(pk=product.pk).update(
-                telegram_channel_last_post_signature=current_signature,
-                telegram_channel_last_posted_at=timezone.now(),
-            )
+            _mark_channel_post_success(product, current_signature)
             return True
 
     fallback_text = (
@@ -411,11 +419,13 @@ def post_product_to_channel(product, force=False):
         chat_id=channel_chat_id,
         reply_markup=reply_markup,
     )
-    if sent:
-        product.__class__.objects.filter(pk=product.pk).update(
-            telegram_channel_last_post_signature=current_signature,
-            telegram_channel_last_posted_at=timezone.now(),
+    if not sent:
+        sent = send_customer_bot_message(
+            text=f"{fallback_text}\nChoose Size in bot: {deep_link}",
+            chat_id=channel_chat_id,
         )
+    if sent:
+        _mark_channel_post_success(product, current_signature)
     return sent
 
 
