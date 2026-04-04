@@ -210,43 +210,7 @@
                       {% if products %}
                         {% for product in products %}
                         <div class="product-wrap">
-                            <div class="product text-center">
-                                <figure class="product-media">
-                                    <a href="{% url 'store:product-detail' product.slug %}">
-                                        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="Product"
-                                            width="300" height="338" />
-                                        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="Product"
-                                            width="300" height="338" />
-                                    </a>
-                                    {% if product.is_sold_out %}
-                                    <div class="product-label-group">
-                                        <label class="product-label label-discount">SOLD OUT</label>
-                                    </div>
-                                    {% endif %}
-                                                                        <div class="product-action-vertical">
-                                                                            {% if product.is_sold_out %}
-                                                                            <button type="button" class="btn-product-icon w-icon-cart" disabled title="Sold out"></button>
-                                                                            {% elif product.available_sizes %}
-                                                                            <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark" title="Choose options">Choose options</a>
-                                                                            {% else %}
-                                                                            <form action="{% url 'store:add-to-cart' %}" method="POST">
-                                                                                {% csrf_token %}
-                                                                                <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
-                                                                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                                                                <button type="submit" class="btn-product-icon w-icon-cart" title="Add to cart"></button>
-                                                                            </form>
-                                                                            {% endif %}
-                                                                            <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                                                    title="Add to wishlist"></a>
-                                                                        </div>
-                                </figure>
-                                <div class="product-details">
-                                    <h4 class="product-name"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h4>
-                                    <div class="product-price">
-                                        <ins class="new-price">{{product.price}} ETB</ins>
-                                    </div>
-                                </div>
-                            </div>
+                            {% include 'store/_product_card_content.html' with product=product %}
                         </div>
                         {% endfor %}
                       {% endif %}

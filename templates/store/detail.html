@@ -9,6 +9,18 @@
       <!-- Start of Page Content -->
       <div class="page-content">
           <div class="container">
+              <div class="zent-flow-banner">
+                  <div>
+                      <strong>Order flow</strong>
+                      <div class="small text-muted">Review the gallery, choose your size, add to cart, then place the order from cart.</div>
+                  </div>
+                  <div class="zent-flow-steps">
+                      <span class="zent-flow-step">1. Check photos</span>
+                      <span class="zent-flow-step">2. Pick size</span>
+                      <span class="zent-flow-step">3. Add to cart</span>
+                      <span class="zent-flow-step">4. Confirm delivery</span>
+                  </div>
+              </div>
               <div class="row gutter-lg">
                   <div class="main-content">
                       <div class="product product-single row">
@@ -49,6 +61,9 @@
                                     }
                                 }">
                                     <div class="product-thumbs swiper-wrapper row cols-4 gutter-sm">
+                                        <div class="product-thumb swiper-slide">
+                                            <img class="thumbnail" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="800" height="900" data-large="{{ product.product_image.url|cdn_optimize }}">
+                                        </div>
                                         {% for p in p_image %}
                                         <div class="product-thumb swiper-slide">
                                             <!-- Thumbnail images with a custom attribute for large image URLs -->
@@ -120,72 +135,50 @@
                         </script>
                         
                           <div class="col-md-6 mb-4 mb-md-6">
-                              <div class="product-details" data-sticky-options="{'minWidth': 767}">
-                                  <h1 class="product-title">{{product.title}}</h1>
-                                  <div class="product-bm-wrapper">
-                                      {% comment %} <figure class="brand">
-                                        <span class="product-category"><a href="{% url 'store:brand-products' product.brand.slug %}">{{product.brand}}</a></span>
+                              <div class="product-details zent-detail-panel" data-sticky-options="{'minWidth': 767}">
+                                  <div class="zent-product-meta mb-3">
+                                      <span class="zent-product-pill">{{ product.category }}</span>
+                                      {% if product.brand %}
+                                      <span class="zent-product-pill zent-product-pill--muted">{{ product.brand }}</span>
+                                      {% endif %}
+                                      <span class="zent-product-pill zent-product-pill--muted">SKU {{ product.sku }}</span>
+                                  </div>
 
-                                      </figure> {% endcomment %}
-                                      <div class="product-meta">
-                                          <div class="product-categories">
-                                              Category:
-                                              <span class="product-category"><a href="{% url 'store:category-products' product.category.slug %}">{{product.category}}</a></span>
-                                          </div>
-                                          <div class="product-categories">
-                                            Brand:
-                                            <span class="product-category"><a href="{% url 'store:brand-products' product.brand.slug %}">{{product.brand}}</a></span>
-                                          </div>
-                                          <div class="product-sku">
-                                              SKU: <span>{{product.sku}}</span>
-                                          </div>
+                                  <h1 class="product-title zent-detail-title">{{ product.title }}</h1>
+                                  <div class="product-price mb-3"><ins class="new-price">{{ product.price }} ETB</ins></div>
+
+                                  <p class="zent-detail-summary">{{ product.short_description }}</p>
+
+                                  <div class="zent-trust-grid">
+                                      <div class="zent-trust-item">
+                                          <strong>Delivery flow</strong>
+                                          <span>Place the order, then Zentanee confirms the delivery details with you directly.</span>
+                                      </div>
+                                      <div class="zent-trust-item">
+                                          <strong>Return window</strong>
+                                          <span>Eligible orders can be returned within 3 days if the item is not right for you.</span>
+                                      </div>
+                                      <div class="zent-trust-item">
+                                          <strong>Next step</strong>
+                                          <span>{% if available_sizes %}Pick your preferred size before adding to cart.{% else %}Add this item to cart, then confirm delivery in checkout.{% endif %}</span>
                                       </div>
                                   </div>
 
-                                  <hr class="product-divider">
-
-                                  <div class="product-price"><ins class="new-price">{{product.price}} ETB</ins></div>
-
-
-
-                                  <div class="product-short-desc">
-                                      <ul class="list-type-check list-style-none">
-                                          <li>{{product.short_description}}</li>
-                                          </ul>
+                                  {% if available_sizes %}
+                                  <div class="zent-size-help">
+                                      Available sizes: {{ product.available_sizes }}. Choose the best fit now so your order can move straight into confirmation.
                                   </div>
-
-                                  <hr class="product-divider">
-
-                                  {% comment %} <div class="product-form product-variation-form product-color-swatch">
-                                      <label>Color:</label>
-                                      <div class="d-flex align-items-center product-variations">
-                                          <a href="#" class="color" style="background-color: #ffcc01"></a>
-                                          <a href="#" class="color" style="background-color: #ca6d00;"></a>
-                                          <a href="#" class="color" style="background-color: #1c93cb;"></a>
-                                          <a href="#" class="color" style="background-color: #ccc;"></a>
-                                          <a href="#" class="color" style="background-color: #333;"></a>
-                                      </div>
-                                  </div> {% endcomment %}
-                                  {% comment %} <div class="product-form product-variation-form product-size-swatch">
-                                      <label class="mb-1">Size:</label>
-                                      <div class="flex-wrap d-flex align-items-center product-variations">
-                                          <a href="#" class="size">{{product.short_description}}</a>
-                                          
-                                      </div>
-                                      <a href="#" class="product-variation-clean">Clean All</a>
-                                  </div> {% endcomment %}
-
-                                  
+                                  {% endif %}
 
                                   <div class="fix-bottom product-sticky-content sticky-content">
-                                      <div class="product-form container">
+                                      <div class="product-form container zent-product-form-shell">
                                         <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="d-flex flex-wrap align-items-end gap-2">
                                             {% csrf_token %}
                                             <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
                                             <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                             {% if available_sizes %}
                                             <div class="size-chooser-wrap me-3 mb-2 mb-md-0">
-                                                <label class="form-label mb-2 d-block fw-bold">Select Size</label>
+                                                <label class="form-label mb-2 d-block fw-bold">Select size</label>
                                                 <div class="size-options" role="radiogroup" aria-label="Available sizes">
                                                     {% for size_option in available_sizes %}
                                                     <label class="size-chip">
@@ -197,35 +190,26 @@
                                             </div>
                                             {% endif %}
 
-                                            <!-- Add to Cart Button -->
-                                            <button type="submit" class="btn btn-primary btn-sm mt-2 mt-md-0" {% if product.is_sold_out %}disabled{% endif %}>
-                                                <i class="w-icon-cart"></i>
-                                                <span>{% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}</span>
-                                            </button>
+                                            <div class="zent-product-form-actions">
+                                                <button type="submit" class="btn btn-primary btn-sm mt-2 mt-md-0" {% if product.is_sold_out %}disabled{% endif %}>
+                                                    <i class="w-icon-cart"></i>
+                                                    <span>{% if product.is_sold_out %}Sold Out{% else %}Add to Cart{% endif %}</span>
+                                                </button>
+                                                <a href="{% url 'store:cart' %}" class="btn btn-outline-dark btn-sm mt-2 mt-md-0">Go to Cart</a>
+                                            </div>
                                         </form>
                                         <div id="add-to-cart-feedback" class="mt-2 small"></div>
                                       </div>
                                   </div>
 
-                                  <div class="social-links-wrapper">
+                                  <div class="social-links-wrapper mt-4">
+                                      <p class="small text-muted mb-2">Need help before ordering? Reach us on Instagram or LinkedIn and we will guide you.</p>
                                       <div class="social-links">
                                           <div class="social-icons social-no-color border-thin">
                                               <a href="https://www.instagram.com/zentanee/" class="social-icon social-instagram w-icon-instagram"></a>
-                                              {% comment %}<a href="#" class="social-icon social-twitter w-icon-twitter"></a>
-                                              <a href="#"
-                                                  class="social-icon social-pinterest fab fa-pinterest-p"></a>
-                                              <a href="#" class="social-icon social-whatsapp fab fa-whatsapp"></a>{% endcomment %}
-                                              <a href="https://www.linkedin.com/company/zentanee/"
-                                                  class="social-icon social-youtube fab fa-linkedin-in"></a>
+                                              <a href="https://www.linkedin.com/company/zentanee/" class="social-icon social-youtube fab fa-linkedin-in"></a>
                                           </div>
                                       </div>
-                                      <span class="divider d-xs-show"></span>
-                                      {% comment %} <div class="product-link-wrapper d-flex">
-                                          <a href="#"
-                                              class="btn-product-icon btn-wishlist w-icon-heart"><span></span></a>
-                                          <a href="#"
-                                              class="btn-product-icon btn-compare btn-icon-left w-icon-compare"><span></span></a>
-                                      </div> {% endcomment %}
                                   </div>
                               </div>
                           </div>
@@ -410,10 +394,10 @@
                       <div class="tab tab-nav-boxed tab-nav-underline product-tabs">
                           <ul class="nav nav-tabs" role="tablist">
                               <li class="nav-item">
-                                  <a href="#product-tab-description" class="nav-link active">Description</a>
+                                  <a href="#product-tab-description" class="nav-link active">Why you'll love it</a>
                               </li>
                               <li class="nav-item">
-                                  <a href="#product-tab-specification" class="nav-link">Specification</a>
+                                  <a href="#product-tab-specification" class="nav-link">Details &amp; delivery</a>
                               </li>
                               {% comment %} <li class="nav-item">
                                   <a href="#product-tab-vendor" class="nav-link">Vendor Info</a>
@@ -424,74 +408,49 @@
                           </ul>
                           <div class="tab-content">
                               <div class="tab-pane active" id="product-tab-description">
-                                  {% comment %} <div class="row mb-4">
-                                      <div class="col-md-6 mb-5">
-                                          <h4 class="title tab-pane-title font-weight-bold mb-2">Detail</h4>
-                                          <p class="mb-4">Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                                              sed do eiusmod tempor incididunt arcu cursus vitae congue mauris.
-                                              Sagittis id consectetur purus ut. Tellus rutrum tellus pelle Vel
-                                              pretium lectus quam id leo in vitae turpis massa.</p>
-                                          <ul class="list-type-check">
-                                              <li>Nunc nec porttitor turpis. In eu risus enim. In vitae mollis
-                                                  elit.
-                                              </li>
-                                              <li>Vivamus finibus vel mauris ut vehicula.</li>
-                                              <li>Nullam a magna porttitor, dictum risus nec, faucibus sapien.
-                                              </li>
-                                          </ul>
+                                  <div class="row g-4 zent-tabs-copy">
+                                      <div class="col-lg-7">
+                                          <h4 class="title tab-pane-title font-weight-bold mb-3">Product story</h4>
+                                          {% if product.detail_description %}
+                                          <div class="zent-detail-muted">{{ product.detail_description|linebreaks }}</div>
+                                          {% else %}
+                                          <p class="zent-detail-muted mb-0">{{ product.short_description }}</p>
+                                          {% endif %}
                                       </div>
-                                      <div class="col-md-6 mb-5">
-                                          <div class="banner banner-video product-video br-xs">
-                                              <figure class="banner-media">
-                                                  <a href="#">
-                                                      <img src="{% static 'asset/images/products/video-banner-610x300.webp' %}"
-                                                          alt="banner" width="610" height="300"
-                                                          style="background-color: #bebebe;">
-                                                  </a>
-                                                  <a class="btn-play-video btn-iframe"
-                                                      href="asset/video/memory-of-a-woman.mp4"></a>
-                                              </figure>
+                                      <div class="col-lg-5">
+                                          <div class="zent-profile-stat h-100">
+                                              <strong class="h6 mb-2 d-block">Best way to order</strong>
+                                              <p class="mb-2">Review the photos, choose the right size, then add the item to cart.</p>
+                                              <p class="mb-0">You can adjust quantities in cart before placing the final order.</p>
                                           </div>
                                       </div>
-                                  </div> {% endcomment %}
-                                  <div class="row cols-md-3">
-                                      <div class="mb-3">
-                                          <h5 class="sub-title font-weight-bold"><span class="mr-3">1.</span>Affordable
-                                              Shipping &amp; Return</h5>
-                                          <p class="detail pl-5">We offer affordable shipping for
-                                             all orders in Addis Abeba.</p>
-                                      </div>
-                                      <div class="mb-3">
-                                          <h5 class="sub-title font-weight-bold"><span>2.</span>Free and Easy
-                                              Returns</h5>
-                                          <p class="detail pl-5">We guarantee our products and you could get back
-                                              all of your money anytime you want in 3 days.</p>
-                                      </div>
-                                      {% comment %} <div class="mb-3">
-                                          <h5 class="sub-title font-weight-bold"><span>3.</span>Special Financing
-                                          </h5>
-                                          <p class="detail pl-5">Get 20%-50% off items over 50$ for a month or
-                                              over 250$ for a year with our special credit card.</p>
-                                      </div> {% endcomment %}
                                   </div>
                               </div>
                               <div class="tab-pane" id="product-tab-specification">
                                   <ul class="list-none">
                                       <li>
+                                          <label>Category</label>
+                                          <p>{{ product.category }}</p>
+                                      </li>
+                                      <li>
                                           <label>Brand</label>
-                                          <p>{{product.brand}}</p>
-                                      </li>
-                                      {% comment %} <li>
-                                          <label>Color</label>
-                                          <p>{{product.short_description}}</p>
-                                      </li> {% endcomment %}
-                                      <li>
-                                          <label>Size</label>
-                                          <p>{{product.short_description}}</p>
+                                          <p>{% if product.brand %}{{ product.brand }}{% else %}Zentanee{% endif %}</p>
                                       </li>
                                       <li>
-                                          <label>Guarantee Return</label>
-                                          <p>3 days</p>
+                                          <label>Sizes</label>
+                                          <p>{% if product.available_sizes %}{{ product.available_sizes }}{% else %}One standard option{% endif %}</p>
+                                      </li>
+                                      <li>
+                                          <label>Delivery</label>
+                                          <p>Orders are confirmed after checkout and coordinated directly for delivery.</p>
+                                      </li>
+                                      <li>
+                                          <label>Returns</label>
+                                          <p>Eligible returns are supported within 3 days.</p>
+                                      </li>
+                                      <li>
+                                          <label>Product code</label>
+                                          <p>{{ product.sku }}</p>
                                       </li>
                                   </ul>
                               </div>
@@ -1375,8 +1334,8 @@
                                                   title="Add to Compare"></a>
                                           </div> {% endcomment %}
                                           <div class="product-action">
-                                              <a href="{% url 'store:product-detail' rp.slug %}" class="btn-product btn-quickview" title="Quick View">Quick
-                                                  View</a>
+                                              <a href="{% url 'store:product-detail' rp.slug %}" class="btn-product btn-quickview" title="View product">View
+                                                  Product</a>
                                           </div>
                                       </figure>
                                       <div class="product-details">

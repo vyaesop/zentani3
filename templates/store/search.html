@@ -114,52 +114,7 @@
                       <div class="product-wrapper row cols-lg-5 cols-md-4 cols-sm-3 cols-2">
                         {% for product in products %}
                         <div class="product-wrap">
-                            
-                              <div class="product text-center">
-                                  <figure class="product-media">
-                                      <a href="{% url 'store:product-detail' product.slug %}">
-                                          <img loading="lazy" src="{{product.product_image.url|cdn_optimize}}" alt="Product" width="300"
-                                              height="338" />
-                                      </a>
-                                      {% if product.is_sold_out %}
-                                    <div class="product-label-group">
-                                        <label class="product-label label-discount">SOLD OUT</label>
-                                    </div>
-                                    {% endif %}
-                                                                            <div class="product-action-horizontal">
-                                                                                {% if product.is_sold_out %}
-                                                                                <button type="button" class="btn-product-icon w-icon-cart" disabled title="Sold out"></button>
-                                                                                {% elif product.available_sizes %}
-                                                                                <a href="{% url 'store:product-detail' product.slug %}" class="btn btn-sm btn-outline-dark" title="Choose options">Choose options</a>
-                                                                                {% else %}
-                                                                                <form action="{% url 'store:add-to-cart' %}" method="POST">
-                                                                                    {% csrf_token %}
-                                                                                    <input type="hidden" name="prod_id" value="{{product.id}}" id="product_id">
-                                                                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                                                                    <button type="submit" class="btn-product-icon w-icon-cart"
-                                                                                            title="Add to cart"></button>
-                                                                                </form>
-                                                                                {% endif %}
-                                                                                <a href="#" class="btn-product-icon btn-wishlist w-icon-heart"
-                                                                                        title="Wishlist"></a>
-                                                                            </div>
-                                  </figure>
-                                  <div class="product-details">
-                                      <div class="product-cat">
-                                          <a href="shop-banner-sidebar.html">{{product.category}}</a>
-                                      </div>
-                                      <h3 class="product-name">
-                                          <a href="{{product.product_image.url|cdn_optimize}}">{{product.title}}</a>
-                                      </h3>
-                                      
-                                      <div class="product-pa-wrapper">
-                                          <div class="product-price">
-                                            {{product.price}} ETB
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                              
+                            {% include 'store/_product_card_content.html' with product=product %}
                           </div>
                           {% endfor %}
                         </div>
@@ -230,20 +185,13 @@
                           </div>
                           <!-- Start of Collapsible widget -->
                           <div class="widget widget-collapsible">
-                              <h3 class="widget-title"><span>All Categories</span></h3>
+                              <h3 class="widget-title"><span>Browse Categories</span></h3>
                               <ul class="widget-body filter-items search-ul">
-                                  <li><a href="#">Accessories</a></li>
-                                  <li><a href="#">Babies</a></li>
-                                  <li><a href="#">Beauty</a></li>
-                                  <li><a href="#">Decoration</a></li>
-                                  <li><a href="#">Electronics</a></li>
-                                  <li><a href="#">Fashion</a></li>
-                                  <li><a href="#">Food</a></li>
-                                  <li><a href="#">Furniture</a></li>
-                                  <li><a href="#">Kitchen</a></li>
-                                  <li><a href="#">Medical</a></li>
-                                  <li><a href="#">Sports</a></li>
-                                  <li><a href="#">Watches</a></li>
+                                  {% for cat_menu in categories_menu %}
+                                  <li><a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a></li>
+                                  {% empty %}
+                                  <li><span class="text-muted">Categories will appear here once available.</span></li>
+                                  {% endfor %}
                               </ul>
                           </div>
                           <!-- End of Collapsible Widget -->

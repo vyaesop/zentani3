@@ -58,6 +58,369 @@
 
     <!-- Default CSS -->
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/style.min.css' %}">
+    <style>
+        :root {
+            --zent-ink: #1f2430;
+            --zent-muted: #6d7485;
+            --zent-accent: #b56a2e;
+            --zent-accent-soft: #fff2e8;
+            --zent-surface: #fffdf9;
+            --zent-border: #ece4d8;
+            --zent-shadow: 0 16px 36px rgba(31, 36, 48, 0.08);
+        }
+
+        .header-top {
+            background: linear-gradient(90deg, #fff8f0 0%, #f7efe7 100%);
+        }
+
+        .welcome-msg {
+            margin-bottom: 0;
+            color: var(--zent-ink);
+            font-weight: 600;
+        }
+
+        .zent-header-search {
+            align-items: center;
+            gap: 12px;
+            padding: 8px 10px 8px 16px;
+            border: 1px solid var(--zent-border);
+            border-radius: 999px;
+            background: #fff;
+            box-shadow: 0 10px 28px rgba(31, 36, 48, 0.06);
+        }
+
+        .zent-header-search .form-control {
+            border: 0;
+            min-height: 40px;
+            box-shadow: none;
+            padding-left: 0;
+        }
+
+        .zent-search-context {
+            display: inline-flex;
+            align-items: center;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: var(--zent-accent-soft);
+            color: var(--zent-accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .zent-mobile-search {
+            margin-bottom: 14px;
+            border: 1px solid var(--zent-border);
+            border-radius: 18px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .zent-mobile-search .form-control {
+            border: 0;
+            min-height: 48px;
+        }
+
+        .zent-mobile-search .btn-search {
+            min-width: 54px;
+        }
+
+        .zent-product-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--zent-border);
+            border-radius: 24px;
+            background: var(--zent-surface);
+            box-shadow: var(--zent-shadow);
+            overflow: hidden;
+            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        }
+
+        .zent-product-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(181, 106, 46, 0.35);
+            box-shadow: 0 18px 44px rgba(31, 36, 48, 0.12);
+        }
+
+        .zent-product-media {
+            position: relative;
+            margin: 0;
+            background: linear-gradient(180deg, #fff9f3 0%, #f8f1e9 100%);
+        }
+
+        .zent-product-image-link {
+            display: block;
+            aspect-ratio: 4 / 4.5;
+        }
+
+        .zent-product-image-link img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .zent-product-badges {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .zent-product-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(31, 36, 48, 0.9);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+
+        .zent-product-badge--soldout {
+            background: #8f2d2d;
+        }
+
+        .zent-product-badge--subtle {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--zent-ink);
+        }
+
+        .zent-product-details {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px 18px 20px;
+        }
+
+        .zent-product-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .zent-product-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #f4ede6;
+            color: var(--zent-ink);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .zent-product-pill--muted {
+            background: #f7f7f7;
+            color: var(--zent-muted);
+        }
+
+        .zent-product-name {
+            margin-bottom: 0;
+            line-height: 1.35;
+            font-size: 16px;
+        }
+
+        .zent-product-name a {
+            color: var(--zent-ink);
+        }
+
+        .zent-product-summary {
+            margin: 0;
+            color: var(--zent-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .zent-product-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: auto;
+        }
+
+        .zent-product-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .zent-product-actions .btn,
+        .zent-product-actions form {
+            flex: 1 1 0;
+        }
+
+        .zent-product-actions form .btn {
+            width: 100%;
+        }
+
+        .zent-flow-banner,
+        .zent-profile-hero,
+        .zent-detail-panel,
+        .zent-profile-panel {
+            border: 1px solid var(--zent-border);
+            border-radius: 28px;
+            background: linear-gradient(180deg, #fffdf9 0%, #fff7f1 100%);
+            box-shadow: var(--zent-shadow);
+        }
+
+        .zent-flow-banner {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            margin-bottom: 28px;
+        }
+
+        .zent-flow-banner strong {
+            color: var(--zent-ink);
+        }
+
+        .zent-flow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .zent-flow-step {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #fff;
+            color: var(--zent-muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .zent-profile-hero,
+        .zent-profile-panel {
+            padding: 28px;
+        }
+
+        .zent-profile-title,
+        .zent-detail-title {
+            color: var(--zent-ink);
+        }
+
+        .zent-profile-muted,
+        .zent-detail-muted {
+            color: var(--zent-muted);
+        }
+
+        .zent-profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-top: 22px;
+        }
+
+        .zent-profile-stat {
+            padding: 18px;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid var(--zent-border);
+        }
+
+        .zent-profile-stat strong {
+            display: block;
+            color: var(--zent-ink);
+            font-size: 26px;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .zent-detail-panel {
+            padding: 26px;
+        }
+
+        .zent-detail-summary {
+            margin: 0 0 18px;
+            color: var(--zent-muted);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .zent-trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .zent-trust-item {
+            padding: 16px;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid var(--zent-border);
+        }
+
+        .zent-trust-item strong {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--zent-ink);
+        }
+
+        .zent-size-help {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: var(--zent-accent-soft);
+            color: var(--zent-accent);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .zent-product-form-shell {
+            padding: 0;
+        }
+
+        .zent-product-form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .zent-product-form-actions .btn {
+            min-width: 170px;
+        }
+
+        .zent-tabs-copy p:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 767.98px) {
+            .zent-header-search {
+                display: none !important;
+            }
+
+            .zent-flow-banner,
+            .zent-profile-hero,
+            .zent-profile-panel,
+            .zent-detail-panel {
+                border-radius: 20px;
+            }
+
+            .zent-product-actions .btn,
+            .zent-product-actions form {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -68,7 +431,7 @@
             <div class="header-top">
                 <div class="container">
                     <div class="header-left">
-                        <p class="welcome-msg">Welcome to Zentanee!</p>
+                        <p class="welcome-msg">Affordable fashion with clear next steps from browse to delivery.</p>
                     </div>
                     <div class="header-right">
                         {% comment %} <div class="dropdown">
@@ -121,15 +484,10 @@
                         <a href="{% url 'store:home' %}" class="logo ml-lg-0">
                             <img src="{% static 'asset/images/photo_2023-10-13_14-01-19-removebg-preview.webp' %}" alt="logo" width="144" height="45" />
                         </a>
-                        <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round d-none d-md-flex input-wrapper">
-                            <div class="select-box">
-                                <select id="category" name="category">
-                                    <option value="{% url 'store:all-categories' %}"><a href="{% url 'store:all-categories' %}">All Categories</a></option>
-                                    
-                                </select>
-                            </div>
+                        <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round d-none d-md-flex input-wrapper zent-header-search">
+                            <span class="zent-search-context">Shop Zentanee</span>
                             <input type="text" class="form-control" name="q" id="search"
-                                placeholder="Search in..." required />
+                                placeholder="Search products, brands, and styles" value="{{ request.GET.q|default:'' }}" required />
                             <button class="btn btn-search" type="submit"><i class="w-icon-search"></i>
                             </button>
                         </form>
@@ -337,23 +695,19 @@
     <i class="w-icon-cart"></i>
     <p>Cart</p>
 </a>
-    
-    <!-- End of Dropdown Box -->
-
-
-{% comment %} <div class="header-search hs-toggle dir-up">
+<div class="header-search hs-toggle dir-up">
     <a href="#" class="search-toggle sticky-link">
         <i class="w-icon-search"></i>
         <p>Search</p>
     </a>
-    <form action="#" class="input-wrapper">
-        <input type="text" class="form-control" name="search" autocomplete="off" placeholder="Search"
+    <form action="{% url 'store:search' %}" method="GET" class="input-wrapper">
+        <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products"
             required />
         <button class="btn btn-search" type="submit">
             <i class="w-icon-search"></i>
         </button>
     </form>
-</div> {% endcomment %}
+</div>
 </div>
 <!-- End of Sticky Footer -->
 
@@ -370,17 +724,11 @@
 <!-- End of .mobile-menu-close -->
 
 <div class="mobile-menu-container scrollable">
-    <form action="{% url 'store:search' %}" method="GET" class="input-wrapper">
-        <input type="text" class="form-control" id="search" name="q" autocomplete="off" placeholder="Search"
+    <form action="{% url 'store:search' %}" method="GET" class="input-wrapper zent-mobile-search">
+        <input type="text" class="form-control" id="search" name="q" autocomplete="off" placeholder="Search products, brands, or styles"
             required />
         <button class="btn btn-search" type="submit">
             <i class="w-icon-search"></i>
-        </button>
-    </form>
-    <form action="{% url 'store:search' %}" method="GET" class="header-search hs-expanded hs-round d-none d-md-flex input-wrapper">
-        <input type="text" class="form-control" name="q" id="search"
-            placeholder="Search in..." required />
-        <button class="btn btn-search" type="submit"><i class="w-icon-search"></i>
         </button>
     </form>
     <!-- End of Search Form -->
