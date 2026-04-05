@@ -2885,6 +2885,10 @@ body.spring-body {
     gap: 14px;
 }
 
+.spring-product-card__media-wrap {
+    position: relative;
+}
+
 .spring-product-card__media {
     display: block;
     background: #f8f8f8;
@@ -2894,6 +2898,39 @@ body.spring-body {
     width: 100%;
     aspect-ratio: 0.82;
     object-fit: cover;
+}
+
+.spring-product-card__save-form {
+    margin: 0;
+}
+
+.spring-product-card__save,
+.spring-inline-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid #d9d9d9;
+    background: rgba(255, 255, 255, 0.96);
+    color: #111;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.spring-product-card__save {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.spring-product-card__save.is-saved,
+.spring-inline-action.is-saved {
+    border-color: #111;
+    background: #111;
+    color: #fff;
 }
 
 .spring-product-card__body {
@@ -2997,6 +3034,77 @@ body.spring-body {
     text-align: center;
 }
 
+.spring-directory-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid #ececec;
+}
+
+.spring-directory-toolbar__summary {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+}
+
+.spring-directory-toolbar__sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.spring-directory-toolbar__sort label,
+.spring-directory-search label,
+.spring-directory-filters__group > label {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+}
+
+.spring-directory-toolbar__sort select,
+.spring-directory-filters select,
+.spring-directory-filters input {
+    min-height: 44px;
+    border: 1px solid #d8d8d8;
+    border-radius: 0;
+    background: #fff;
+    padding: 10px 12px;
+    color: #111;
+    box-shadow: none;
+}
+
+.spring-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.spring-active-filters span,
+.spring-active-filters a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid #dcdcdc;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #555;
+    text-decoration: none;
+}
+
+.spring-active-filters a {
+    border-color: #111;
+    color: #111;
+}
+
 .spring-directory-header__count {
     display: inline-block;
     margin-top: 12px;
@@ -3019,10 +3127,50 @@ body.spring-body {
     gap: 24px;
 }
 
+.spring-directory-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 22px;
+    border: 1px solid #ececec;
+    background: #fff;
+}
+
 .spring-directory-search {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+}
+
+.spring-directory-filters__group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.spring-directory-filters__group h3 {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.spring-directory-price {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.spring-directory-filters__hint {
+    margin: 0;
+    color: #777;
+    font-size: 12px;
+}
+
+.spring-directory-filters__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .spring-directory-links h3 {
@@ -3040,6 +3188,31 @@ body.spring-body {
 
 .spring-directory-links li + li {
     margin-top: 10px;
+}
+
+.spring-directory-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin: 0;
+    color: #222;
+    font-size: 14px;
+}
+
+.spring-directory-check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.spring-directory-size-list {
+    columns: 2;
+    column-gap: 18px;
+}
+
+.spring-directory-size-list li {
+    break-inside: avoid;
 }
 
 .spring-directory-links span {
@@ -3155,6 +3328,22 @@ body.spring-body {
     text-transform: uppercase;
 }
 
+.spring-product-info__topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.spring-product-info__rating {
+    margin: 0;
+    color: #666;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 .spring-product-form {
     margin-top: 26px;
 }
@@ -3201,8 +3390,20 @@ body.spring-body {
     text-transform: uppercase;
 }
 
+.spring-size-option span small {
+    margin-left: 6px;
+    font-size: 10px;
+    letter-spacing: 0;
+}
+
 .spring-size-option input:checked + span {
     border-color: #111;
+}
+
+.spring-size-option.is-unavailable span {
+    border-style: dashed;
+    color: #999;
+    text-decoration: line-through;
 }
 
 .spring-product-info__details {
@@ -3237,6 +3438,32 @@ body.spring-body {
     font-size: 13px;
 }
 
+.spring-product-restock {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid #ededed;
+}
+
+.spring-product-restock h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.spring-product-restock p {
+    margin: 0 0 14px;
+    color: #666;
+}
+
+.spring-product-restock__status {
+    margin-bottom: 0;
+}
+
+.spring-product-restock__form {
+    display: grid;
+    gap: 12px;
+}
+
 .spring-product-description {
     padding: 54px 0 18px;
 }
@@ -3244,6 +3471,64 @@ body.spring-body {
 .spring-product-description__content {
     max-width: 820px;
     margin: 0;
+}
+
+.spring-review-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 360px);
+    gap: 28px;
+}
+
+.spring-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.spring-review-card,
+.spring-review-form-card {
+    border: 1px solid #ececec;
+    padding: 22px;
+    background: #fff;
+}
+
+.spring-review-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.spring-review-card__head strong,
+.spring-review-form-card h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.spring-review-card__head span,
+.spring-section__meta {
+    color: #666;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.spring-review-card__byline {
+    margin-bottom: 10px;
+    color: #777;
+    font-size: 12px;
+}
+
+.spring-review-card p:last-child,
+.spring-review-form-card p:last-child {
+    margin-bottom: 0;
+}
+
+.spring-review-form {
+    display: grid;
+    gap: 14px;
 }
 
 .spring-footer {
@@ -3329,14 +3614,25 @@ body.spring-body {
     .spring-collection-grid,
     .spring-footer__grid,
     .spring-directory__layout,
-    .spring-product-layout {
+    .spring-product-layout,
+    .spring-review-layout {
         grid-template-columns: 1fr 1fr;
     }
 
     .spring-directory__layout,
     .spring-product-layout,
-    .spring-footer__grid {
+    .spring-footer__grid,
+    .spring-review-layout {
         grid-template-columns: 1fr;
+    }
+
+    .spring-directory-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .spring-directory-toolbar__sort {
+        justify-content: space-between;
     }
 }
 
@@ -3376,6 +3672,33 @@ body.spring-body {
 
     .spring-product-gallery__thumbs {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .spring-product-info__topline {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .spring-directory-filters,
+    .spring-directory-toolbar__sort {
+        width: 100%;
+    }
+
+    .spring-directory-toolbar__sort {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .spring-directory-price {
+        grid-template-columns: 1fr;
+    }
+
+    .spring-directory-size-list {
+        columns: 1;
+    }
+
+    .spring-product-grid--account {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -3530,6 +3853,15 @@ body.spring-body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
     padding-top: 30px;
+}
+
+.spring-account__card--wide {
+    grid-column: 1 / -1;
+}
+
+.spring-product-grid--account {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
 }
 
 .spring-account__card,
@@ -4045,6 +4377,162 @@ body.spring-body {
     margin-top: 18px;
 }
 
+.spring-header-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.spring-header-search input {
+    min-width: 220px;
+    min-height: 40px;
+    border: 1px solid #d8d8d8;
+    padding: 0 12px;
+    background: #fff;
+}
+
+.spring-product-info__stock {
+    margin: -10px 0 18px;
+    color: #666;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.spring-product-trust {
+    display: grid;
+    gap: 14px;
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px solid #ededed;
+}
+
+.spring-product-trust article strong,
+.spring-product-detail-block h3 {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.spring-product-trust article p,
+.spring-product-detail-block p {
+    margin: 0;
+    color: #666;
+    line-height: 1.75;
+}
+
+.spring-product-detail-block {
+    margin-top: 18px;
+}
+
+.spring-search-empty {
+    padding: 20px 0;
+}
+
+.spring-search-empty h2 {
+    margin-bottom: 10px;
+    font-size: 28px;
+    font-weight: 500;
+}
+
+.spring-search-empty p {
+    max-width: 620px;
+    color: #666;
+}
+
+.spring-search-empty__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 24px;
+}
+
+.spring-search-empty__links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid #dcdcdc;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.spring-search-empty__recent h3 {
+    margin-bottom: 14px;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.spring-cart-summary__shipping-note {
+    margin: 14px 0 0;
+    color: #666;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.spring-order-item__timeline {
+    grid-column: 1 / -1;
+    padding-top: 4px;
+}
+
+.spring-order-item__status-copy {
+    margin: 0 0 10px;
+    color: #666;
+    line-height: 1.7;
+}
+
+.spring-order-timeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.spring-order-timeline__step {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid #dcdcdc;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #777;
+}
+
+.spring-order-timeline__step.is-completed {
+    border-color: #111;
+    color: #111;
+}
+
+.spring-order-timeline__step.is-current {
+    border-color: #111;
+    background: #111;
+    color: #fff;
+}
+
+.spring-order-timeline__step.is-cancelled {
+    border-color: #8f5b5b;
+    background: #8f5b5b;
+    color: #fff;
+}
+
+.spring-order-help {
+    margin-top: 26px;
+    padding: 24px;
+    border: 1px solid #ececec;
+    background: #fff;
+}
+
+.spring-order-help p {
+    margin: 0 0 16px;
+    color: #666;
+    line-height: 1.75;
+}
+
 @media (max-width: 991.98px) {
     .spring-flow-status {
         padding: 18px;
@@ -4057,6 +4545,10 @@ body.spring-body {
 
     .spring-cart-layout {
         gap: 24px;
+    }
+
+    .spring-header-search input {
+        min-width: 160px;
     }
 }
 
@@ -4090,5 +4582,14 @@ body.spring-body {
 
     .spring-orders-summary__card strong {
         font-size: 24px;
+    }
+
+    .spring-header-search {
+        width: 100%;
+    }
+
+    .spring-header-search input {
+        min-width: 0;
+        width: 100%;
     }
 }

@@ -81,11 +81,13 @@
               <div class="spring-cart-summary__rows">
                   <div><span>Subtotal</span><strong>{{ amount|floatformat:2 }} ETB</strong></div>
                   <div><span>Delivery</span><strong>{% if shipping_amount == 0 %}Free{% else %}{{ shipping_amount|floatformat:2 }} ETB{% endif %}</strong></div>
+                  <div><span>Payment</span><strong>Pay on delivery</strong></div>
                   {% if coupon %}
                   <div><span>Coupon {{ coupon.code }}</span><strong>-{{ coupon.discount }}%</strong></div>
                   {% endif %}
                   <div class="spring-cart-summary__total"><span>Total</span><strong>{{ total_amount|floatformat:2 }} ETB</strong></div>
               </div>
+              <p class="spring-cart-summary__shipping-note">{{ shipping_note }}</p>
 
               <form action="{% url 'store:add-coupon' %}" method="POST" class="spring-cart-summary__coupon">
                   {% csrf_token %}

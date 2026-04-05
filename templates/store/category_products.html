@@ -5,7 +5,7 @@
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-directory">
-      {% include 'store/_collection_header.html' with kicker='Collection' title=category.title description=category.description|default:'Browse everything currently available in this collection.' count=product_count %}
+      {% include 'store/_collection_header.html' with kicker='Collection' title=category.title description=category.description|default:'Browse everything currently available in this collection.' count=product_count browse_state=browse_state %}
 
       <div class="spring-directory__layout">
           <div class="spring-directory__main">
@@ -19,10 +19,10 @@
                   {% endfor %}
               </div>
 
-              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers aria_label='Category product pages' %}
+              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers page_query=browse_state.page_query aria_label='Category product pages' %}
           </div>
 
-          {% include 'store/_collection_sidebar.html' %}
+          {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
       </div>
   </div>
 </main>

@@ -5,6 +5,7 @@ from io import BytesIO
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 try:
     from PIL import Image
@@ -135,6 +136,13 @@ class Product(models.Model):
     short_description = models.TextField(verbose_name="Short Description")
     available_sizes = models.CharField(max_length=100, blank=True, help_text="Comma-separated list of available sizes (e.g., S,M,L,XL)", verbose_name="Available Sizes")
     detail_description = models.TextField(blank=True, null=True, verbose_name="Detail Description")
+    material = models.CharField(max_length=120, blank=True, verbose_name="Material")
+    color = models.CharField(max_length=80, blank=True, verbose_name="Color")
+    fit_notes = models.TextField(blank=True, verbose_name="Fit Notes")
+    care_notes = models.TextField(blank=True, verbose_name="Care Notes")
+    delivery_note = models.CharField(max_length=180, blank=True, verbose_name="Delivery Note")
+    return_note = models.CharField(max_length=180, blank=True, verbose_name="Return Note")
+    stock_quantity = models.PositiveIntegerField(default=0, verbose_name="Stock Quantity")
     product_image = models.ImageField(upload_to='product', verbose_name="Product Image")
     price = models.DecimalField(max_digits=8, decimal_places=2)
     category = models.ForeignKey(Category, verbose_name="Product Categoy", on_delete=models.CASCADE)
@@ -183,6 +191,90 @@ class ProductImages(models.Model):
         if converted is not None:
             self.image = converted
         super().save(*args, **kwargs)
+
+
+class ProductSizeStock(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="size_inventory")
+    size = models.CharField(max_length=50)
+    quantity = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("size",)
+        constraints = [
+            models.UniqueConstraint(fields=["product", "size"], name="unique_product_size_inventory"),
+        ]
+        indexes = [
+            models.Index(fields=["product", "size"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product.title} - {self.size} ({self.quantity})"
+
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="wishlisted_items")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="wishlisted_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="unique_user_product_wishlist"),
+        ]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["product", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} -> {self.product.title}"
+
+
+class ProductReview(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="product_reviews")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    title = models.CharField(max_length=120, blank=True)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at", "-created_at")
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="unique_user_product_review"),
+        ]
+        indexes = [
+            models.Index(fields=["product", "created_at"]),
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product.title} review by {self.user.username}"
+
+
+class RestockRequest(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="restock_requests")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="restock_requests")
+    email = models.EmailField()
+    size = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=["product", "email", "size"], name="unique_restock_interest"),
+        ]
+        indexes = [
+            models.Index(fields=["product", "created_at"]),
+            models.Index(fields=["email", "created_at"]),
+        ]
+
+    def __str__(self):
+        size_label = self.size or "Any size"
+        return f"{self.product.title} restock request ({size_label})"
 
 class Coupon(models.Model):
     code = models.CharField(max_length=30, unique=True,default=None)

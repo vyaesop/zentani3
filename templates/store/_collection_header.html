@@ -5,4 +5,32 @@
     <p>{{ description }}</p>
     {% endif %}
     <span class="spring-directory-header__count">{{ count }} item{{ count|pluralize }}</span>
+
+    {% if browse_state %}
+    <div class="spring-directory-toolbar">
+        <p class="spring-directory-toolbar__summary">{{ browse_state.result_summary }}</p>
+
+        <form action="{{ browse_state.form_action }}" method="GET" class="spring-directory-toolbar__sort">
+            {% for name, value in browse_state.sort_hidden_fields %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+
+            <label for="spring-sort-select">Sort</label>
+            <select id="spring-sort-select" name="sort" onchange="this.form.submit()">
+                {% for option in browse_state.sort_options %}
+                <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if browse_state.active_filters %}
+    <div class="spring-active-filters" aria-label="Active filters">
+        {% for active_filter in browse_state.active_filters %}
+        <span>{{ active_filter }}</span>
+        {% endfor %}
+        <a href="{{ browse_state.reset_filters_url }}">Clear filters</a>
+    </div>
+    {% endif %}
+    {% endif %}
 </section>

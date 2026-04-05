@@ -45,9 +45,32 @@
               <div class="spring-order-item__aside">
                   <span>{{ order.status }}</span>
                   <strong>{{ order.line_total|default:0|floatformat:2 }} ETB</strong>
+                  {% if order.can_cancel %}
+                  <form action="{% url 'store:cancel-order' order.id %}" method="POST">
+                      {% csrf_token %}
+                      <button type="submit" class="spring-text-link">Cancel order</button>
+                  </form>
+                  {% endif %}
+              </div>
+
+              <div class="spring-order-item__timeline">
+                  <p class="spring-order-item__status-copy">{{ order.status_copy }}</p>
+                  <div class="spring-order-timeline" aria-label="Order timeline">
+                      {% for step in order.timeline %}
+                      <span class="spring-order-timeline__step is-{{ step.state }}">{{ step.label }}</span>
+                      {% endfor %}
+                  </div>
               </div>
           </article>
           {% endfor %}
+      </section>
+
+      <section class="spring-order-help">
+          <div class="spring-section__head">
+              <h2>Need help with an order?</h2>
+          </div>
+          <p>If an order is still pending or accepted, you can cancel it here. For return or delivery issues after that, contact the store quickly with your order number.</p>
+          <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">Contact support</a>
       </section>
       {% else %}
       <section class="spring-empty-state">

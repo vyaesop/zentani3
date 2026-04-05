@@ -46,6 +46,25 @@
               <p class="spring-product-info__brand">{{ product.brand }}</p>
               {% endif %}
               <h1>{{ product.title }}</h1>
+              <div class="spring-product-info__topline">
+                  {% if review_summary.review_count %}
+                  <p class="spring-product-info__rating">{{ review_summary.average_rating|floatformat:1 }}/5 from {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}</p>
+                  {% else %}
+                  <p class="spring-product-info__rating">Be the first to review this piece</p>
+                  {% endif %}
+
+                  {% if request.user.is_authenticated %}
+                  <form action="{% url 'store:toggle-wishlist' product.id %}" method="POST">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="spring-inline-action {% if is_saved_product %}is-saved{% endif %}">
+                          {% if is_saved_product %}Saved{% else %}Save item{% endif %}
+                      </button>
+                  </form>
+                  {% else %}
+                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">Save item</a>
+                  {% endif %}
+              </div>
               <p class="spring-product-info__price">
                   {% if product.is_sold_out %}
                   Sold out
@@ -53,6 +72,9 @@
                   {{ product.price }} ETB
                   {% endif %}
               </p>
+              {% if product_stock_message %}
+              <p class="spring-product-info__stock">{{ product_stock_message }}</p>
+              {% endif %}
 
               {% if product.short_description %}
               <div class="spring-product-info__copy">
@@ -65,14 +87,25 @@
                   <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
                   <input type="hidden" name="next" value="{{ request.get_full_path }}">
 
-                  {% if available_sizes %}
+                  {% if size_options %}
                   <div class="spring-product-form__group">
                       <label class="spring-product-form__label">Size</label>
                       <div class="spring-size-options" role="radiogroup" aria-label="Available sizes">
-                          {% for size_option in available_sizes %}
-                          <label class="spring-size-option">
-                              <input type="radio" name="size" value="{{ size_option }}" {% if forloop.first %}checked{% endif %}>
-                              <span>{{ size_option }}</span>
+                          {% for size_option in size_options %}
+                          <label class="spring-size-option {% if not size_option.available %}is-unavailable{% endif %}">
+                              <input
+                                  type="radio"
+                                  name="size"
+                                  value="{{ size_option.size }}"
+                                  data-stock-label="{% if size_option.quantity != None %}{% if size_option.quantity > 0 %}{{ size_option.quantity }} in stock{% else %}Currently sold out{% endif %}{% endif %}"
+                                  {% if not size_option.available %}disabled{% endif %}
+                                  {% if size_option.size == default_selected_size %}checked{% endif %}>
+                              <span>
+                                  {{ size_option.size }}
+                                  {% if size_option.quantity != None %}
+                                  <small>{{ size_option.quantity }}</small>
+                                  {% endif %}
+                              </span>
                           </label>
                           {% endfor %}
                       </div>
@@ -87,23 +120,78 @@
                   <div id="add-to-cart-feedback" class="mt-3 small"></div>
               </form>
 
+              {% if product.is_sold_out %}
+              <section id="restock" class="spring-product-restock">
+                  <h2>Join the restock list</h2>
+                  <p>Leave your email and we’ll know this item still has demand.</p>
+                  {% if existing_restock_request %}
+                  <p class="spring-product-restock__status">You are already on the list for this product.</p>
+                  {% else %}
+                  <form action="{% url 'store:request-restock' product.slug %}" method="POST" class="spring-product-restock__form">
+                      {% csrf_token %}
+                      {% for fm in restock_form %}
+                      <div class="spring-auth__field">
+                          {{ fm.label_tag }}
+                          {{ fm }}
+                          <small class="text-danger">{{ fm.errors|striptags }}</small>
+                      </div>
+                      {% endfor %}
+                      <button type="submit" class="btn btn-outline-dark">Request restock</button>
+                  </form>
+                  {% endif %}
+              </section>
+              {% endif %}
+
               <div class="spring-product-info__details">
                   <div>
                       <strong>Collection</strong>
                       <span>{{ product.category }}</span>
                   </div>
+                  {% if product.material %}
+                  <div>
+                      <strong>Material</strong>
+                      <span>{{ product.material }}</span>
+                  </div>
+                  {% endif %}
+                  {% if product.color %}
+                  <div>
+                      <strong>Color</strong>
+                      <span>{{ product.color }}</span>
+                  </div>
+                  {% endif %}
                   <div>
                       <strong>Product code</strong>
                       <span>{{ product.sku }}</span>
                   </div>
                   <div>
                       <strong>Sizes</strong>
-                      <span>{% if available_sizes %}{{ product.available_sizes }}{% else %}One option{% endif %}</span>
+                      <span>{% if available_sizes %}{{ available_sizes|join:", " }}{% else %}One option{% endif %}</span>
                   </div>
               </div>
 
+              <div class="spring-product-trust">
+                  <article>
+                      <strong>Payment</strong>
+                      <p>Cash on delivery only. You pay when the order reaches you.</p>
+                  </article>
+                  <article>
+                      <strong>Delivery</strong>
+                      <p>{{ product_delivery_note }}</p>
+                  </article>
+                  <article>
+                      <strong>Returns</strong>
+                      <p>{{ product_return_note }}</p>
+                  </article>
+                  {% if product.fit_notes %}
+                  <article>
+                      <strong>Fit</strong>
+                      <p>{{ product.fit_notes }}</p>
+                  </article>
+                  {% endif %}
+              </div>
+
               <div class="spring-product-info__support">
-                  <p>Need help with fit or delivery? <a href="{% url 'store:contact' %}">Contact us</a>.</p>
+                  <p>Need help with fit or delivery? <a href="{% url 'store:contact' %}">Contact us</a>. Orders are tracked in your account after checkout.</p>
               </div>
           </section>
       </div>
@@ -118,6 +206,73 @@
               {% elif product.short_description %}
               <p>{{ product.short_description }}</p>
               {% endif %}
+
+              {% if product.care_notes %}
+              <div class="spring-product-detail-block">
+                  <h3>Care</h3>
+                  <p>{{ product.care_notes }}</p>
+              </div>
+              {% endif %}
+
+              {% if product.fit_notes %}
+              <div class="spring-product-detail-block">
+                  <h3>Fit Notes</h3>
+                  <p>{{ product.fit_notes }}</p>
+              </div>
+              {% endif %}
+          </div>
+      </section>
+
+      <section id="reviews" class="spring-section">
+          <div class="spring-section__head">
+              <h2>Reviews</h2>
+              <span class="spring-section__meta">
+                  {% if review_summary.review_count %}
+                  {{ review_summary.average_rating|floatformat:1 }}/5 average from {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
+                  {% else %}
+                  No reviews yet
+                  {% endif %}
+              </span>
+          </div>
+
+          <div class="spring-review-layout">
+              <div class="spring-review-list">
+                  {% for review in reviews %}
+                  <article class="spring-review-card">
+                      <div class="spring-review-card__head">
+                          <strong>{{ review.title|default:"Customer review" }}</strong>
+                          <span>{{ review.rating }}/5</span>
+                      </div>
+                      <p class="spring-review-card__byline">
+                          {% firstof review.user.first_name review.user.username %}
+                          · {{ review.created_at|date:"M d, Y" }}
+                      </p>
+                      <p>{{ review.comment }}</p>
+                  </article>
+                  {% empty %}
+                  <p class="text-muted mb-0">No reviews yet. The first review helps the next shopper decide faster.</p>
+                  {% endfor %}
+              </div>
+
+              <div class="spring-review-form-card">
+                  <h3>Share your review</h3>
+                  {% if request.user.is_authenticated %}
+                  <form action="{% url 'store:submit-review' product.slug %}" method="POST" class="spring-review-form">
+                      {% csrf_token %}
+                      {% for fm in review_form %}
+                      <div class="spring-auth__field">
+                          {{ fm.label_tag }}
+                          {{ fm }}
+                          <small class="text-danger">{{ fm.errors|striptags }}</small>
+                      </div>
+                      {% endfor %}
+                      <button type="submit" class="btn btn-dark">Save review</button>
+                  </form>
+                  {% else %}
+                  <p>Log in to leave a review after shopping with Zentanee.</p>
+                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-dark">Log in to review</a>
+                  {% endif %}
+              </div>
           </div>
       </section>
 
@@ -137,6 +292,23 @@
               {% endfor %}
           </div>
       </section>
+
+      {% if recently_viewed_products %}
+      <section class="spring-section">
+          <div class="spring-section__head">
+              <h2>Recently viewed</h2>
+              <a href="{% url 'store:all-products' %}">Keep browsing</a>
+          </div>
+
+          <div class="spring-product-grid">
+              {% for viewed_product in recently_viewed_products %}
+              <div class="spring-grid-item">
+                  {% include 'store/_product_card_content.html' with product=viewed_product %}
+              </div>
+              {% endfor %}
+          </div>
+      </section>
+      {% endif %}
   </div>
 </main>
 {% endblock content %}
@@ -146,6 +318,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const mainImage = document.getElementById('main-product-image');
     const thumbButtons = document.querySelectorAll('.spring-thumb');
+    const stockMessage = document.querySelector('.spring-product-info__stock');
 
     thumbButtons.forEach(function (button) {
         button.addEventListener('click', function () {
@@ -156,6 +329,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.classList.remove('is-active');
             });
             button.classList.add('is-active');
+        });
+    });
+
+    const sizeInputs = document.querySelectorAll('input[name="size"]');
+    sizeInputs.forEach(function (input) {
+        input.addEventListener('change', function () {
+            if (!stockMessage) return;
+            const stockLabel = input.getAttribute('data-stock-label');
+            if (stockLabel) {
+                stockMessage.textContent = stockLabel;
+            }
         });
     });
 

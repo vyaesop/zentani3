@@ -11,6 +11,7 @@ urlpatterns = [
     path('', views.home, name="home"),
     # URL for Cart and Checkout
     path('add-to-cart/', views.add_to_cart, name="add-to-cart"),
+    path('wishlist/<int:product_id>/', views.toggle_wishlist, name="toggle-wishlist"),
     path('add-coupon/', views.AddCoupon.as_view(), name="add-coupon"),
     path('remove-cart/<int:cart_id>/', views.remove_cart, name="remove-cart"),
     path('plus-cart/<int:cart_id>/', views.plus_cart, name="plus-cart"),
@@ -18,7 +19,9 @@ urlpatterns = [
     path('cart/', views.cart, name="cart"),
     path('checkout/', views.checkout, name="checkout"),
     path('orders/', views.orders, name="orders"),
+    path('orders/<int:order_id>/cancel/', views.cancel_order, name="cancel-order"),
     path("search/", views.search_view, name="search"),
+    path("search/suggestions/", views.search_suggestions, name="search-suggestions"),
     path("filter-products/", views.filter_product, name="filter-product"),
     path('products/', views.products, name="all-products"),
     path('brands/', views.all_brands, name="all-brands"),
@@ -29,6 +32,8 @@ urlpatterns = [
 
     #URL for Products
     path('product/<slug:slug>/', views.detail, name="product-detail"),
+    path('product/<slug:slug>/review/', views.submit_review, name="submit-review"),
+    path('product/<slug:slug>/restock/', views.request_restock, name="request-restock"),
     path('categories/', views.all_categories, name="all-categories"),
     path('<slug:slug>/', views.category_products, name="category-products"),
 
