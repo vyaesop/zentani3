@@ -2814,6 +2814,36 @@ body.spring-body {
     text-align: center;
 }
 
+.spring-hero--denim {
+    position: relative;
+    overflow: hidden;
+    min-height: clamp(420px, 66vw, 620px);
+    padding: clamp(48px, 8vw, 96px) clamp(20px, 5vw, 48px);
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    background:
+        linear-gradient(180deg, rgba(245, 245, 241, 0.18) 0%, rgba(17, 19, 24, 0.62) 100%),
+        url("../images/home/denim-clouds-hero.jpg") center 24% / cover no-repeat;
+}
+
+.spring-hero--denim::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.42), transparent 38%),
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 30%);
+    pointer-events: none;
+}
+
+.spring-hero--denim > * {
+    position: relative;
+    z-index: 1;
+}
+
 .spring-hero__eyebrow,
 .spring-directory-header__eyebrow,
 .spring-product-info__brand {
@@ -2850,6 +2880,41 @@ body.spring-body {
     justify-content: center;
     gap: 12px;
     margin-top: 30px;
+}
+
+.spring-hero--denim .spring-hero__eyebrow,
+.spring-hero--denim h1,
+.spring-hero--denim .spring-hero__copy {
+    color: #fff;
+}
+
+.spring-hero--denim h1 {
+    max-width: 12ch;
+    text-wrap: balance;
+    text-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+}
+
+.spring-hero--denim .spring-hero__copy {
+    max-width: 560px;
+    text-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
+}
+
+.spring-hero--denim .btn-dark {
+    background: rgba(14, 17, 22, 0.88);
+    border-color: rgba(14, 17, 22, 0.88);
+}
+
+.spring-hero--denim .btn-outline-dark {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.74);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.spring-hero--denim .btn-outline-dark:hover,
+.spring-hero--denim .btn-outline-dark:focus {
+    color: #111;
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(255, 255, 255, 0.94);
 }
 
 .spring-section {
@@ -3645,10 +3710,22 @@ body.spring-body {
         padding: 48px 0 28px;
     }
 
+    .spring-hero--denim {
+        min-height: 400px;
+        padding: 28px 18px;
+        align-items: flex-start;
+        text-align: left;
+    }
+
     .spring-hero h1,
     .spring-directory-header h1,
     .spring-product-info h1 {
         font-size: 28px;
+    }
+
+    .spring-hero--denim h1,
+    .spring-hero--denim .spring-hero__copy {
+        max-width: 100%;
     }
 
     .spring-hero__actions,
