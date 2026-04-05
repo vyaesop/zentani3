@@ -6,9 +6,9 @@
 <main class="main spring-main">
   <div class="spring-container spring-directory">
       {% if query %}
-      {% include 'store/_collection_header.html' with kicker='Search' title=query description='Products matching your search.' count=products.count %}
+      {% include 'store/_collection_header.html' with kicker='Search' title=query description='Products matching your search.' count=product_count browse_state=browse_state %}
       {% else %}
-      {% include 'store/_collection_header.html' with kicker='Search' title='Search the store' description='Use search to jump straight into products, collections, or brands.' count=products.count %}
+      {% include 'store/_collection_header.html' with kicker='Search' title='Search the store' description='Use search to jump straight into products, collections, or brands.' count=product_count browse_state=browse_state %}
       {% endif %}
 
       <div class="spring-directory__layout">
@@ -19,12 +19,39 @@
                       {% include 'store/_product_card_content.html' with product=product %}
                   </div>
                   {% empty %}
-                  <p class="text-muted mb-0">No products matched that search.</p>
+                  <section class="spring-search-empty">
+                      <h2>No products matched that search</h2>
+                      <p>Try a broader keyword, or jump into one of the collections and brands below.</p>
+
+                      <div class="spring-search-empty__links">
+                          {% for category in search_help_categories %}
+                          <a href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a>
+                          {% endfor %}
+                          {% for brand in search_help_brands %}
+                          <a href="{% url 'store:brand-products' brand.slug %}">{{ brand.title }}</a>
+                          {% endfor %}
+                      </div>
+
+                      {% if recently_viewed_products %}
+                      <div class="spring-search-empty__recent">
+                          <h3>Recently viewed</h3>
+                          <div class="spring-product-grid">
+                              {% for product in recently_viewed_products %}
+                              <div class="spring-grid-item">
+                                  {% include 'store/_product_card_content.html' with product=product %}
+                              </div>
+                              {% endfor %}
+                          </div>
+                      </div>
+                      {% endif %}
+                  </section>
                   {% endfor %}
               </div>
+
+              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers page_query=browse_state.page_query aria_label='Search result pages' %}
           </div>
 
-          {% include 'store/_collection_sidebar.html' %}
+          {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
       </div>
   </div>
 </main>

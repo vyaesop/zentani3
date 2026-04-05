@@ -43,10 +43,13 @@
                         <i class="fas fa-bars"></i>
                         <span>Menu</span>
                     </button>
-                    <a href="{% url 'store:search' %}" class="spring-link">
-                        <i class="fas fa-search"></i>
-                        <span>Search</span>
-                    </a>
+                    <form action="{% url 'store:search' %}" method="GET" class="spring-header-search">
+                        <input type="text" name="q" autocomplete="off" placeholder="Search products" list="spring-search-suggestions" data-spring-search-input>
+                        <button type="submit" class="spring-link" aria-label="Search">
+                            <i class="fas fa-search"></i>
+                            <span>Search</span>
+                        </button>
+                    </form>
                 </div>
 
                 <a href="{% url 'store:home' %}" class="spring-logo" aria-label="Zentanee home">Zentanee</a>
@@ -149,7 +152,7 @@
 
         <div class="mobile-menu-container scrollable spring-mobile-drawer">
             <form action="{% url 'store:search' %}" method="GET" class="spring-mobile-search">
-                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products" required>
+                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products" list="spring-search-suggestions" data-spring-search-input required>
                 <button class="btn btn-dark" type="submit">Search</button>
             </form>
 
@@ -170,10 +173,75 @@
         </div>
     </div>
 
+    <datalist id="spring-search-suggestions"></datalist>
+
     <script src="{% static 'asset/vendor/jquery/jquery.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/sticky/sticky.js' %}" defer></script>
     <script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}" defer></script>
     <script src="{% static 'asset/js/main.min.js' %}" defer></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = document.querySelectorAll('[data-spring-search-input]');
+        const datalist = document.getElementById('spring-search-suggestions');
+        if (!inputs.length || !datalist) return;
+
+        let controller = null;
+        let timer = null;
+
+        function renderSuggestions(payload) {
+            datalist.innerHTML = '';
+            const values = [];
+
+            ['products', 'categories', 'brands'].forEach(function (key) {
+                (payload[key] || []).forEach(function (item) {
+                    if (item.title && !values.includes(item.title)) {
+                        values.push(item.title);
+                    }
+                });
+            });
+
+            values.slice(0, 10).forEach(function (value) {
+                const option = document.createElement('option');
+                option.value = value;
+                datalist.appendChild(option);
+            });
+        }
+
+        inputs.forEach(function (input) {
+            input.addEventListener('input', function () {
+                const query = input.value.trim();
+                if (query.length < 2) {
+                    datalist.innerHTML = '';
+                    return;
+                }
+
+                if (timer) {
+                    window.clearTimeout(timer);
+                }
+                timer = window.setTimeout(async function () {
+                    try {
+                        if (controller) {
+                            controller.abort();
+                        }
+                        controller = new AbortController();
+                        const response = await fetch('{% url "store:search-suggestions" %}?q=' + encodeURIComponent(query), {
+                            signal: controller.signal,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        if (!response.ok) return;
+                        renderSuggestions(await response.json());
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            datalist.innerHTML = '';
+                        }
+                    }
+                }, 180);
+            });
+        });
+    });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

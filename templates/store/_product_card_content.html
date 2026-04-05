@@ -2,13 +2,29 @@
 {% load image_optim %}
 
 <article class="spring-product-card">
-    <a href="{% url 'store:product-detail' product.slug %}" class="spring-product-card__media">
-        {% if product.product_image %}
-        <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="420" height="520">
+    <div class="spring-product-card__media-wrap">
+        <a href="{% url 'store:product-detail' product.slug %}" class="spring-product-card__media">
+            {% if product.product_image %}
+            <img loading="lazy" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}" width="420" height="520">
+            {% else %}
+            <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="520">
+            {% endif %}
+        </a>
+
+        {% if request.user.is_authenticated %}
+        <form action="{% url 'store:toggle-wishlist' product.id %}" method="POST" class="spring-product-card__save-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="spring-product-card__save {% if product.id in saved_product_ids %}is-saved{% endif %}" aria-label="Save {{ product.title }}">
+                <span>{% if product.id in saved_product_ids %}Saved{% else %}Save{% endif %}</span>
+            </button>
+        </form>
         {% else %}
-        <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="520">
+        <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-product-card__save" aria-label="Log in to save {{ product.title }}">
+            <span>Save</span>
+        </a>
         {% endif %}
-    </a>
+    </div>
 
     <div class="spring-product-card__body">
         <h3><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>

@@ -1,28 +1,96 @@
 <aside class="spring-directory-sidebar">
-    <form action="{% url 'store:search' %}" method="GET" class="spring-directory-search">
-        <input type="text" name="q" class="form-control" placeholder="Search products" value="{{ request.GET.q|default:'' }}" required>
-        <button type="submit" class="btn btn-dark">Search</button>
+    <form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="spring-directory-filters">
+        <div class="spring-directory-search">
+            <label for="spring-browse-search">Search</label>
+            <input id="spring-browse-search" type="text" name="q" class="form-control" placeholder="Search products" value="{{ browse_state.current_query|default:'' }}">
+        </div>
+
+        <div class="spring-directory-filters__group">
+            <label for="spring-browse-sort-sidebar">Sort by</label>
+            <select id="spring-browse-sort-sidebar" name="sort" class="form-control">
+                {% for option in browse_state.sort_options %}
+                <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="spring-directory-filters__group">
+            <h3>Price</h3>
+            <div class="spring-directory-price">
+                <input type="number" min="0" step="0.01" name="min_price" class="form-control" placeholder="Min" value="{{ browse_state.current_min_price }}">
+                <input type="number" min="0" step="0.01" name="max_price" class="form-control" placeholder="Max" value="{{ browse_state.current_max_price }}">
+            </div>
+            {% if browse_state.min_price_bound or browse_state.max_price_bound %}
+            <p class="spring-directory-filters__hint">
+                Range:
+                {% firstof browse_state.min_price_bound '0.00' %} -
+                {% firstof browse_state.max_price_bound browse_state.min_price_bound '0.00' %} ETB
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="spring-directory-filters__group">
+            <label class="spring-directory-check">
+                <input type="checkbox" name="availability" value="in-stock" {% if browse_state.availability == 'in-stock' %}checked{% endif %}>
+                <span>In stock only</span>
+            </label>
+        </div>
+
+        {% if browse_state.show_category_filters %}
+        <div class="spring-directory-links">
+            <h3>Collections</h3>
+            <ul>
+                {% for cat_menu in categories_menu %}
+                <li>
+                    <label class="spring-directory-check">
+                        <input type="checkbox" name="category" value="{{ cat_menu.slug }}" {% if cat_menu.slug in browse_state.selected_categories %}checked{% endif %}>
+                        <span>{{ cat_menu.title }}</span>
+                    </label>
+                </li>
+                {% empty %}
+                <li><span>No collections available.</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if browse_state.show_brand_filters %}
+        <div class="spring-directory-links">
+            <h3>Brands</h3>
+            <ul>
+                {% for brand_link in brands_menu %}
+                <li>
+                    <label class="spring-directory-check">
+                        <input type="checkbox" name="brand" value="{{ brand_link.slug }}" {% if brand_link.slug in browse_state.selected_brands %}checked{% endif %}>
+                        <span>{{ brand_link.title }}</span>
+                    </label>
+                </li>
+                {% empty %}
+                <li><span>No brands available.</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if browse_state.size_options %}
+        <div class="spring-directory-links">
+            <h3>Sizes</h3>
+            <ul class="spring-directory-size-list">
+                {% for size_option in browse_state.size_options %}
+                <li>
+                    <label class="spring-directory-check">
+                        <input type="checkbox" name="size" value="{{ size_option }}" {% if size_option in browse_state.selected_sizes %}checked{% endif %}>
+                        <span>{{ size_option }}</span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="spring-directory-filters__actions">
+            <button type="submit" class="btn btn-dark">Apply filters</button>
+            <a href="{{ browse_state.reset_filters_url }}" class="btn btn-outline-dark">Reset</a>
+        </div>
     </form>
-
-    <div class="spring-directory-links">
-        <h3>Collections</h3>
-        <ul>
-            {% for cat_menu in categories_menu %}
-            <li><a href="{% url 'store:category-products' cat_menu.slug %}">{{ cat_menu.title }}</a></li>
-            {% empty %}
-            <li><span>No collections available.</span></li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <div class="spring-directory-links">
-        <h3>Brands</h3>
-        <ul>
-            {% for brand_link in brands_menu %}
-            <li><a href="{% url 'store:brand-products' brand_link.slug %}">{{ brand_link.title }}</a></li>
-            {% empty %}
-            <li><span>No brands available.</span></li>
-            {% endfor %}
-        </ul>
-    </div>
 </aside>

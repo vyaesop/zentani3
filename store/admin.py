@@ -5,7 +5,7 @@ from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
-from .models import Address, Category, Product, Cart, Order, ProductImages, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder
+from .models import Address, Category, Product, Cart, Order, ProductImages, ProductSizeStock, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder, Wishlist, ProductReview, RestockRequest
 from .telegram_notify import notify_customer_delivery_status, post_product_to_channel, suspend_telegram_autopublish
 
 # Register your models here.
@@ -35,17 +35,58 @@ class BrandAdmin(admin.ModelAdmin):
 class ProductImagesAdmin(admin.TabularInline):
     model = ProductImages
 
+
+class ProductSizeStockAdmin(admin.TabularInline):
+    model = ProductSizeStock
+    extra = 1
+
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [ProductImagesAdmin]
+    inlines = [ProductImagesAdmin, ProductSizeStockAdmin]
     
-    list_display = ('title', 'is_sold_out', 'slug', 'category','brand', 'available_sizes', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
-    list_editable = ('slug', 'category','brand', 'available_sizes', 'is_sold_out', 'is_active', 'is_featured')
+    list_display = ('title', 'is_sold_out', 'stock_quantity', 'slug', 'category','brand', 'available_sizes', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
+    list_editable = ('slug', 'category','brand', 'available_sizes', 'stock_quantity', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
     search_fields = ('title', 'category', 'short_description')
     prepopulated_fields = {"slug": ("title", )}
     readonly_fields = ("affiliate_link_pattern",)
     actions = ("post_selected_to_telegram",)
+    fieldsets = (
+        ("Core", {
+            "fields": (
+                "title",
+                "slug",
+                "sku",
+                "short_description",
+                "detail_description",
+                "product_image",
+                "price",
+                "category",
+                "brand",
+            )
+        }),
+        ("Product details", {
+            "fields": (
+                "available_sizes",
+                "stock_quantity",
+                "material",
+                "color",
+                "fit_notes",
+                "care_notes",
+                "delivery_note",
+                "return_note",
+            )
+        }),
+        ("Status", {
+            "fields": (
+                "is_sold_out",
+                "is_active",
+                "is_featured",
+                "affiliate_link_pattern",
+                "telegram_channel_last_posted_at",
+            )
+        }),
+    )
 
     def affiliate_link_pattern(self, obj):
         if not obj:
@@ -299,6 +340,24 @@ class TelegramBotOrderAdmin(admin.ModelAdmin):
                     level=messages.WARNING,
                 )
     
+
+class WishlistAdmin(admin.ModelAdmin):
+    list_display = ("user", "product", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("user__username", "product__title", "product__sku")
+
+
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ("product", "user", "rating", "title", "created_at", "updated_at")
+    list_filter = ("rating", "created_at")
+    search_fields = ("product__title", "user__username", "title", "comment")
+
+
+class RestockRequestAdmin(admin.ModelAdmin):
+    list_display = ("product", "email", "size", "user", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("product__title", "email", "size", "user__username")
+    
  
 
 admin.site.register(Address, AddressAdmin)
@@ -312,3 +371,6 @@ admin.site.register(AffiliateProfile, AffiliateProfileAdmin)
 admin.site.register(AffiliateClick, AffiliateClickAdmin)
 admin.site.register(AffiliateCommission, AffiliateCommissionAdmin)
 admin.site.register(TelegramBotOrder, TelegramBotOrderAdmin)
+admin.site.register(Wishlist, WishlistAdmin)
+admin.site.register(ProductReview, ProductReviewAdmin)
+admin.site.register(RestockRequest, RestockRequestAdmin)

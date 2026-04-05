@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Avg, Case, Count, IntegerField, Max, Min, Q, Sum, Value, When
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
@@ -34,7 +34,11 @@ from store.models import (
     Coupon,
     Order,
     Product,
+    ProductReview,
+    ProductSizeStock,
+    RestockRequest,
     TelegramBotOrder,
+    Wishlist,
 )
 from store.telegram_notify import (
     notify_bot_order_lead,
@@ -45,7 +49,7 @@ from store.telegram_notify import (
     send_customer_bot_message,
 )
 
-from .forms import AddressForm, RegistrationForm
+from .forms import AddressForm, ProductReviewForm, RegistrationForm, RestockRequestForm
 
 
 PRODUCT_LIST_FIELDS = (
@@ -54,6 +58,7 @@ PRODUCT_LIST_FIELDS = (
     "title",
     "price",
     "product_image",
+    "available_sizes",
     "is_sold_out",
     "category__title",
     "category__slug",
@@ -69,6 +74,27 @@ AFFILIATE_RATE_PERCENT = Decimal("5.00")
 GUEST_SESSION_USER_ID_KEY = "guest_session_user_id"
 TELEGRAM_ORDER_STATE_PREFIX = "telegram_order_state"
 TELEGRAM_ORDER_STATE_TTL_SECONDS = 60 * 30
+COLLECTION_PAGE_SIZE = 24
+RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_product_ids"
+COLLECTION_SORT_OPTIONS = (
+    ("newest", "Newest first", "-created_at"),
+    ("price-asc", "Price: Low to High", "price"),
+    ("price-desc", "Price: High to Low", "-price"),
+    ("name-asc", "Name: A-Z", "title"),
+)
+SIZE_DISPLAY_ORDER = ("XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL")
+ADDIS_FREE_SHIPPING_THRESHOLD = Decimal("3500.00")
+ADDIS_SHIPPING_FEE = Decimal("80.00")
+OUTSIDE_ADDIS_SHIPPING_FEE = Decimal("180.00")
+ORDER_STATUS_SEQUENCE = ["Pending", "Accepted", "Packed", "On The Way", "Delivered"]
+ORDER_STATUS_COPY = {
+    "Pending": "We received your order and it is waiting for confirmation.",
+    "Accepted": "Your order has been confirmed by the store.",
+    "Packed": "Your items are being prepared for dispatch.",
+    "On The Way": "Your order is currently out for delivery.",
+    "Delivered": "The order was delivered successfully.",
+    "Cancelled": "This order was cancelled before delivery.",
+}
 
 
 def _telegram_state_key(chat_id):
@@ -416,7 +442,46 @@ def telegram_webhook(request):
     return customer_telegram_webhook(request)
 
 
-def _build_product_detail_context(product):
+def _recently_viewed_product_ids(request):
+    return [int(product_id) for product_id in request.session.get(RECENTLY_VIEWED_SESSION_KEY, []) if str(product_id).isdigit()]
+
+
+def _push_recently_viewed_product(request, product):
+    existing_ids = [product_id for product_id in _recently_viewed_product_ids(request) if product_id != product.id]
+    request.session[RECENTLY_VIEWED_SESSION_KEY] = [product.id, *existing_ids][:8]
+    request.session.modified = True
+
+
+def _recently_viewed_products(request, exclude_id=None, limit=4):
+    product_ids = [product_id for product_id in _recently_viewed_product_ids(request) if product_id != exclude_id]
+    if not product_ids:
+        return []
+
+    products_by_id = {
+        product.id: product
+        for product in Product.objects.filter(id__in=product_ids, is_active=True)
+        .select_related("category", "brand")
+        .only(*PRODUCT_LIST_FIELDS)
+    }
+    ordered_products = [products_by_id[product_id] for product_id in product_ids if product_id in products_by_id]
+    return ordered_products[:limit]
+
+
+def _saved_product_ids_for_user(user):
+    if not getattr(user, "is_authenticated", False):
+        return set()
+    return set(Wishlist.objects.filter(user=user).values_list("product_id", flat=True))
+
+
+def _search_discovery_context(request):
+    return {
+        "search_help_categories": Category.objects.filter(is_active=True).only("id", "title", "slug").order_by("title")[:6],
+        "search_help_brands": Brand.objects.filter(is_active=True).only("id", "title", "slug").order_by("title")[:6],
+        "recently_viewed_products": _recently_viewed_products(request, limit=4),
+    }
+
+
+def _build_product_detail_context(request, product):
     related_products = (
         Product.objects.filter(is_active=True, category=product.category)
         .exclude(id=product.id)
@@ -424,12 +489,45 @@ def _build_product_detail_context(product):
         .only(*PRODUCT_LIST_FIELDS)[:4]
     )
     p_image = product.p_images.only("id", "image").all()
-    available_sizes_list = [s.strip() for s in product.available_sizes.split(",") if s.strip()] if product.available_sizes else []
+    size_options = _product_size_options(product)
+    available_sizes_list = [option["size"] for option in size_options]
+    default_selected_size = next((option["size"] for option in size_options if option["available"]), "")
+    reviews = list(
+        ProductReview.objects.filter(product=product)
+        .select_related("user")
+        .only("id", "rating", "title", "comment", "created_at", "user__first_name", "user__last_name", "user__username")[:6]
+    )
+    review_summary = ProductReview.objects.filter(product=product).aggregate(
+        average_rating=Avg("rating"),
+        review_count=Count("id"),
+    )
+    saved_product_ids = _saved_product_ids_for_user(request.user)
+    existing_restock_request = None
+    restock_initial = {}
+    if request.user.is_authenticated:
+        restock_initial["email"] = request.user.email or ""
+        if product.is_sold_out:
+            existing_restock_request = RestockRequest.objects.filter(product=product, user=request.user).first()
+
     return {
         "product": product,
         "related_products": related_products,
         "p_image": p_image,
         "available_sizes": available_sizes_list,
+        "size_options": size_options,
+        "default_selected_size": default_selected_size,
+        "reviews": reviews,
+        "review_summary": review_summary,
+        "review_form": ProductReviewForm(),
+        "restock_form": RestockRequestForm(initial=restock_initial),
+        "existing_restock_request": existing_restock_request,
+        "saved_product_ids": saved_product_ids,
+        "is_saved_product": product.id in saved_product_ids,
+        "recently_viewed_products": _recently_viewed_products(request, exclude_id=product.id),
+        "product_stock_message": _product_stock_message(product, size_value=default_selected_size or None),
+        "product_delivery_note": product.delivery_note or "Addis delivery usually lands within 1-3 days after confirmation.",
+        "product_return_note": product.return_note or "If there is an issue with the order, contact support quickly so we can help.",
+        "is_cash_on_delivery_only": True,
     }
 
 
@@ -593,6 +691,380 @@ def _parse_available_sizes(product):
     return [size.strip() for size in product.available_sizes.split(",") if size.strip()]
 
 
+def _size_inventory_queryset(product):
+    return ProductSizeStock.objects.filter(product=product)
+
+
+def _size_inventory_map(product):
+    return {
+        item.size.strip(): item.quantity
+        for item in _size_inventory_queryset(product).only("size", "quantity")
+        if item.size and item.size.strip()
+    }
+
+
+def _product_size_options(product):
+    inventory = _size_inventory_map(product)
+    if inventory:
+        return [
+            {
+                "size": size,
+                "quantity": quantity,
+                "available": quantity > 0,
+            }
+            for size, quantity in sorted(inventory.items(), key=lambda item: _size_sort_key(item[0]))
+        ]
+
+    return [
+        {
+            "size": size,
+            "quantity": None,
+            "available": not product.is_sold_out,
+        }
+        for size in _parse_available_sizes(product)
+    ]
+
+
+def _product_size_stock(product, size_value=None):
+    inventory = _size_inventory_map(product)
+    if inventory:
+        if size_value:
+            return inventory.get(size_value, 0)
+        return sum(inventory.values())
+
+    return product.stock_quantity
+
+
+def _product_can_fulfill_quantity(product, requested_quantity, size_value=None):
+    if requested_quantity <= 0:
+        return False
+    available_quantity = _product_size_stock(product, size_value=size_value)
+    if available_quantity <= 0:
+        return False
+    return requested_quantity <= available_quantity
+
+
+def _product_stock_message(product, size_value=None):
+    available_quantity = _product_size_stock(product, size_value=size_value)
+    if product.is_sold_out or available_quantity <= 0:
+        return "Currently sold out"
+    if available_quantity <= 3:
+        return f"Only {available_quantity} left"
+    return f"{available_quantity} in stock"
+
+
+def _normalized_multi_param(values):
+    seen = []
+    for value in values:
+        normalized = (value or "").strip()
+        if normalized and normalized not in seen:
+            seen.append(normalized)
+    return seen
+
+
+def _parse_decimal_param(value):
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+
+    try:
+        return Decimal(normalized)
+    except decimal.InvalidOperation:
+        return None
+
+
+def _size_sort_key(size_value):
+    normalized = size_value.upper()
+    if normalized in SIZE_DISPLAY_ORDER:
+        return (0, SIZE_DISPLAY_ORDER.index(normalized))
+    return (1, normalized)
+
+
+def _collection_sort_choices(current_sort, include_relevance=False):
+    options = list(COLLECTION_SORT_OPTIONS)
+    if include_relevance:
+        options = [("relevance", "Most relevant", "relevance"), *options]
+
+    return [
+        {
+            "value": value,
+            "label": label,
+            "selected": value == current_sort,
+        }
+        for value, label, _ in options
+    ]
+
+
+def _querydict_pairs(querydict):
+    pairs = []
+    for key, values in querydict.lists():
+        for value in values:
+            pairs.append((key, value))
+    return pairs
+
+
+def _querystring_without(request, *keys_to_remove):
+    params = request.GET.copy()
+    for key in keys_to_remove:
+        params.pop(key, None)
+    encoded = params.urlencode()
+    return f"{encoded}&" if encoded else ""
+
+
+def _url_with_query(path, params):
+    encoded = params.urlencode()
+    if not encoded:
+        return path
+    return f"{path}?{encoded}"
+
+
+def _browse_text_query(current_query):
+    if not current_query:
+        return Q()
+
+    return (
+        Q(title__icontains=current_query)
+        | Q(short_description__icontains=current_query)
+        | Q(detail_description__icontains=current_query)
+        | Q(category__title__icontains=current_query)
+        | Q(brand__title__icontains=current_query)
+        | Q(sku__icontains=current_query)
+        | Q(material__icontains=current_query)
+        | Q(color__icontains=current_query)
+    )
+
+
+def _search_rank_expression(current_query):
+    if not current_query:
+        return Value(0, output_field=IntegerField())
+
+    return Case(
+        When(title__iexact=current_query, then=Value(90)),
+        When(title__istartswith=current_query, then=Value(75)),
+        When(brand__title__iexact=current_query, then=Value(65)),
+        When(category__title__iexact=current_query, then=Value(60)),
+        When(title__icontains=current_query, then=Value(50)),
+        When(short_description__icontains=current_query, then=Value(35)),
+        When(detail_description__icontains=current_query, then=Value(25)),
+        When(material__icontains=current_query, then=Value(18)),
+        When(color__icontains=current_query, then=Value(15)),
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+
+
+def _normalized_city(value):
+    return (value or "").strip().lower()
+
+
+def _shipping_amount_for_city(city, subtotal):
+    normalized_city = _normalized_city(city)
+    if not normalized_city:
+        return Decimal("0.00")
+    if "addis" in normalized_city:
+        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
+            return Decimal("0.00")
+        return ADDIS_SHIPPING_FEE
+    return OUTSIDE_ADDIS_SHIPPING_FEE
+
+
+def _shipping_note_for_city(city, subtotal):
+    normalized_city = _normalized_city(city)
+    if not normalized_city:
+        return f"Shipping is calculated once the delivery city is known. Addis starts at {ADDIS_SHIPPING_FEE:.0f} ETB."
+    if "addis" in normalized_city:
+        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
+            return "Addis delivery is free for this order total."
+        shortfall = (ADDIS_FREE_SHIPPING_THRESHOLD - subtotal).quantize(Decimal("0.01"))
+        return f"Addis delivery is {ADDIS_SHIPPING_FEE:.0f} ETB. Add {shortfall:.2f} ETB more for free delivery."
+    return f"Outside Addis delivery is {OUTSIDE_ADDIS_SHIPPING_FEE:.0f} ETB."
+
+
+def _order_status_timeline(status_value):
+    if status_value == "Cancelled":
+        return [
+            {"label": label, "state": "completed" if label == "Pending" else ("cancelled" if label == "Cancelled" else "upcoming")}
+            for label in ["Pending", "Cancelled"]
+        ]
+
+    try:
+        current_index = ORDER_STATUS_SEQUENCE.index(status_value)
+    except ValueError:
+        current_index = 0
+
+    timeline = []
+    for index, label in enumerate(ORDER_STATUS_SEQUENCE):
+        if index < current_index:
+            state = "completed"
+        elif index == current_index:
+            state = "current"
+        else:
+            state = "upcoming"
+        timeline.append({"label": label, "state": state})
+    return timeline
+
+
+def _can_cancel_order(order):
+    return order.status in {"Pending", "Accepted"}
+
+
+def _collection_size_options(queryset):
+    sizes = set()
+    for raw_sizes in queryset.values_list("available_sizes", flat=True):
+        if not raw_sizes:
+            continue
+        for size in raw_sizes.split(","):
+            normalized = size.strip()
+            if normalized:
+                sizes.add(normalized)
+    for size_value in ProductSizeStock.objects.filter(product__in=queryset).values_list("size", flat=True):
+        normalized = (size_value or "").strip()
+        if normalized:
+            sizes.add(normalized)
+    return sorted(sizes, key=_size_sort_key)
+
+
+def _build_collection_state(
+    request,
+    base_queryset,
+    *,
+    form_action=None,
+    show_category_filters=True,
+    show_brand_filters=True,
+    include_relevance_sort=False,
+):
+    current_query = (request.GET.get("q") or "").strip()
+    selected_categories = (
+        _normalized_multi_param(request.GET.getlist("category")) if show_category_filters else []
+    )
+    selected_brands = (
+        _normalized_multi_param(request.GET.getlist("brand")) if show_brand_filters else []
+    )
+    selected_sizes = _normalized_multi_param(request.GET.getlist("size"))
+    availability = "in-stock" if request.GET.get("availability") == "in-stock" else ""
+    default_sort = "relevance" if include_relevance_sort and current_query else "newest"
+    current_sort = (request.GET.get("sort") or default_sort).strip()
+    sort_mapping = {value: ordering for value, _, ordering in COLLECTION_SORT_OPTIONS}
+    if include_relevance_sort:
+        sort_mapping["relevance"] = "relevance"
+    sort_ordering = sort_mapping.get(current_sort, sort_mapping[default_sort])
+    if current_sort not in sort_mapping:
+        current_sort = default_sort
+
+    query_scoped_queryset = base_queryset
+    if current_query:
+        query_scoped_queryset = query_scoped_queryset.filter(_browse_text_query(current_query))
+
+    price_bounds = query_scoped_queryset.aggregate(min_price=Min("price"), max_price=Max("price"))
+    min_price_bound = price_bounds.get("min_price")
+    max_price_bound = price_bounds.get("max_price")
+    current_min_price = _parse_decimal_param(request.GET.get("min_price"))
+    current_max_price = _parse_decimal_param(request.GET.get("max_price"))
+
+    filtered_queryset = query_scoped_queryset
+    if selected_categories:
+        filtered_queryset = filtered_queryset.filter(category__slug__in=selected_categories)
+    if selected_brands:
+        filtered_queryset = filtered_queryset.filter(brand__slug__in=selected_brands)
+    if selected_sizes:
+        size_query = Q()
+        for size in selected_sizes:
+            size_query |= Q(available_sizes__icontains=size) | Q(size_inventory__size__iexact=size, size_inventory__quantity__gt=0)
+        filtered_queryset = filtered_queryset.filter(size_query)
+    if availability:
+        filtered_queryset = filtered_queryset.filter(is_sold_out=False)
+    if current_min_price is not None:
+        filtered_queryset = filtered_queryset.filter(price__gte=current_min_price)
+    if current_max_price is not None:
+        filtered_queryset = filtered_queryset.filter(price__lte=current_max_price)
+
+    filtered_queryset = filtered_queryset.distinct()
+    if sort_ordering == "relevance":
+        filtered_queryset = filtered_queryset.annotate(search_rank=_search_rank_expression(current_query)).order_by("-search_rank", "-created_at", "-id")
+    else:
+        filtered_queryset = filtered_queryset.order_by(sort_ordering, "-id")
+
+    paginator = Paginator(filtered_queryset, COLLECTION_PAGE_SIZE)
+    paged_products = paginator.get_page(request.GET.get("page"))
+    page_numbers = paginator.get_elided_page_range(
+        number=paged_products.number,
+        on_each_side=1,
+        on_ends=1,
+    )
+
+    result_summary = (
+        f"Showing {paged_products.start_index()}-{paged_products.end_index()} of {paginator.count}"
+        if paginator.count
+        else "No products match this view yet"
+    )
+
+    category_label_map = dict(
+        Category.objects.filter(slug__in=selected_categories).values_list("slug", "title")
+    )
+    brand_label_map = dict(
+        Brand.objects.filter(slug__in=selected_brands).values_list("slug", "title")
+    )
+
+    active_filters = []
+    if selected_categories:
+        active_filters.extend(
+            [f"Collection: {category_label_map.get(value, value)}" for value in selected_categories]
+        )
+    if selected_brands:
+        active_filters.extend(
+            [f"Brand: {brand_label_map.get(value, value)}" for value in selected_brands]
+        )
+    if selected_sizes:
+        active_filters.extend([f"Size: {value}" for value in selected_sizes])
+    if availability:
+        active_filters.append("In stock only")
+    if current_min_price is not None:
+        active_filters.append(f"Min {current_min_price:.2f} ETB")
+    if current_max_price is not None:
+        active_filters.append(f"Max {current_max_price:.2f} ETB")
+    if current_sort != "newest":
+        selected_sort_label = next(
+            label for value, label, _ in COLLECTION_SORT_OPTIONS if value == current_sort
+        )
+        active_filters.append(f"Sort: {selected_sort_label}")
+
+    reset_params = request.GET.copy()
+    for key in ("category", "brand", "size", "availability", "min_price", "max_price", "sort", "page"):
+        reset_params.pop(key, None)
+
+    sort_hidden_params = request.GET.copy()
+    sort_hidden_params.pop("sort", None)
+    sort_hidden_params.pop("page", None)
+
+    return {
+        "products": paged_products,
+        "product_count": paginator.count,
+        "page_numbers": page_numbers,
+        "saved_product_ids": _saved_product_ids_for_user(request.user),
+        "browse_state": {
+            "form_action": form_action or request.path,
+            "sort_options": _collection_sort_choices(current_sort, include_relevance=include_relevance_sort and bool(current_query)),
+            "sort_hidden_fields": _querydict_pairs(sort_hidden_params),
+            "page_query": _querystring_without(request, "page"),
+            "current_query": current_query,
+            "current_min_price": f"{current_min_price:.2f}" if current_min_price is not None else "",
+            "current_max_price": f"{current_max_price:.2f}" if current_max_price is not None else "",
+            "min_price_bound": f"{min_price_bound:.2f}" if min_price_bound is not None else "",
+            "max_price_bound": f"{max_price_bound:.2f}" if max_price_bound is not None else "",
+            "show_category_filters": show_category_filters,
+            "show_brand_filters": show_brand_filters,
+            "selected_categories": selected_categories,
+            "selected_brands": selected_brands,
+            "selected_sizes": selected_sizes,
+            "availability": availability,
+            "size_options": _collection_size_options(query_scoped_queryset),
+            "result_summary": result_summary,
+            "active_filters": active_filters,
+            "reset_filters_url": _url_with_query(form_action or request.path, reset_params),
+        },
+    }
+
+
 def _coupon_issue(coupon):
     if not coupon:
         return "Coupon does not exist."
@@ -677,10 +1149,28 @@ def home(request):
     categories = Category.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "category_image").order_by("-created_at")[:8]
     brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image").order_by("-created_at")[:12]
     products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)[:24]
+    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
+    top_selling_ids = list(
+        Order.objects.values("product_id")
+        .annotate(total_quantity=Sum("quantity"))
+        .order_by("-total_quantity", "-product_id")
+        .values_list("product_id", flat=True)[:8]
+    )
+    top_selling_lookup = {
+        product.id: product
+        for product in Product.objects.filter(id__in=top_selling_ids, is_active=True)
+        .select_related("category", "brand")
+        .only(*PRODUCT_LIST_FIELDS)
+    }
+    top_selling_products = [top_selling_lookup[product_id] for product_id in top_selling_ids if product_id in top_selling_lookup]
     context = {
         "categories": categories,
         "products": products,
         "brands": brands,
+        "latest_products": latest_products,
+        "top_selling_products": top_selling_products,
+        "recently_viewed_products": _recently_viewed_products(request, limit=4),
+        "saved_product_ids": _saved_product_ids_for_user(request.user),
     }
     return render(request, "store/index.html", context)
 
@@ -690,30 +1180,134 @@ def detail(request, slug):
         Product.objects.select_related("category", "brand"),
         slug=slug,
     )
-    context = _build_product_detail_context(product)
+    _push_recently_viewed_product(request, product)
+    context = _build_product_detail_context(request, product)
     return render(request, "store/detail.html", context)
 
 
+@login_required
+def toggle_wishlist(request, product_id):
+    if request.method != "POST":
+        messages.warning(request, "Invalid save action.")
+        return redirect("store:product-detail", slug=get_object_or_404(Product, id=product_id).slug)
+
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+    wishlist_entry = Wishlist.objects.filter(user=request.user, product=product).first()
+
+    if wishlist_entry:
+        wishlist_entry.delete()
+        saved = False
+        message = f"Removed {product.title} from your saved items."
+    else:
+        Wishlist.objects.create(user=request.user, product=product)
+        saved = True
+        message = f"Saved {product.title} for later."
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": True, "saved": saved, "message": message})
+
+    messages.success(request, message)
+    return redirect(request.POST.get("next") or reverse("store:product-detail", kwargs={"slug": product.slug}))
+
+
+@login_required
+def submit_review(request, slug):
+    product = get_object_or_404(Product, slug=slug, is_active=True)
+    if request.method != "POST":
+        return redirect("store:product-detail", slug=product.slug)
+
+    form = ProductReviewForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Please complete the review fields before submitting.")
+        return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#reviews")
+
+    ProductReview.objects.update_or_create(
+        user=request.user,
+        product=product,
+        defaults=form.cleaned_data,
+    )
+    messages.success(request, "Your review has been saved.")
+    return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#reviews")
+
+
+def request_restock(request, slug):
+    product = get_object_or_404(Product, slug=slug, is_active=True)
+    if request.method != "POST":
+        return redirect("store:product-detail", slug=product.slug)
+
+    form = RestockRequestForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Please enter a valid email address to join the restock list.")
+        return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#restock")
+
+    payload = form.cleaned_data
+    defaults = {}
+    if request.user.is_authenticated:
+        defaults["user"] = request.user
+    restock_request, created = RestockRequest.objects.get_or_create(
+        product=product,
+        email=payload["email"],
+        size=payload["size"],
+        defaults=defaults,
+    )
+    if not created and request.user.is_authenticated and restock_request.user_id is None:
+        restock_request.user = request.user
+        restock_request.save(update_fields=["user"])
+
+    if created:
+        messages.success(request, "You are on the restock list for this product.")
+    else:
+        messages.info(request, "You are already on the restock list for this product.")
+    return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#restock")
+
+
 def search_view(request):
-    query = request.GET.get("q")
-    products = Product.objects.filter(
-        title__icontains="" if query is None else query,
-        is_active=True,
-    ).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
-
-    context = {
-        "products": products,
-        "query": query,
-    }
-
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    context = _build_collection_state(
+        request,
+        base_products,
+        form_action=reverse("store:search"),
+        include_relevance_sort=True,
+    )
+    context["query"] = context["browse_state"]["current_query"]
+    context.update(_search_discovery_context(request))
     return render(request, "store/search.html", context)
 
 
+def search_suggestions(request):
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 2:
+        return JsonResponse({"products": [], "categories": [], "brands": []})
+
+    product_suggestions = list(
+        Product.objects.filter(is_active=True)
+        .filter(_browse_text_query(query))
+        .annotate(search_rank=_search_rank_expression(query))
+        .order_by("-search_rank", "-created_at")
+        .values("title", "slug")[:5]
+    )
+    category_suggestions = list(
+        Category.objects.filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
+    )
+    brand_suggestions = list(
+        Brand.objects.filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
+    )
+    return JsonResponse(
+        {
+            "products": product_suggestions,
+            "categories": category_suggestions,
+            "brands": brand_suggestions,
+        }
+    )
+
+
 def products(request):
-    products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
-    context = {
-        "products": products,
-    }
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    context = _build_collection_state(
+        request,
+        base_products,
+        form_action=reverse("store:all-products"),
+    )
     return render(request, "store/products.html", context)
 
 
@@ -753,43 +1347,27 @@ def all_brands(request):
 
 def category_products(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS).order_by("-sku")
-    categories = Category.objects.filter(is_active=True).only("id", "title", "slug", "category_image")
-    paginator = Paginator(products, 24)
-    product_count = products.count()
-    page = request.GET.get("page")
-    paged_products = paginator.get_page(page)
-    page_numbers = paginator.get_elided_page_range(number=paged_products.number, on_each_side=1, on_ends=1)
-
-    context = {
-        "category": category,
-        "products": paged_products,
-        "categories": categories,
-        "paginator": paginator,
-        "product_count": product_count,
-        "page_numbers": page_numbers,
-    }
+    base_products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    context = _build_collection_state(
+        request,
+        base_products,
+        form_action=reverse("store:category-products", kwargs={"slug": category.slug}),
+        show_category_filters=False,
+    )
+    context["category"] = category
     return render(request, "store/category_products.html", context)
 
 
 def brand_products(request, slug):
     brand = get_object_or_404(Brand, slug=slug)
-    products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
-    brands = Brand.objects.filter(is_active=True).only("id", "title", "slug", "brand_image")
-    paginator = Paginator(products, 24)
-    product_count = products.count()
-    page = request.GET.get("page")
-    paged_products = paginator.get_page(page)
-    page_numbers = paginator.get_elided_page_range(number=paged_products.number, on_each_side=1, on_ends=1)
-
-    context = {
-        "brand": brand,
-        "products": paged_products,
-        "brands": brands,
-        "paginator": paginator,
-        "product_count": product_count,
-        "page_numbers": page_numbers,
-    }
+    base_products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    context = _build_collection_state(
+        request,
+        base_products,
+        form_action=reverse("store:brand-products", kwargs={"slug": brand.slug}),
+        show_brand_filters=False,
+    )
+    context["brand"] = brand
     return render(request, "store/brand_products.html", context)
 
 
@@ -840,6 +1418,25 @@ def profile(request):
         "product__title",
         "product__slug",
     )
+    saved_items = (
+        Wishlist.objects.filter(user=request.user)
+        .select_related("product", "product__category", "product__brand")
+        .only(
+            "id",
+            "created_at",
+            "product__id",
+            "product__slug",
+            "product__title",
+            "product__price",
+            "product__product_image",
+            "product__available_sizes",
+            "product__is_sold_out",
+            "product__category__title",
+            "product__category__slug",
+            "product__brand__title",
+            "product__brand__slug",
+        )[:6]
+    )
     has_affiliate_profile = AffiliateProfile.objects.filter(user=request.user).exists()
     profile_flow_status = _build_profile_flow_status(addresses, orders)
     return render(
@@ -848,6 +1445,8 @@ def profile(request):
         {
             "addresses": addresses,
             "orders": orders,
+            "saved_items": saved_items,
+            "saved_product_ids": _saved_product_ids_for_user(request.user),
             "has_affiliate_profile": has_affiliate_profile,
             "profile_flow_status": profile_flow_status,
         },
@@ -1013,7 +1612,6 @@ def add_to_cart(request):
         messages.error(request, "Selected size is not available for this product.")
         return redirect("store:product-detail", slug=product.slug)
 
-
     cart_item, created = Cart.objects.get_or_create(
         user=user,
         product=product,
@@ -1021,8 +1619,18 @@ def add_to_cart(request):
         defaults={"quantity": 1},
     )
 
+    requested_quantity = 1 if created else cart_item.quantity + 1
+    if not _product_can_fulfill_quantity(product, requested_quantity, size_value=selected_size_value):
+        message = f"Only {_product_size_stock(product, size_value=selected_size_value)} unit(s) are available for {product.title} ({selected_size_value or 'default size'})."
+        if created:
+            cart_item.delete()
+        if is_ajax:
+            return _json(message, ok=False, status=400)
+        messages.warning(request, message)
+        return redirect("store:product-detail", slug=product.slug)
+
     if not created:
-        cart_item.quantity += 1
+        cart_item.quantity = requested_quantity
         cart_item.save(update_fields=["quantity", "updated_at"])
         success_message = f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart. Open your cart when you are ready to place the order."
         messages.success(request, success_message)
@@ -1047,7 +1655,9 @@ def cart(request):
         item.display_total_price = line_total
         amount += line_total
 
-    shipping_amount = decimal.Decimal(0)
+    shipping_city = latest_address.city if latest_address else ""
+    shipping_amount = _shipping_amount_for_city(shipping_city, amount) if request.user.is_authenticated else decimal.Decimal(0)
+    shipping_note = _shipping_note_for_city(shipping_city, amount) if request.user.is_authenticated else "Shipping will be calculated after you enter your delivery city during guest checkout."
 
     coupon_for_display = None
     first_item_with_coupon = cart_products.filter(coupon__isnull=False).first()
@@ -1063,6 +1673,7 @@ def cart(request):
         "guest_checkout": not request.user.is_authenticated,
         "latest_address": latest_address,
         "flow_status": _build_cart_flow_status(request, cart_products, latest_address),
+        "shipping_note": shipping_note,
     }
     return render(request, "store/cart.html", context)
 
@@ -1116,6 +1727,14 @@ def plus_cart(request, cart_id):
         messages.warning(request, f"{cp.product.title} is no longer available.")
         return redirect("store:cart")
 
+    requested_quantity = cp.quantity + 1
+    if not _product_can_fulfill_quantity(cp.product, requested_quantity, size_value=cp.size):
+        messages.warning(
+            request,
+            f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available for {cp.product.title} ({cp.size or 'default size'}).",
+        )
+        return redirect("store:cart")
+
     cp.quantity += 1
     cp.save(update_fields=["quantity", "updated_at"])
     return redirect("store:cart")
@@ -1167,6 +1786,7 @@ def checkout(request):
     guest_checkout_address = None
     created_order_ids = []
     order_lines = []
+    shipping_amount = Decimal("0.00")
 
     if not request.user.is_authenticated:
         full_name = (request.POST.get("full_name") or "").strip()
@@ -1189,56 +1809,89 @@ def checkout(request):
         messages.error(request, "Add a delivery address before placing your order.")
         return redirect(_address_entry_url("store:cart"))
 
-    with transaction.atomic():
-        commissions_to_create = []
-        for c in cart_items:
-            effective_price_per_item = _effective_unit_price(c.product.price, c.coupon)
-            line_total_for_order = c.quantity * effective_price_per_item
-            order = Order.objects.create(
-                user=user,
-                product=c.product,
-                quantity=c.quantity,
-                size=c.size,
-                price_at_purchase=effective_price_per_item,
-                line_total=line_total_for_order,
-            )
-            order_count += 1
-            order_total += line_total_for_order
-            created_order_ids.append(order.id)
-            order_lines.append(
-                {
-                    "title": c.product.title,
-                    "sku": c.product.sku,
-                    "quantity": c.quantity,
-                    "size": c.size or "N/A",
-                    "unit_price": f"{effective_price_per_item:.2f}",
-                    "line_total": f"{line_total_for_order:.2f}",
-                    "coupon": c.coupon.code if c.coupon else "N/A",
-                    "status": order.status,
-                }
-            )
+    shipping_source_address = guest_checkout_address or customer_address
 
-            if affiliate_profile:
-                commission_amount = _calculate_commission_amount(line_total_for_order)
-                if commission_amount > Decimal("0.00"):
-                    commissions_to_create.append(
-                        AffiliateCommission(
-                            affiliate=affiliate_profile,
-                            order=order,
-                            customer=user,
-                            rate=AFFILIATE_RATE_PERCENT,
-                            amount=commission_amount,
-                        )
+    try:
+        with transaction.atomic():
+            commissions_to_create = []
+            for c in cart_items:
+                locked_product = Product.objects.select_for_update().get(id=c.product_id)
+                locked_size_stock = None
+                if c.size:
+                    locked_size_stock = ProductSizeStock.objects.select_for_update().filter(product_id=c.product_id, size=c.size).first()
+
+                available_quantity = locked_size_stock.quantity if locked_size_stock else locked_product.stock_quantity
+                if locked_product.is_sold_out or available_quantity < c.quantity:
+                    raise ValueError(
+                        f"{locked_product.title} ({c.size or 'default size'}) no longer has enough stock to fulfill your order."
                     )
 
-        if commissions_to_create:
-            AffiliateCommission.objects.bulk_create(commissions_to_create)
+                effective_price_per_item = _effective_unit_price(c.product.price, c.coupon)
+                line_total_for_order = c.quantity * effective_price_per_item
+                order = Order.objects.create(
+                    user=user,
+                    product=locked_product,
+                    quantity=c.quantity,
+                    size=c.size,
+                    price_at_purchase=effective_price_per_item,
+                    line_total=line_total_for_order,
+                )
+                order_count += 1
+                order_total += line_total_for_order
+                created_order_ids.append(order.id)
+                order_lines.append(
+                    {
+                        "title": c.product.title,
+                        "sku": c.product.sku,
+                        "quantity": c.quantity,
+                        "size": c.size or "N/A",
+                        "unit_price": f"{effective_price_per_item:.2f}",
+                        "line_total": f"{line_total_for_order:.2f}",
+                        "coupon": c.coupon.code if c.coupon else "N/A",
+                        "status": order.status,
+                    }
+                )
 
-        Cart.objects.filter(id__in=[c.id for c in cart_items]).delete()
+                if affiliate_profile:
+                    commission_amount = _calculate_commission_amount(line_total_for_order)
+                    if commission_amount > Decimal("0.00"):
+                        commissions_to_create.append(
+                            AffiliateCommission(
+                                affiliate=affiliate_profile,
+                                order=order,
+                                customer=user,
+                                rate=AFFILIATE_RATE_PERCENT,
+                                amount=commission_amount,
+                            )
+                        )
 
-        click_id = request.session.get(AFFILIATE_CLICK_SESSION_KEY)
-        if click_id:
-            AffiliateClick.objects.filter(id=click_id).update(converted=True)
+                if locked_size_stock:
+                    locked_size_stock.quantity = max(0, locked_size_stock.quantity - c.quantity)
+                    locked_size_stock.save(update_fields=["quantity", "updated_at"])
+
+                locked_product.stock_quantity = max(0, locked_product.stock_quantity - c.quantity)
+                if locked_product.stock_quantity == 0:
+                    locked_product.is_sold_out = True
+                    locked_product.save(update_fields=["stock_quantity", "is_sold_out", "updated_at"])
+                else:
+                    locked_product.save(update_fields=["stock_quantity", "updated_at"])
+
+            if commissions_to_create:
+                AffiliateCommission.objects.bulk_create(commissions_to_create)
+
+            Cart.objects.filter(id__in=[c.id for c in cart_items]).delete()
+
+            click_id = request.session.get(AFFILIATE_CLICK_SESSION_KEY)
+            if click_id:
+                AffiliateClick.objects.filter(id=click_id).update(converted=True)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("store:cart")
+
+    shipping_amount = _shipping_amount_for_city(
+        getattr(shipping_source_address, "city", ""),
+        order_total,
+    )
 
     notify_new_order(
         user=user,
@@ -1249,7 +1902,10 @@ def checkout(request):
         order_ids=created_order_ids,
     )
 
-    messages.success(request, "Order placed successfully. You can track its status below.")
+    messages.success(
+        request,
+        f"Order placed successfully. Estimated grand total including delivery: {(order_total + shipping_amount):.2f} ETB.",
+    )
     if request.user.is_authenticated:
         return redirect("store:orders")
     return redirect("store:home")
@@ -1266,18 +1922,42 @@ def orders(request):
         "line_total",
         "price_at_purchase",
         "product__id",
+        "product__product_image",
         "product__title",
         "product__slug",
     ).order_by("-ordered_date")
+    orders_for_display = []
+    for order in all_orders:
+        order.timeline = _order_status_timeline(order.status)
+        order.status_copy = ORDER_STATUS_COPY.get(order.status, "")
+        order.can_cancel = _can_cancel_order(order)
+        orders_for_display.append(order)
     return render(
         request,
         "store/orders.html",
         {
-            "orders": all_orders,
+            "orders": orders_for_display,
             "flow_status": _build_order_flow_status(all_orders),
             "order_status_summary": _order_status_summary(all_orders),
         },
     )
+
+
+@login_required
+def cancel_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if request.method != "POST":
+        messages.warning(request, "Invalid order action.")
+        return redirect("store:orders")
+
+    if not _can_cancel_order(order):
+        messages.warning(request, "This order can no longer be cancelled online.")
+        return redirect("store:orders")
+
+    order.status = "Cancelled"
+    order.save(update_fields=["status"])
+    messages.success(request, f"Order #{order.id} was cancelled.")
+    return redirect("store:orders")
 
 
 def shop(request):

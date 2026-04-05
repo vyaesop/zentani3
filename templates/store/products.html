@@ -5,7 +5,7 @@
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-directory">
-      {% include 'store/_collection_header.html' with kicker='Shop all' title='All Products' description='Browse everything currently live in the store.' count=products.count %}
+      {% include 'store/_collection_header.html' with kicker='Shop all' title='All Products' description='Browse everything currently live in the store.' count=product_count browse_state=browse_state %}
 
       <div class="spring-directory__layout">
           <div class="spring-directory__main">
@@ -18,9 +18,11 @@
                   <p class="text-muted mb-0">Products will appear here once they are active in admin.</p>
                   {% endfor %}
               </div>
+
+              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers page_query=browse_state.page_query aria_label='All products pages' %}
           </div>
 
-          {% include 'store/_collection_sidebar.html' %}
+          {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
       </div>
   </div>
 </main>

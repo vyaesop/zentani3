@@ -1,5 +1,5 @@
 from django.contrib.auth import password_validation
-from store.models import Address
+from store.models import Address, ProductReview, RestockRequest
 from django import forms
 import django
 from django.contrib.auth.models import User
@@ -83,6 +83,44 @@ class AddressForm(forms.ModelForm):
             'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone Number'}),
         }
+
+
+class ProductReviewForm(forms.ModelForm):
+    class Meta:
+        model = ProductReview
+        fields = ["rating", "title", "comment"]
+        widgets = {
+            "rating": forms.Select(
+                choices=[(value, f"{value} star{'s' if value != 1 else ''}") for value in range(5, 0, -1)],
+                attrs={"class": "form-control"},
+            ),
+            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Review title"}),
+            "comment": forms.Textarea(
+                attrs={"class": "form-control", "placeholder": "Share fit, quality, and overall impression", "rows": 5}
+            ),
+        }
+
+    def clean_title(self):
+        return self.cleaned_data["title"].strip()
+
+    def clean_comment(self):
+        return self.cleaned_data["comment"].strip()
+
+
+class RestockRequestForm(forms.ModelForm):
+    class Meta:
+        model = RestockRequest
+        fields = ["email", "size"]
+        widgets = {
+            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "Email address"}),
+            "size": forms.TextInput(attrs={"class": "form-control", "placeholder": "Preferred size (optional)"}),
+        }
+
+    def clean_email(self):
+        return self.cleaned_data["email"].strip().lower()
+
+    def clean_size(self):
+        return self.cleaned_data["size"].strip()
 
 
 class PasswordChangeForm(PasswordChangeForm):

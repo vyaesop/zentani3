@@ -74,6 +74,26 @@
               <a href="{% url 'store:home' %}" class="btn btn-dark">Browse products</a>
               {% endif %}
           </section>
+
+          <section class="spring-account__card spring-account__card--wide">
+              <div class="spring-section__head">
+                  <h2>Saved Items</h2>
+                  <a href="{% url 'store:all-products' %}">Browse more</a>
+              </div>
+
+              {% if saved_items %}
+              <div class="spring-product-grid spring-product-grid--account">
+                  {% for saved_item in saved_items %}
+                  <div class="spring-grid-item">
+                      {% include 'store/_product_card_content.html' with product=saved_item.product %}
+                  </div>
+                  {% endfor %}
+              </div>
+              {% else %}
+              <p class="text-muted mb-3">You have not saved any products yet.</p>
+              <a href="{% url 'store:all-products' %}" class="btn btn-dark">Start saving items</a>
+              {% endif %}
+          </section>
       </div>
   </div>
 </main>
