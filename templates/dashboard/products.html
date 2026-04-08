@@ -1,0 +1,120 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+<section class="spring-dashboard-stats">
+    <article class="spring-dashboard-stat">
+        <span>Visible products</span>
+        <strong>{{ product_summary.total }}</strong>
+        <p>{{ product_summary.active }} active</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>Featured</span>
+        <strong>{{ product_summary.featured }}</strong>
+        <p>Highlighted on the storefront</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>Sold out</span>
+        <strong>{{ product_summary.sold_out }}</strong>
+        <p>Need replenishment or deactivation</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>Low stock</span>
+        <strong>{{ product_summary.low_stock }}</strong>
+        <p>Three units or fewer remaining</p>
+    </article>
+</section>
+
+<section class="spring-dashboard-panel">
+    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--wide">
+        <label>
+            <span>Search</span>
+            <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="Title, SKU, slug, collection, brand">
+        </label>
+        <label>
+            <span>Collection</span>
+            <select name="category" class="spring-dashboard-control">
+                <option value="">All collections</option>
+                {% for category in category_options %}
+                <option value="{{ category.slug }}" {% if filters.category == category.slug %}selected{% endif %}>{{ category.title }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>State</span>
+            <select name="state" class="spring-dashboard-control">
+                <option value="">All states</option>
+                <option value="active" {% if filters.state == "active" %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if filters.state == "inactive" %}selected{% endif %}>Inactive</option>
+                <option value="featured" {% if filters.state == "featured" %}selected{% endif %}>Featured</option>
+                <option value="sold-out" {% if filters.state == "sold-out" %}selected{% endif %}>Sold out</option>
+                <option value="low-stock" {% if filters.state == "low-stock" %}selected{% endif %}>Low stock</option>
+            </select>
+        </label>
+        <div class="spring-dashboard-filters__actions">
+            <button type="submit" class="btn btn-dark">Apply</button>
+            <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="spring-dashboard-product-grid">
+    {% for product in products %}
+    <article class="spring-dashboard-product-card">
+        <div class="spring-dashboard-product-card__top">
+            <div>
+                <p class="spring-dashboard-order-card__eyebrow">{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</p>
+                <h3>{{ product.title }}</h3>
+                <p>{{ product.sku }}</p>
+            </div>
+            <div class="spring-dashboard-product-card__badges">
+                {% if product.is_featured %}<span class="spring-dashboard-badge spring-dashboard-badge--delivered">Featured</span>{% endif %}
+                {% if not product.is_active %}<span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Hidden</span>{% endif %}
+                {% if product.is_sold_out %}<span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Sold out</span>{% endif %}
+            </div>
+        </div>
+
+        <div class="spring-dashboard-product-card__meta">
+            <div>
+                <span>Price</span>
+                <strong>{{ product.price }}</strong>
+            </div>
+            <div>
+                <span>Stock</span>
+                <strong>{{ product.stock_quantity }}</strong>
+            </div>
+            <div>
+                <span>Sizes</span>
+                <strong>{{ product.available_sizes|default:"-" }}</strong>
+            </div>
+        </div>
+
+        <div class="spring-dashboard-product-card__actions">
+            <a href="{% url 'store:dashboard-product-edit' product.id %}" class="btn btn-dark">Edit product</a>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <input type="hidden" name="action" value="publish_telegram">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn-outline-dark">Post to Telegram</button>
+            </form>
+        </div>
+    </article>
+    {% empty %}
+    <section class="spring-dashboard-panel">
+        <div class="spring-dashboard-empty">No products matched the current filter.</div>
+    </section>
+    {% endfor %}
+</section>
+
+{% if products.paginator.num_pages > 1 %}
+<section class="spring-dashboard-pagination">
+    {% if products.has_previous %}
+    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ products.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
+    {% if products.has_next %}
+    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ products.next_page_number }}">Next</a>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

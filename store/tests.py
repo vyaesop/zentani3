@@ -16,6 +16,13 @@ class StoreFlowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="0911000000", password="test-pass-123")
         self.other_user = User.objects.create_user(username="0911222333", password="test-pass-123")
+        self.staff_user = User.objects.create_user(
+            username="0911444555",
+            password="test-pass-123",
+            is_staff=True,
+            first_name="Ops",
+            last_name="Lead",
+        )
 
         self.category = Category.objects.create(
             title="Rings",
@@ -209,3 +216,42 @@ class StoreFlowTests(TestCase):
         )
 
         self.assertTrue(product.product_image.name.lower().endswith(".webp"))
+
+    def test_staff_user_can_access_dashboard_home(self):
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.get(reverse("store:dashboard-home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Control Room")
+
+    def test_non_staff_user_is_redirected_from_dashboard(self):
+        self.client.login(username="0911000000", password="test-pass-123")
+
+        response = self.client.get(reverse("store:dashboard-home"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("store:home"))
+
+    def test_staff_user_can_update_order_status_from_dashboard(self):
+        order = self.product.order_set.create(
+            user=self.user,
+            quantity=1,
+            size="M",
+            price_at_purchase=Decimal("100.00"),
+            line_total=Decimal("100.00"),
+        )
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-orders"),
+            {
+                "order_id": order.id,
+                "status": "Delivered",
+                "next": reverse("store:dashboard-orders"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "Delivered")
