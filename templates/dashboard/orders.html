@@ -1,0 +1,133 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+<section class="spring-dashboard-stats">
+    <article class="spring-dashboard-stat">
+        <span>Visible orders</span>
+        <strong>{{ order_summary.total }}</strong>
+        <p>{{ order_summary.pending }} pending</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>In progress</span>
+        <strong>{{ order_summary.in_transit }}</strong>
+        <p>Accepted, packed, or on the way</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>Delivered</span>
+        <strong>{{ order_summary.delivered }}</strong>
+        <p>{{ order_summary.cancelled }} cancelled</p>
+    </article>
+    <article class="spring-dashboard-stat">
+        <span>Revenue</span>
+        <strong>{{ order_summary.revenue }}</strong>
+        <p>Across the filtered result set</p>
+    </article>
+</section>
+
+<section class="spring-dashboard-panel">
+    <form method="get" class="spring-dashboard-filters">
+        <label>
+            <span>Search</span>
+            <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="Order ID, customer, SKU, product">
+        </label>
+        <label>
+            <span>Status</span>
+            <select name="status" class="spring-dashboard-control">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="spring-dashboard-filters__actions">
+            <button type="submit" class="btn btn-dark">Apply</button>
+            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-outline-dark">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="spring-dashboard-panel">
+    <div class="spring-dashboard-section-head">
+        <div>
+            <p class="spring-dashboard-panel__eyebrow">Fulfillment queue</p>
+            <h3>Storefront orders</h3>
+        </div>
+    </div>
+
+    <div class="spring-dashboard-table-wrap">
+        <table class="spring-dashboard-table">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td data-label="Order">
+                        <strong>#{{ order.id }}</strong>
+                        <span>{{ order.ordered_date|date:"M d, Y H:i" }}</span>
+                    </td>
+                    <td data-label="Customer">
+                        <strong>{{ order.user.get_full_name|default:order.user.username }}</strong>
+                        <span>{{ order.user.username }}</span>
+                    </td>
+                    <td data-label="Product">
+                        <strong>{{ order.product.title }}</strong>
+                        <span>{{ order.product.sku }}{% if order.size %} · {{ order.size }}{% endif %}</span>
+                    </td>
+                    <td data-label="Qty">{{ order.quantity }}</td>
+                    <td data-label="Total">
+                        {% if order.line_total %}
+                        {{ order.line_total }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td data-label="Status">
+                        <form method="post" class="spring-dashboard-inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="order_id" value="{{ order.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="status" class="spring-dashboard-control spring-dashboard-control--sm">
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-dark btn-link btn-sm">Save</button>
+                        </form>
+                    </td>
+                    <td data-label="Updated">
+                        <span class="spring-dashboard-badge spring-dashboard-badge--{{ order.status|slugify }}">{{ order.status }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="spring-dashboard-empty">No orders matched the current filter.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if orders.paginator.num_pages > 1 %}
+    <div class="spring-dashboard-pagination">
+        {% if orders.has_previous %}
+        <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ orders.previous_page_number }}">Previous</a>
+        {% endif %}
+        <span>Page {{ orders.number }} of {{ orders.paginator.num_pages }}</span>
+        {% if orders.has_next %}
+        <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ orders.next_page_number }}">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

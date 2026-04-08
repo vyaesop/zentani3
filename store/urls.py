@@ -1,6 +1,6 @@
 from store.forms import LoginForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
 from django.urls import path
-from . import views
+from . import dashboard_views, views
 from django.contrib.auth import views as auth_views
 
 
@@ -8,6 +8,12 @@ app_name = 'store'
 
 
 urlpatterns = [
+    path('dashboard/', dashboard_views.dashboard_home, name="dashboard-home"),
+    path('dashboard/orders/', dashboard_views.dashboard_orders, name="dashboard-orders"),
+    path('dashboard/telegram-orders/', dashboard_views.dashboard_telegram_orders, name="dashboard-telegram-orders"),
+    path('dashboard/products/', dashboard_views.dashboard_products, name="dashboard-products"),
+    path('dashboard/products/new/', dashboard_views.dashboard_product_edit, name="dashboard-product-create"),
+    path('dashboard/products/<int:product_id>/', dashboard_views.dashboard_product_edit, name="dashboard-product-edit"),
     path('', views.home, name="home"),
     # URL for Cart and Checkout
     path('add-to-cart/', views.add_to_cart, name="add-to-cart"),

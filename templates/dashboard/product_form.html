@@ -1,0 +1,325 @@
+{% extends "dashboard/base.html" %}
+{% load image_optim %}
+
+{% block dashboard_content %}
+<form method="post" enctype="multipart/form-data" class="spring-dashboard-editor">
+    {% csrf_token %}
+
+    {% if form.non_field_errors or image_formset.non_form_errors or size_formset.non_form_errors %}
+    <section class="spring-dashboard-panel spring-dashboard-panel--danger">
+        {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+        {% for error in image_formset.non_form_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+        {% for error in size_formset.non_form_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="spring-dashboard-editor__header">
+        <div>
+            <p class="spring-dashboard-panel__eyebrow">Merchandising workspace</p>
+            <h2>{% if product %}{{ product.title }}{% else %}New product draft{% endif %}</h2>
+            <p>Everything the team needs for merchandising, sizing, stock, and launch readiness in one place.</p>
+        </div>
+        <div class="spring-dashboard-editor__header-actions">
+            <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Back to products</a>
+            <button type="submit" class="btn btn-dark">Save product</button>
+            <button type="submit" name="save_and_publish" value="1" class="btn btn-outline-dark">Save & post to Telegram</button>
+        </div>
+    </section>
+
+    <section class="spring-dashboard-editor__grid">
+        <div class="spring-dashboard-editor__main">
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Core product data</p>
+                        <h3>Identity</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-form-grid">
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Title</span>
+                        {{ form.title }}
+                        {% for error in form.title.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>Slug</span>
+                        {{ form.slug }}
+                        {% for error in form.slug.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>SKU</span>
+                        {{ form.sku }}
+                        {% for error in form.sku.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Short description</span>
+                        {{ form.short_description }}
+                        {% for error in form.short_description.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Detail description</span>
+                        {{ form.detail_description }}
+                        {% for error in form.detail_description.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                </div>
+            </article>
+
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Catalog structure</p>
+                        <h3>Merchandising attributes</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-form-grid">
+                    <label class="spring-dashboard-field">
+                        <span>Collection</span>
+                        {{ form.category }}
+                        {% for error in form.category.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>Brand</span>
+                        {{ form.brand }}
+                        {% for error in form.brand.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>Material</span>
+                        {{ form.material }}
+                        {% for error in form.material.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>Color</span>
+                        {{ form.color }}
+                        {% for error in form.color.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Available sizes</span>
+                        {{ form.available_sizes }}
+                        {% for error in form.available_sizes.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Fit notes</span>
+                        {{ form.fit_notes }}
+                        {% for error in form.fit_notes.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Care notes</span>
+                        {{ form.care_notes }}
+                        {% for error in form.care_notes.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                </div>
+            </article>
+
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Commerce settings</p>
+                        <h3>Pricing and delivery copy</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-form-grid">
+                    <label class="spring-dashboard-field">
+                        <span>Price</span>
+                        {{ form.price }}
+                        {% for error in form.price.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field">
+                        <span>Total stock</span>
+                        {{ form.stock_quantity }}
+                        {% for error in form.stock_quantity.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Delivery note</span>
+                        {{ form.delivery_note }}
+                        {% for error in form.delivery_note.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Return note</span>
+                        {{ form.return_note }}
+                        {% for error in form.return_note.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                </div>
+            </article>
+
+            <article class="spring-dashboard-panel" id="size-formset">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Inventory rows</p>
+                        <h3>Size-level stock</h3>
+                    </div>
+                    <button type="button" class="btn btn-outline-dark" data-formset-add="size-formset">Add size row</button>
+                </div>
+
+                <div class="spring-dashboard-formset" data-formset-rows>
+                    {{ size_formset.management_form }}
+                    {% for size_form in size_formset %}
+                    <div class="spring-dashboard-formset-row" data-formset-row>
+                        {% for hidden_field in size_form.hidden_fields %}{{ hidden_field }}{% endfor %}
+                        <div class="spring-dashboard-formset-row__grid">
+                            <label class="spring-dashboard-field">
+                                <span>Size</span>
+                                {{ size_form.size }}
+                                {% for error in size_form.size.errors %}<small>{{ error }}</small>{% endfor %}
+                            </label>
+                            <label class="spring-dashboard-field">
+                                <span>Quantity</span>
+                                {{ size_form.quantity }}
+                                {% for error in size_form.quantity.errors %}<small>{{ error }}</small>{% endfor %}
+                            </label>
+                        </div>
+                        {{ size_form.DELETE }}
+                        <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
+                    </div>
+                    {% empty %}
+                    {% endfor %}
+                    <template>
+                        <div class="spring-dashboard-formset-row" data-formset-row>
+                            {% for hidden_field in size_formset.empty_form.hidden_fields %}{{ hidden_field }}{% endfor %}
+                            <div class="spring-dashboard-formset-row__grid">
+                                <label class="spring-dashboard-field">
+                                    <span>Size</span>
+                                    {{ size_formset.empty_form.size }}
+                                </label>
+                                <label class="spring-dashboard-field">
+                                    <span>Quantity</span>
+                                    {{ size_formset.empty_form.quantity }}
+                                </label>
+                            </div>
+                            {{ size_formset.empty_form.DELETE }}
+                            <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
+                        </div>
+                    </template>
+                </div>
+            </article>
+
+            <article class="spring-dashboard-panel" id="image-formset">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Gallery management</p>
+                        <h3>Additional images</h3>
+                    </div>
+                    <button type="button" class="btn btn-outline-dark" data-formset-add="image-formset">Add image</button>
+                </div>
+
+                <div class="spring-dashboard-formset" data-formset-rows>
+                    {{ image_formset.management_form }}
+                    {% for image_form in image_formset %}
+                    <div class="spring-dashboard-formset-row spring-dashboard-formset-row--image" data-formset-row>
+                        {% for hidden_field in image_form.hidden_fields %}{{ hidden_field }}{% endfor %}
+                        <div class="spring-dashboard-formset-row__grid">
+                            <label class="spring-dashboard-field spring-dashboard-field--wide">
+                                <span>Gallery image</span>
+                                {{ image_form.image }}
+                                {% for error in image_form.image.errors %}<small>{{ error }}</small>{% endfor %}
+                            </label>
+                            {% if image_form.instance.pk and image_form.instance.image %}
+                            <div class="spring-dashboard-gallery-thumb">
+                                <img src="{{ image_form.instance.image.url|cdn_optimize }}" alt="">
+                            </div>
+                            {% endif %}
+                        </div>
+                        {{ image_form.DELETE }}
+                        <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
+                    </div>
+                    {% endfor %}
+                    <template>
+                        <div class="spring-dashboard-formset-row spring-dashboard-formset-row--image" data-formset-row>
+                            {% for hidden_field in image_formset.empty_form.hidden_fields %}{{ hidden_field }}{% endfor %}
+                            <div class="spring-dashboard-formset-row__grid">
+                                <label class="spring-dashboard-field spring-dashboard-field--wide">
+                                    <span>Gallery image</span>
+                                    {{ image_formset.empty_form.image }}
+                                </label>
+                            </div>
+                            {{ image_formset.empty_form.DELETE }}
+                            <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
+                        </div>
+                    </template>
+                </div>
+            </article>
+        </div>
+
+        <aside class="spring-dashboard-editor__aside">
+            <article class="spring-dashboard-panel spring-dashboard-panel--sticky">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Launch controls</p>
+                        <h3>Status</h3>
+                    </div>
+                </div>
+
+                <div class="spring-dashboard-switches">
+                    <label>{{ form.is_active }} <span>Visible on storefront</span></label>
+                    <label>{{ form.is_featured }} <span>Featured merchandising slot</span></label>
+                    <label>{{ form.is_sold_out }} <span>Mark as sold out</span></label>
+                </div>
+            </article>
+
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Primary image</p>
+                        <h3>Cover media</h3>
+                    </div>
+                </div>
+                <label class="spring-dashboard-field spring-dashboard-field--wide">
+                    <span>Primary product image</span>
+                    {{ form.product_image }}
+                    {% for error in form.product_image.errors %}<small>{{ error }}</small>{% endfor %}
+                </label>
+
+                {% if product and product.product_image %}
+                <div class="spring-dashboard-cover-preview">
+                    <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                </div>
+                {% endif %}
+            </article>
+
+            {% if product and product_affiliate_pattern %}
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Affiliate link pattern</p>
+                        <h3>Shareable path</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-code">
+                    <strong>Relative</strong>
+                    <code>{{ product_affiliate_pattern.relative }}</code>
+                </div>
+                {% if product_affiliate_pattern.absolute %}
+                <div class="spring-dashboard-code">
+                    <strong>Absolute</strong>
+                    <code>{{ product_affiliate_pattern.absolute }}</code>
+                </div>
+                {% endif %}
+            </article>
+            {% endif %}
+
+            {% if gallery_images %}
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Gallery preview</p>
+                        <h3>Current assets</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-gallery-grid">
+                    {% for image in gallery_images %}
+                    <div class="spring-dashboard-gallery-thumb">
+                        <img src="{{ image.image.url|cdn_optimize }}" alt="">
+                    </div>
+                    {% endfor %}
+                </div>
+            </article>
+            {% endif %}
+        </aside>
+    </section>
+</form>
+{% endblock %}

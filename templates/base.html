@@ -55,6 +55,9 @@
                 <a href="{% url 'store:home' %}" class="spring-logo" aria-label="Zentanee home">Zentanee</a>
 
                 <div class="spring-header__utility-right">
+                    {% if request.user.is_staff %}
+                    <a href="{% url 'store:dashboard-home' %}" class="spring-link">Control Room</a>
+                    {% endif %}
                     {% if request.user.is_authenticated %}
                     <a href="{% url 'store:profile' %}" class="spring-link">Account</a>
                     {% else %}
@@ -165,6 +168,9 @@
                 <li><a href="{% url 'store:contact' %}">Contact</a></li>
                 {% if request.user.is_authenticated %}
                 <li><a href="{% url 'store:profile' %}">Account</a></li>
+                {% if request.user.is_staff %}
+                <li><a href="{% url 'store:dashboard-home' %}">Control Room</a></li>
+                {% endif %}
                 {% else %}
                 <li><a href="{% url 'store:login' %}">Log in</a></li>
                 <li><a href="{% url 'store:register' %}">Create account</a></li>
