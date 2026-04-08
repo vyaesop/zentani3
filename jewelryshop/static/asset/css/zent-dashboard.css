@@ -7,22 +7,24 @@
 }
 
 .spring-dashboard-shell {
-    display: grid;
-    grid-template-columns: 300px minmax(0, 1fr);
     min-height: 100vh;
 }
 
 .spring-dashboard-sidebar {
-    position: sticky;
-    top: 0;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
     display: flex;
     flex-direction: column;
-    gap: 26px;
+    gap: 22px;
+    width: min(320px, calc(100% - 28px));
     height: 100vh;
-    padding: 28px 24px;
+    padding: 22px 18px 24px;
     border-right: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(255, 252, 249, 0.92);
+    background: rgba(255, 252, 249, 0.96);
     backdrop-filter: blur(18px);
+    transform: translateX(-100%);
+    transition: transform 0.24s ease;
 }
 
 .spring-dashboard-sidebar__top {
@@ -30,16 +32,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-}
-
-.spring-dashboard-sidebar__close,
-.spring-dashboard-menu {
-    display: none;
-    border: 0;
-    background: transparent;
-    padding: 0;
-    color: #111;
-    font-size: 20px;
 }
 
 .spring-dashboard-brand {
@@ -54,8 +46,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
     border: 1px solid rgba(17, 17, 17, 0.12);
     border-radius: 14px;
     background: #111;
@@ -67,7 +59,7 @@
 
 .spring-dashboard-brand strong {
     display: block;
-    font-size: 15px;
+    font-size: 14px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
@@ -75,7 +67,7 @@
 .spring-dashboard-brand small {
     display: block;
     color: #6a6762;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
@@ -114,7 +106,7 @@
 
 .spring-dashboard-sidebar__panel {
     margin-top: auto;
-    padding: 18px;
+    padding: 16px;
     border: 1px solid rgba(17, 17, 17, 0.08);
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.74);
@@ -134,54 +126,120 @@
     border-radius: 0;
 }
 
+.spring-dashboard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(17, 17, 17, 0.36);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.spring-dashboard-sidebar__close,
+.spring-dashboard-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(17, 17, 17, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.78);
+    padding: 0;
+    color: #111;
+    font-size: 18px;
+}
+
+.spring-dashboard-sidebar-open .spring-dashboard-sidebar {
+    transform: translateX(0);
+}
+
+.spring-dashboard-sidebar-open .spring-dashboard-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .spring-dashboard-main {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: 24px 28px 40px;
+    padding: 16px 14px 32px;
+}
+
+.spring-dashboard-header,
+.spring-dashboard-header__meta,
+.spring-dashboard-header__actions,
+.spring-dashboard-grid,
+.spring-dashboard-grid--hero,
+.spring-dashboard-hero-actions,
+.spring-dashboard-filters__actions,
+.spring-dashboard-product-card__actions,
+.spring-dashboard-editor,
+.spring-dashboard-editor__header,
+.spring-dashboard-editor__header-actions,
+.spring-dashboard-editor__main,
+.spring-dashboard-editor__aside,
+.spring-dashboard-inline-form,
+.spring-dashboard-pagination,
+.spring-dashboard-list-row,
+.spring-dashboard-order-card__top,
+.spring-dashboard-product-card__top {
+    display: flex;
+    flex-direction: column;
+}
+
+.spring-dashboard-header,
+.spring-dashboard-editor,
+.spring-dashboard-editor__main,
+.spring-dashboard-editor__aside {
+    gap: 18px;
 }
 
 .spring-dashboard-header {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 10px 0 22px;
+    padding: 6px 0 18px;
 }
 
-.spring-dashboard-header__meta {
-    display: flex;
-    gap: 18px;
-    align-items: start;
+.spring-dashboard-header__meta,
+.spring-dashboard-header__actions,
+.spring-dashboard-editor__header,
+.spring-dashboard-editor__header-actions,
+.spring-dashboard-hero-actions,
+.spring-dashboard-filters__actions,
+.spring-dashboard-product-card__actions,
+.spring-dashboard-inline-form,
+.spring-dashboard-pagination,
+.spring-dashboard-list-row,
+.spring-dashboard-order-card__top,
+.spring-dashboard-product-card__top {
+    gap: 12px;
 }
 
 .spring-dashboard-header h1 {
     margin: 0 0 8px;
-    font-size: clamp(34px, 4vw, 56px);
+    font-size: clamp(30px, 9vw, 44px);
     font-weight: 500;
-    letter-spacing: -0.04em;
-    line-height: 0.95;
+    letter-spacing: -0.05em;
+    line-height: 0.94;
 }
 
-.spring-dashboard-header p {
-    max-width: 760px;
+.spring-dashboard-header p,
+.spring-dashboard-panel--hero p,
+.spring-dashboard-editor__header p {
     margin: 0;
     color: #5e5a56;
     line-height: 1.7;
 }
 
-.spring-dashboard-header__actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: end;
+.spring-dashboard-header__actions,
+.spring-dashboard-editor__header-actions {
+    width: 100%;
 }
 
 .spring-dashboard-user {
     display: grid;
     gap: 4px;
-    min-width: 170px;
+    width: 100%;
     padding: 13px 14px;
     border: 1px solid rgba(17, 17, 17, 0.08);
     background: rgba(255, 255, 255, 0.68);
@@ -202,10 +260,14 @@
     text-transform: uppercase;
 }
 
-.spring-dashboard-flash-stack {
+.spring-dashboard-flash-stack,
+.spring-dashboard-content,
+.spring-dashboard-list,
+.spring-dashboard-kpi-list,
+.spring-dashboard-formset,
+.spring-dashboard-switches {
     display: grid;
-    gap: 10px;
-    margin-bottom: 18px;
+    gap: 12px;
 }
 
 .spring-dashboard-flash {
@@ -230,20 +292,22 @@
     background: rgba(255, 243, 243, 0.96);
 }
 
-.spring-dashboard-content {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.spring-dashboard-grid {
+.spring-dashboard-grid,
+.spring-dashboard-grid--hero,
+.spring-dashboard-stats,
+.spring-dashboard-table-cards,
+.spring-dashboard-product-grid,
+.spring-dashboard-order-card__grid,
+.spring-dashboard-product-card__meta,
+.spring-dashboard-editor__grid,
+.spring-dashboard-form-grid,
+.spring-dashboard-formset-row__grid,
+.spring-dashboard-gallery-grid,
+.spring-dashboard-filters,
+.spring-dashboard-filters--wide {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
-}
-
-.spring-dashboard-grid--hero {
-    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+    grid-template-columns: 1fr;
+    gap: 16px;
 }
 
 .spring-dashboard-panel,
@@ -257,12 +321,13 @@
 
 .spring-dashboard-panel,
 .spring-dashboard-order-card,
-.spring-dashboard-product-card {
-    padding: 22px;
+.spring-dashboard-product-card,
+.spring-dashboard-stat {
+    padding: 18px;
 }
 
 .spring-dashboard-panel--hero {
-    padding: 32px;
+    padding: 24px 20px;
     background:
         radial-gradient(circle at top right, rgba(17, 17, 17, 0.08), transparent 22%),
         linear-gradient(135deg, rgba(247, 240, 232, 0.96) 0%, rgba(255, 253, 250, 0.98) 100%);
@@ -271,42 +336,35 @@
 .spring-dashboard-panel--hero h2 {
     max-width: 700px;
     margin: 8px 0 12px;
-    font-size: clamp(28px, 4vw, 48px);
+    font-size: clamp(28px, 8vw, 40px);
     font-weight: 500;
     letter-spacing: -0.04em;
     line-height: 0.98;
 }
 
-.spring-dashboard-panel--hero p {
-    max-width: 620px;
-    color: #5e5a56;
-    line-height: 1.75;
-}
-
-.spring-dashboard-hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 24px;
-}
-
-.spring-dashboard-kpi-list {
-    display: grid;
-    gap: 14px;
-    margin-top: 16px;
-}
-
-.spring-dashboard-kpi-list div {
-    padding: 16px;
+.spring-dashboard-kpi-list div,
+.spring-dashboard-order-card__grid div,
+.spring-dashboard-product-card__meta div,
+.spring-dashboard-switches label,
+.spring-dashboard-code code,
+.spring-dashboard-formset-row,
+.spring-dashboard-cover-preview,
+.spring-dashboard-gallery-thumb {
     border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(255, 255, 255, 0.84);
+    background: rgba(247, 244, 240, 0.8);
+}
+
+.spring-dashboard-kpi-list div,
+.spring-dashboard-order-card__grid div,
+.spring-dashboard-product-card__meta div {
+    padding: 14px;
 }
 
 .spring-dashboard-kpi-list strong,
 .spring-dashboard-stat strong {
     display: block;
     margin-bottom: 6px;
-    font-size: clamp(28px, 4vw, 40px);
+    font-size: clamp(26px, 8vw, 36px);
     font-weight: 500;
     line-height: 1;
 }
@@ -317,19 +375,10 @@
     line-height: 1.6;
 }
 
-.spring-dashboard-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.spring-dashboard-stat {
-    padding: 22px;
-}
-
-.spring-dashboard-stat span {
+.spring-dashboard-stat span,
+.spring-dashboard-product-card__meta span {
     display: inline-block;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: #6a6762;
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -338,15 +387,15 @@
 
 .spring-dashboard-section-head {
     display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 16px;
+    flex-direction: column;
+    align-items: start;
+    gap: 12px;
     margin-bottom: 16px;
 }
 
 .spring-dashboard-section-head h3 {
     margin: 6px 0 0;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 500;
     letter-spacing: -0.03em;
 }
@@ -359,16 +408,8 @@
     text-transform: uppercase;
 }
 
-.spring-dashboard-list {
-    display: grid;
-    gap: 12px;
-}
-
 .spring-dashboard-list-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    align-items: start;
     padding: 16px 0;
     border-top: 1px solid rgba(17, 17, 17, 0.08);
 }
@@ -396,13 +437,14 @@
     line-height: 1.65;
 }
 
-.spring-dashboard-list-row__meta {
+.spring-dashboard-list-row__meta,
+.spring-dashboard-product-card__badges {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
-    align-items: end;
-    text-align: right;
-    flex-shrink: 0;
+    align-items: start;
+    justify-content: start;
+    text-align: left;
 }
 
 .spring-dashboard-list-row__meta a {
@@ -451,16 +493,6 @@
     color: #992f2f;
 }
 
-.spring-dashboard-filters {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(180px, 0.8fr) auto;
-    gap: 14px;
-}
-
-.spring-dashboard-filters--wide {
-    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(180px, 1fr)) auto;
-}
-
 .spring-dashboard-filters label,
 .spring-dashboard-field {
     display: grid;
@@ -474,12 +506,6 @@
     font-size: 11px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-}
-
-.spring-dashboard-filters__actions {
-    display: flex;
-    gap: 10px;
-    align-items: end;
 }
 
 .spring-dashboard-control,
@@ -520,38 +546,69 @@
     border-radius: 12px;
 }
 
-.spring-dashboard-inline-form {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .spring-dashboard-inline-form--card {
     margin-top: 18px;
 }
 
-.spring-dashboard-table-wrap {
-    overflow-x: auto;
+.spring-dashboard-inline-form,
+.spring-dashboard-product-card__actions {
+    width: 100%;
 }
 
-.spring-dashboard-table {
+.spring-dashboard-product-card__actions .btn,
+.spring-dashboard-product-card__actions form,
+.spring-dashboard-product-card__actions form .btn,
+.spring-dashboard-editor__header-actions .btn,
+.spring-dashboard-filters__actions .btn,
+.spring-dashboard-header__actions .btn {
     width: 100%;
-    border-collapse: collapse;
+}
+
+.spring-dashboard-table-wrap {
+    overflow: hidden;
+}
+
+.spring-dashboard-table,
+.spring-dashboard-table thead,
+.spring-dashboard-table tbody,
+.spring-dashboard-table tr,
+.spring-dashboard-table th,
+.spring-dashboard-table td {
+    display: block;
+    width: 100%;
+}
+
+.spring-dashboard-table thead {
+    display: none;
+}
+
+.spring-dashboard-table tr {
+    padding: 16px 0;
+    border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.spring-dashboard-table tbody tr:first-child {
+    border-top: 0;
 }
 
 .spring-dashboard-table th,
 .spring-dashboard-table td {
-    padding: 16px 12px;
-    border-top: 1px solid rgba(17, 17, 17, 0.08);
-    vertical-align: top;
+    padding: 0;
+    border-top: 0;
     text-align: left;
 }
 
-.spring-dashboard-table thead th {
-    border-top: 0;
+.spring-dashboard-table td + td {
+    margin-top: 12px;
+}
+
+.spring-dashboard-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
     color: #6a6762;
     font-size: 11px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
@@ -565,83 +622,18 @@
     line-height: 1.6;
 }
 
-.spring-dashboard-table-cards,
-.spring-dashboard-product-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-}
-
-.spring-dashboard-order-card__top,
-.spring-dashboard-product-card__top {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.spring-dashboard-order-card__grid,
-.spring-dashboard-product-card__meta {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 18px;
-}
-
-.spring-dashboard-order-card__grid div,
-.spring-dashboard-product-card__meta div {
-    padding: 14px;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(247, 244, 240, 0.8);
-}
-
 .spring-dashboard-order-card__grid strong,
-.spring-dashboard-product-card__meta strong {
+.spring-dashboard-product-card__meta strong,
+.spring-dashboard-code strong {
     display: block;
     margin-bottom: 6px;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
 }
 
-.spring-dashboard-product-card__badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: end;
-}
-
-.spring-dashboard-product-card__meta span {
-    display: inline-block;
-    margin-bottom: 8px;
-    color: #6a6762;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
-.spring-dashboard-product-card__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 18px;
-}
-
-.spring-dashboard-product-card__actions .btn,
-.spring-dashboard-product-card__actions form,
-.spring-dashboard-editor__header-actions .btn {
-    flex: 1 1 0;
-}
-
-.spring-dashboard-product-card__actions form .btn {
-    width: 100%;
-}
-
 .spring-dashboard-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 4px 4px 0;
+    align-items: start;
+    padding-top: 4px;
 }
 
 .spring-dashboard-pagination a {
@@ -652,67 +644,19 @@
     text-transform: uppercase;
 }
 
-.spring-dashboard-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.spring-dashboard-editor__header {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: 18px;
-}
-
 .spring-dashboard-editor__header h2 {
     margin: 6px 0 10px;
-    font-size: clamp(28px, 4vw, 44px);
+    font-size: clamp(28px, 8vw, 38px);
     font-weight: 500;
     letter-spacing: -0.04em;
 }
 
-.spring-dashboard-editor__header p {
-    max-width: 720px;
-    margin: 0;
-    color: #5e5a56;
-    line-height: 1.7;
-}
-
-.spring-dashboard-editor__header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    width: min(420px, 100%);
-}
-
-.spring-dashboard-editor__grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
-    gap: 18px;
-    align-items: start;
-}
-
-.spring-dashboard-editor__main,
-.spring-dashboard-editor__aside {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
 .spring-dashboard-panel--sticky {
-    position: sticky;
-    top: 24px;
-}
-
-.spring-dashboard-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    position: static;
 }
 
 .spring-dashboard-field--wide {
-    grid-column: 1 / -1;
+    grid-column: auto;
 }
 
 .spring-dashboard-field small,
@@ -721,18 +665,11 @@
     line-height: 1.6;
 }
 
-.spring-dashboard-switches {
-    display: grid;
-    gap: 12px;
-}
-
 .spring-dashboard-switches label {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 14px;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(247, 244, 240, 0.8);
 }
 
 .spring-dashboard-check {
@@ -740,15 +677,13 @@
     height: 18px;
 }
 
+.spring-dashboard-cover-preview {
+    margin-top: 16px;
+}
+
 .spring-dashboard-cover-preview,
 .spring-dashboard-gallery-thumb {
     overflow: hidden;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(247, 244, 240, 0.8);
-}
-
-.spring-dashboard-cover-preview {
-    margin-top: 16px;
 }
 
 .spring-dashboard-cover-preview img,
@@ -763,12 +698,6 @@
     aspect-ratio: 4 / 4.7;
 }
 
-.spring-dashboard-gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
 .spring-dashboard-gallery-thumb {
     min-height: 120px;
 }
@@ -779,50 +708,29 @@
     margin-top: 14px;
 }
 
-.spring-dashboard-code strong {
-    font-size: 12px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
 .spring-dashboard-code code {
     display: block;
     overflow-wrap: anywhere;
     padding: 14px;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(247, 244, 240, 0.8);
     color: #111;
-}
-
-.spring-dashboard-formset {
-    display: grid;
-    gap: 14px;
 }
 
 .spring-dashboard-formset-row {
     position: relative;
     padding: 18px;
-    border: 1px solid rgba(17, 17, 17, 0.08);
-    background: rgba(247, 244, 240, 0.8);
 }
 
 .spring-dashboard-formset-row.is-hidden {
     display: none;
 }
 
-.spring-dashboard-formset-row__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    align-items: start;
-}
-
 .spring-dashboard-formset-row--image .spring-dashboard-formset-row__grid {
-    grid-template-columns: minmax(0, 1fr) 110px;
+    grid-template-columns: 1fr;
 }
 
 .spring-dashboard-remove {
     margin-top: 12px;
+    align-self: start;
     border: 0;
     background: transparent;
     padding: 0;
@@ -832,174 +740,225 @@
     text-transform: uppercase;
 }
 
-.spring-dashboard-overlay {
-    display: none;
-}
+@media (min-width: 768px) {
+    .spring-dashboard-main {
+        padding: 22px 20px 36px;
+    }
 
-@media (max-width: 1399.98px) {
     .spring-dashboard-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .spring-dashboard-order-card__grid,
-    .spring-dashboard-product-card__meta,
-    .spring-dashboard-table-cards,
-    .spring-dashboard-product-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 1199.98px) {
-    .spring-dashboard-shell {
-        grid-template-columns: 1fr;
-    }
-
-    .spring-dashboard-sidebar {
-        position: fixed;
-        inset: 0 auto 0 0;
-        z-index: 30;
-        width: min(320px, calc(100% - 28px));
-        transform: translateX(-100%);
-        transition: transform 0.24s ease;
-    }
-
-    .spring-dashboard-sidebar__close,
-    .spring-dashboard-menu,
-    .spring-dashboard-overlay {
-        display: inline-flex;
-    }
-
-    .spring-dashboard-sidebar-open .spring-dashboard-sidebar {
-        transform: translateX(0);
-    }
-
-    .spring-dashboard-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 20;
-        background: rgba(17, 17, 17, 0.36);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-    }
-
-    .spring-dashboard-sidebar-open .spring-dashboard-overlay {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    .spring-dashboard-main {
-        padding-inline: 20px;
-    }
-
-    .spring-dashboard-header,
-    .spring-dashboard-editor__header,
-    .spring-dashboard-editor__grid,
     .spring-dashboard-grid,
-    .spring-dashboard-grid--hero {
-        grid-template-columns: 1fr;
-        flex-direction: column;
+    .spring-dashboard-table-cards,
+    .spring-dashboard-product-grid,
+    .spring-dashboard-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .spring-dashboard-filters,
+    .spring-dashboard-filters--wide,
+    .spring-dashboard-form-grid,
+    .spring-dashboard-formset-row__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .spring-dashboard-field--wide {
+        grid-column: 1 / -1;
+    }
+
+    .spring-dashboard-header__actions,
     .spring-dashboard-editor__header-actions,
-    .spring-dashboard-header__actions {
+    .spring-dashboard-filters__actions,
+    .spring-dashboard-product-card__actions,
+    .spring-dashboard-inline-form,
+    .spring-dashboard-pagination {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .spring-dashboard-header__actions,
+    .spring-dashboard-editor__header-actions {
+        justify-content: flex-start;
+    }
+
+    .spring-dashboard-user {
+        width: auto;
+        min-width: 170px;
+    }
+
+    .spring-dashboard-product-card__actions .btn,
+    .spring-dashboard-product-card__actions form,
+    .spring-dashboard-editor__header-actions .btn {
+        flex: 1 1 0;
+    }
+
+    .spring-dashboard-product-card__actions form .btn {
         width: 100%;
-        justify-content: start;
+    }
+
+    .spring-dashboard-table-wrap {
+        overflow-x: auto;
+    }
+
+    .spring-dashboard-table {
+        display: table;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .spring-dashboard-table thead {
+        display: table-header-group;
+    }
+
+    .spring-dashboard-table tbody {
+        display: table-row-group;
+    }
+
+    .spring-dashboard-table tr {
+        display: table-row;
+        padding: 0;
+        border-top: 0;
+    }
+
+    .spring-dashboard-table th,
+    .spring-dashboard-table td {
+        display: table-cell;
+        width: auto;
+        padding: 16px 12px;
+        border-top: 1px solid rgba(17, 17, 17, 0.08);
+        vertical-align: top;
+    }
+
+    .spring-dashboard-table thead th {
+        border-top: 0;
+        color: #6a6762;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .spring-dashboard-table td + td {
+        margin-top: 0;
+    }
+
+    .spring-dashboard-table td::before {
+        display: none;
+    }
+
+    .spring-dashboard-product-card__meta {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 767.98px) {
+@media (min-width: 1024px) {
     .spring-dashboard-main {
-        padding: 16px 14px 32px;
+        padding: 24px 28px 40px;
     }
 
     .spring-dashboard-panel,
     .spring-dashboard-order-card,
     .spring-dashboard-product-card,
     .spring-dashboard-stat {
-        padding: 18px;
+        padding: 22px;
     }
 
-    .spring-dashboard-stats,
-    .spring-dashboard-form-grid,
-    .spring-dashboard-formset-row__grid,
-    .spring-dashboard-gallery-grid,
-    .spring-dashboard-filters,
-    .spring-dashboard-filters--wide {
-        grid-template-columns: 1fr;
+    .spring-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
     }
 
-    .spring-dashboard-product-card__actions,
-    .spring-dashboard-editor__header-actions,
-    .spring-dashboard-filters__actions,
-    .spring-dashboard-header__actions,
-    .spring-dashboard-hero-actions {
-        flex-direction: column;
+    .spring-dashboard-grid--hero {
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+        gap: 20px;
     }
 
-    .spring-dashboard-product-card__actions .btn,
-    .spring-dashboard-product-card__actions form,
-    .spring-dashboard-editor__header-actions .btn,
-    .spring-dashboard-filters__actions .btn,
-    .spring-dashboard-header__actions .btn {
-        width: 100%;
+    .spring-dashboard-table-cards,
+    .spring-dashboard-product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
     }
 
-    .spring-dashboard-table,
-    .spring-dashboard-table thead,
-    .spring-dashboard-table tbody,
-    .spring-dashboard-table tr,
-    .spring-dashboard-table th,
-    .spring-dashboard-table td {
-        display: block;
-        width: 100%;
+    .spring-dashboard-order-card__grid,
+    .spring-dashboard-product-card__meta {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
     }
 
-    .spring-dashboard-table thead {
+    .spring-dashboard-editor__grid {
+        grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+        gap: 18px;
+        align-items: start;
+    }
+
+    .spring-dashboard-editor__header {
+        flex-direction: row;
+        align-items: start;
+        justify-content: space-between;
+    }
+
+    .spring-dashboard-editor__header-actions {
+        width: min(420px, 100%);
+    }
+
+    .spring-dashboard-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .spring-dashboard-formset-row--image .spring-dashboard-formset-row__grid {
+        grid-template-columns: minmax(0, 1fr) 110px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .spring-dashboard-shell {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+    }
+
+    .spring-dashboard-sidebar {
+        position: sticky;
+        top: 0;
+        width: auto;
+        transform: none;
+        padding: 28px 24px;
+    }
+
+    .spring-dashboard-sidebar__close,
+    .spring-dashboard-menu,
+    .spring-dashboard-overlay {
         display: none;
     }
 
-    .spring-dashboard-table tr {
-        padding: 16px 0;
-        border-top: 1px solid rgba(17, 17, 17, 0.08);
+    .spring-dashboard-main {
+        padding-left: 28px;
     }
 
-    .spring-dashboard-table tbody tr:first-child {
-        border-top: 0;
+    .spring-dashboard-header,
+    .spring-dashboard-header__meta {
+        flex-direction: row;
     }
 
-    .spring-dashboard-table td {
-        padding: 0;
-        border-top: 0;
-    }
-
-    .spring-dashboard-table td + td {
-        margin-top: 12px;
-    }
-
-    .spring-dashboard-table td::before {
-        content: attr(data-label);
-        display: block;
-        margin-bottom: 4px;
-        color: #6a6762;
-        font-size: 11px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-    }
-
-    .spring-dashboard-inline-form,
-    .spring-dashboard-pagination,
-    .spring-dashboard-list-row,
-    .spring-dashboard-order-card__top,
-    .spring-dashboard-product-card__top {
-        flex-direction: column;
+    .spring-dashboard-header {
         align-items: start;
+        justify-content: space-between;
+        gap: 24px;
+        padding-top: 10px;
     }
 
-    .spring-dashboard-list-row__meta,
-    .spring-dashboard-product-card__badges {
-        align-items: start;
-        text-align: left;
-        justify-content: start;
+    .spring-dashboard-header__actions {
+        justify-content: end;
+    }
+
+    .spring-dashboard-panel--sticky {
+        position: sticky;
+        top: 24px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .spring-dashboard-stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
