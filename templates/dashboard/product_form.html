@@ -2,6 +2,213 @@
 {% load image_optim %}
 
 {% block dashboard_content %}
+<section class="spring-dashboard-panel spring-dashboard-panel--ai">
+    <div class="spring-dashboard-section-head">
+        <div>
+            <p class="spring-dashboard-panel__eyebrow">AI merchandising intake</p>
+            <h3>Identify from a private source image</h3>
+        </div>
+        <div class="spring-dashboard-ai-status">
+            {% if gemini_is_configured %}
+            <span class="spring-dashboard-badge spring-dashboard-badge--delivered">Gemini ready</span>
+            {% else %}
+            <span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Gemini key missing</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="spring-dashboard-ai-copy">
+        Upload an identifier image, your source SKU, your local vendor name, and the price. AI will draft the copy, collect source links when it can, and prepare shot briefs for a free reference-guided image generator. Sizes still stay fully manual below.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="spring-dashboard-ai-intake">
+        {% csrf_token %}
+        <div class="spring-dashboard-form-grid">
+            <label class="spring-dashboard-field">
+                <span>Source SKU</span>
+                {{ ai_draft_form.sku }}
+                {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field">
+                <span>Price</span>
+                {{ ai_draft_form.price }}
+                {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field">
+                <span>Local vendor</span>
+                {{ ai_draft_form.vendor_hint }}
+                {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field spring-dashboard-field--wide">
+                <span>Identifier image</span>
+                {{ ai_draft_form.reference_image }}
+                {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+        </div>
+        <div class="spring-dashboard-editor__header-actions">
+            <button type="submit" name="generate_ai_draft" value="1" class="btn btn-dark">Generate AI draft</button>
+            {% if not gemini_is_configured %}
+            <p class="spring-dashboard-ai-inline-note">Add `GEMINI_API_KEY` to your environment to enable this workflow.</p>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if ai_draft %}
+    <div class="spring-dashboard-ai-results">
+        <div class="spring-dashboard-ai-results__top">
+            <div>
+                <p class="spring-dashboard-panel__eyebrow">Latest draft</p>
+                <h4>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</h4>
+                <p class="spring-dashboard-ai-copy">
+                    {% if ai_draft.status == "succeeded" %}
+                    Review the draft below, then continue in the main product form. The main editor has been prefilled from this draft.
+                    {% elif ai_draft.status == "failed" %}
+                    {{ ai_draft.error_message|default:"AI draft generation did not complete." }}
+                    {% else %}
+                    Draft is still pending.
+                    {% endif %}
+                </p>
+            </div>
+            {% if ai_draft.reference_image %}
+            <div class="spring-dashboard-gallery-thumb">
+                <img src="{{ ai_draft.reference_image.url|cdn_optimize }}" alt="AI identifier reference">
+            </div>
+            {% endif %}
+        </div>
+
+        {% if ai_draft.status == "succeeded" %}
+        <div class="spring-dashboard-ai-grid">
+            <article class="spring-dashboard-ai-card">
+                <p class="spring-dashboard-panel__eyebrow">Draft copy</p>
+                <dl class="spring-dashboard-ai-list">
+                    <div>
+                        <dt>Title</dt>
+                        <dd>{{ ai_draft.response_payload.catalog_fields.title|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Local vendor</dt>
+                        <dd>{{ ai_draft.vendor_hint|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Category hint</dt>
+                        <dd>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Brand hint</dt>
+                        <dd>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Material</dt>
+                        <dd>{{ ai_draft.response_payload.catalog_fields.material|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Color</dt>
+                        <dd>{{ ai_draft.response_payload.catalog_fields.color|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Confidence</dt>
+                        <dd>{{ ai_draft.response_payload.confidence.overall|default:"-" }}</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="spring-dashboard-ai-card">
+                <p class="spring-dashboard-panel__eyebrow">Review flags</p>
+                <div class="spring-dashboard-ai-pill-list">
+                    {% for note in ai_draft.response_payload.confidence.needs_manual_review %}
+                    <span>{{ note }}</span>
+                    {% empty %}
+                    <span>No manual review flags returned.</span>
+                    {% endfor %}
+                </div>
+                <p class="spring-dashboard-panel__eyebrow">Reasoning notes</p>
+                <div class="spring-dashboard-ai-pill-list">
+                    {% for note in ai_draft.response_payload.confidence.reasoning_notes %}
+                    <span>{{ note }}</span>
+                    {% empty %}
+                    <span>No extra notes returned.</span>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
+                <p class="spring-dashboard-panel__eyebrow">Source links</p>
+                <div class="spring-dashboard-ai-links">
+                    {% for source in ai_draft.source_links %}
+                    <a href="{{ source.url }}" target="_blank" rel="noreferrer">
+                        <strong>{{ source.title|default:source.url }}</strong>
+                        <span>{{ source.match_type|default:"source" }}</span>
+                    </a>
+                    {% empty %}
+                    <p class="spring-dashboard-empty">No sources were returned by Gemini.</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
+                <p class="spring-dashboard-panel__eyebrow">Image generation brief</p>
+                <p class="spring-dashboard-ai-copy">{{ ai_draft.image_plan.reference_preservation_notes|default:"Preserve the exact product while improving staging, background, and lighting." }}</p>
+                <div class="spring-dashboard-ai-pill-list">
+                    <span><strong>Negative prompt:</strong> {{ ai_draft.image_plan.negative_prompt|default:"No hallucinated logos, no extra garments, no altered product proportions." }}</span>
+                </div>
+                <div class="spring-dashboard-ai-shot-list">
+                    {% for shot in ai_draft.image_plan.shots %}
+                    <article>
+                        <div class="spring-dashboard-section-head">
+                            <div>
+                                <p class="spring-dashboard-panel__eyebrow">Priority {{ shot.priority|default:forloop.counter }}</p>
+                                <h4>{{ shot.name|default:"Shot brief" }}</h4>
+                            </div>
+                            <span>{{ shot.aspect_ratio|default:"1:1" }}</span>
+                        </div>
+                        <p>{{ shot.prompt }}</p>
+                    </article>
+                    {% empty %}
+                    <div class="spring-dashboard-empty">No image briefs returned yet.</div>
+                        {% endfor %}
+                </div>
+            </article>
+
+            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-panel__eyebrow">Free image candidates</p>
+                        <h4>Rendered from the reference image</h4>
+                    </div>
+                </div>
+                <p class="spring-dashboard-ai-copy">
+                    This free local stage creates polished candidate assets from the reference image using the AI shot plan. It preserves the product and changes presentation only.
+                </p>
+                <form method="post" class="spring-dashboard-ai-inline-form">
+                    {% csrf_token %}
+                    <button type="submit" name="generate_ai_images" value="1" class="btn btn-outline-dark">Generate free image candidates</button>
+                </form>
+
+                {% if generated_ai_images %}
+                <div class="spring-dashboard-ai-candidate-grid">
+                    {% for generated_image in generated_ai_images %}
+                    <article class="spring-dashboard-ai-candidate-card">
+                        <div class="spring-dashboard-gallery-thumb spring-dashboard-gallery-thumb--large">
+                            <img src="{{ generated_image.image.url|cdn_optimize }}" alt="{{ generated_image.shot_name }}">
+                        </div>
+                        <div class="spring-dashboard-ai-candidate-card__body">
+                            <strong>{{ generated_image.shot_name }}</strong>
+                            <span>{{ generated_image.aspect_ratio|default:"1:1" }}</span>
+                            <p>{{ generated_image.prompt }}</p>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="spring-dashboard-empty">No free candidate images have been generated yet.</div>
+                {% endif %}
+            </article>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
 <form method="post" enctype="multipart/form-data" class="spring-dashboard-editor">
     {% csrf_token %}
 
@@ -155,6 +362,7 @@
                     </div>
                     <button type="button" class="btn btn-outline-dark" data-formset-add="size-formset">Add size row</button>
                 </div>
+                <p class="spring-dashboard-ai-copy">Keep sizes and stock manual here so the catalog always matches your real inventory.</p>
 
                 <div class="spring-dashboard-formset" data-formset-rows>
                     {{ size_formset.management_form }}
@@ -278,6 +486,16 @@
                 <div class="spring-dashboard-cover-preview">
                     <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
                 </div>
+                {% endif %}
+
+                {% if generated_ai_images %}
+                <label class="spring-dashboard-ai-toggle">
+                    <input type="checkbox" name="attach_ai_images" value="1">
+                    <span>Attach AI candidate images when saving</span>
+                </label>
+                <p class="spring-dashboard-ai-inline-note">
+                    If no primary image is uploaded, the first candidate becomes the cover image and the rest go to the gallery.
+                </p>
                 {% endif %}
             </article>
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
 from io import BytesIO
 import tempfile
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -9,7 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
 
-from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product
+from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product, ProductAIDraft, ProductAIDraftImage
 
 
 class StoreFlowTests(TestCase):
@@ -50,6 +51,89 @@ class StoreFlowTests(TestCase):
             is_featured=True,
             is_sold_out=False,
         )
+
+    def _make_uploaded_image(self, *, name="identifier.jpg", color="navy"):
+        image_bytes = BytesIO()
+        Image.new("RGB", (40, 40), color=color).save(image_bytes, format="JPEG")
+        image_bytes.seek(0)
+        return SimpleUploadedFile(
+            name,
+            image_bytes.read(),
+            content_type="image/jpeg",
+        )
+
+    def _create_ai_draft(self):
+        draft = ProductAIDraft.objects.create(
+            created_by=self.staff_user,
+            sku="AI-SKU-1",
+            vendor_hint="Mercato Studio",
+            price=Decimal("349.00"),
+            reference_image=self._make_uploaded_image(name="ai-ref.jpg", color="purple"),
+            status=ProductAIDraft.STATUS_SUCCEEDED,
+            response_payload={
+                "catalog_fields": {
+                    "title": "Purple Abaya",
+                    "slug_hint": "purple-abaya",
+                    "short_description": "Elegant modest abaya.",
+                    "detail_description": "A flowing modest abaya with soft drape.",
+                    "material": "Cotton blend",
+                    "color": "Purple",
+                    "fit_notes": "Relaxed fit.",
+                    "care_notes": "Hand wash cold.",
+                    "delivery_note": "Fast delivery.",
+                    "return_note": "Return within 3 days.",
+                    "suggested_category": "Rings",
+                    "suggested_brand": "Zent",
+                    "product_type": "Abaya",
+                },
+                "confidence": {
+                    "overall": "medium",
+                    "reasoning_notes": ["Good color match."],
+                    "needs_manual_review": ["Confirm fabric blend."],
+                },
+                "sources": [],
+                "search_strategy": {
+                    "vendor_hint": "Mercato Studio",
+                    "exact_queries": ["AI-SKU-1"],
+                    "fallback_queries": ["purple abaya"],
+                },
+                "image_plan": {
+                    "reference_preservation_notes": "Keep the product unchanged.",
+                    "negative_prompt": "No extra garments.",
+                    "shots": [
+                        {
+                            "name": "Studio White Hero",
+                            "prompt": "Clean white hero with true color fidelity.",
+                            "aspect_ratio": "4:5",
+                            "priority": 1,
+                        },
+                        {
+                            "name": "Soft Editorial Portrait",
+                            "prompt": "Premium neutral backdrop with fabric drape.",
+                            "aspect_ratio": "4:5",
+                            "priority": 2,
+                        },
+                    ],
+                },
+            },
+            image_plan={
+                "shots": [
+                    {
+                        "name": "Studio White Hero",
+                        "prompt": "Clean white hero with true color fidelity.",
+                        "aspect_ratio": "4:5",
+                        "priority": 1,
+                    },
+                    {
+                        "name": "Soft Editorial Portrait",
+                        "prompt": "Premium neutral backdrop with fabric drape.",
+                        "aspect_ratio": "4:5",
+                        "priority": 2,
+                    },
+                ]
+            },
+        )
+        return draft
 
     def test_add_to_cart_requires_post(self):
         self.client.login(username="0911000000", password="test-pass-123")
@@ -255,3 +339,185 @@ class StoreFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         order.refresh_from_db()
         self.assertEqual(order.status, "Delivered")
+
+    @override_settings(DEBUG=True, GEMINI_API_KEY="test-gemini-key")
+    @patch("store.dashboard_views.generate_product_ai_draft")
+    def test_staff_user_can_generate_ai_product_draft(self, generate_product_ai_draft_mock):
+        generate_product_ai_draft_mock.return_value = {
+            "catalog_fields": {
+                "title": "Midnight Linen Shirt",
+                "slug_hint": "midnight-linen-shirt",
+                "short_description": "A crisp shirt drafted from the AI intake flow.",
+                "detail_description": "Relaxed linen shirt with a clean front and an elevated finish.",
+                "material": "Linen blend",
+                "color": "Midnight navy",
+                "fit_notes": "Relaxed through the body.",
+                "care_notes": "Cold wash and line dry.",
+                "delivery_note": "Ships in 2-4 business days.",
+                "return_note": "Easy return within 7 days.",
+                "suggested_category": "Rings",
+                "suggested_brand": "Zent",
+                "product_type": "Shirt",
+            },
+            "confidence": {
+                "overall": "medium",
+                "reasoning_notes": ["Strong silhouette match from the reference image."],
+                "needs_manual_review": ["Confirm fabric composition with the vendor."],
+            },
+            "sources": [
+                {
+                    "title": "Vendor match",
+                    "url": "https://example.com/vendor-item",
+                    "match_type": "exact",
+                    "notes": "Matched by SKU.",
+                }
+            ],
+            "search_strategy": {
+                "vendor_hint": "Mercato Studio",
+                "exact_queries": ["SKU-100"],
+                "fallback_queries": ["SKU shirt navy"],
+            },
+            "image_plan": {
+                "reference_preservation_notes": "Keep the garment silhouette unchanged.",
+                "negative_prompt": "No extra garments or altered details.",
+                "shots": [
+                    {
+                        "name": "Studio White Hero",
+                        "prompt": "Reference-guided studio hero on a clean white background.",
+                        "aspect_ratio": "4:5",
+                        "priority": 1,
+                    }
+                ],
+            },
+        }
+
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-product-create"),
+            {
+                "sku": "SKU-100",
+                "vendor_hint": "Mercato Studio",
+                "price": "249.99",
+                "generate_ai_draft": "1",
+                "reference_image": self._make_uploaded_image(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("ai_draft=", response.url)
+        self.assertEqual(ProductAIDraft.objects.count(), 1)
+
+        draft = ProductAIDraft.objects.get()
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_SUCCEEDED)
+        self.assertEqual(draft.vendor_hint, "Mercato Studio")
+        self.assertEqual(draft.response_payload["catalog_fields"]["title"], "Midnight Linen Shirt")
+        self.assertEqual(self.client.session.get("dashboard_product_ai_draft_id"), draft.id)
+
+        follow_up = self.client.get(response.url)
+        self.assertEqual(follow_up.status_code, 200)
+        self.assertContains(follow_up, "Midnight Linen Shirt")
+        self.assertContains(follow_up, "Studio White Hero")
+        self.assertContains(follow_up, "Mercato Studio")
+        self.assertContains(follow_up, "value=\"SKU-100\"", html=False)
+
+    @override_settings(DEBUG=True, GEMINI_API_KEY="")
+    def test_ai_draft_generation_requires_configured_key(self):
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-product-create"),
+            {
+                "sku": "SKU-200",
+                "vendor_hint": "Bole Vendor",
+                "price": "199.00",
+                "generate_ai_draft": "1",
+                "reference_image": self._make_uploaded_image(name="missing-key.jpg", color="green"),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Set GEMINI_API_KEY in your environment before generating AI product drafts.")
+        self.assertEqual(ProductAIDraft.objects.count(), 0)
+
+    @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
+    def test_staff_user_can_generate_free_ai_image_candidates(self):
+        draft = self._create_ai_draft()
+        session = self.client.session
+        session["dashboard_product_ai_draft_id"] = draft.id
+        session.save()
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-product-create"),
+            {"generate_ai_images": "1"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 2)
+        self.assertContains(response, "Free image candidates generated")
+        self.assertContains(response, "Studio White Hero")
+
+    @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
+    def test_staff_user_can_save_product_with_attached_ai_images(self):
+        draft = self._create_ai_draft()
+        draft.generated_images.create(
+            image=self._make_uploaded_image(name="candidate-1.jpg", color="white"),
+            shot_name="Studio White Hero",
+            prompt="Primary candidate",
+            aspect_ratio="4:5",
+            sort_order=1,
+        )
+        draft.generated_images.create(
+            image=self._make_uploaded_image(name="candidate-2.jpg", color="gray"),
+            shot_name="Soft Editorial Portrait",
+            prompt="Gallery candidate",
+            aspect_ratio="4:5",
+            sort_order=2,
+        )
+
+        session = self.client.session
+        session["dashboard_product_ai_draft_id"] = draft.id
+        session.save()
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-product-create"),
+            {
+                "title": "Purple Abaya",
+                "slug": "purple-abaya-ai",
+                "sku": "AI-SKU-1",
+                "short_description": "Elegant modest abaya.",
+                "detail_description": "A flowing modest abaya with soft drape.",
+                "material": "Cotton blend",
+                "color": "Purple",
+                "fit_notes": "Relaxed fit.",
+                "care_notes": "Hand wash cold.",
+                "delivery_note": "Fast delivery.",
+                "return_note": "Return within 3 days.",
+                "available_sizes": "",
+                "stock_quantity": "4",
+                "price": "349.00",
+                "category": str(self.category.id),
+                "brand": str(self.brand.id),
+                "is_active": "on",
+                "images-TOTAL_FORMS": "0",
+                "images-INITIAL_FORMS": "0",
+                "images-MIN_NUM_FORMS": "0",
+                "images-MAX_NUM_FORMS": "1000",
+                "sizes-TOTAL_FORMS": "0",
+                "sizes-INITIAL_FORMS": "0",
+                "sizes-MIN_NUM_FORMS": "0",
+                "sizes-MAX_NUM_FORMS": "1000",
+                "attach_ai_images": "1",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        product = Product.objects.get(sku="AI-SKU-1")
+        self.assertTrue(product.product_image.name)
+        self.assertEqual(product.p_images.count(), 1)
+        self.assertEqual(product.ai_drafts.count(), 1)

@@ -13,8 +13,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from .ai_enrichment import (
+    ProductAIError,
+    draft_to_product_initial,
+    format_price_for_prompt,
+    generate_free_image_candidates,
+    gemini_is_configured,
+    generate_product_ai_draft,
+)
 from .dashboard_forms import (
     DashboardProductForm,
+    ProductAIDraftForm,
     ProductImageFormSet,
     ProductSizeStockFormSet,
     decorate_dashboard_formset,
@@ -22,9 +31,12 @@ from .dashboard_forms import (
 from .models import (
     STATUS_CHOICES,
     AffiliateCommission,
+    Brand,
     Category,
     Order,
     Product,
+    ProductAIDraft,
+    ProductImages,
     ProductReview,
     RestockRequest,
     TelegramBotOrder,
@@ -37,6 +49,7 @@ from .telegram_notify import (
 
 
 STATUS_VALUES = {value for value, _ in STATUS_CHOICES}
+AI_DRAFT_SESSION_KEY = "dashboard_product_ai_draft_id"
 
 
 def staff_required(view_func):
@@ -83,6 +96,96 @@ def _absolute_affiliate_pattern(product):
             "absolute": f"{site_url}{relative}",
         }
     return {"relative": relative, "absolute": ""}
+
+
+def _ai_draft_redirect_url(product, draft):
+    if product:
+        base_url = reverse("store:dashboard-product-edit", args=[product.id])
+    else:
+        base_url = reverse("store:dashboard-product-create")
+    return f"{base_url}?ai_draft={draft.id}"
+
+
+def _get_ai_draft_for_request(request, product=None):
+    draft_id = request.GET.get("ai_draft")
+    queryset = ProductAIDraft.objects.filter(created_by=request.user)
+
+    if draft_id:
+        return queryset.filter(pk=draft_id).first()
+
+    if product is not None:
+        return queryset.filter(product=product).first()
+
+    session_draft_id = request.session.get(AI_DRAFT_SESSION_KEY)
+    if session_draft_id:
+        return queryset.filter(pk=session_draft_id).first()
+
+    return None
+
+
+def _build_dashboard_product_form(product, ai_draft):
+    initial = {}
+    if ai_draft:
+        categories = list(Category.objects.filter(is_active=True).order_by("title"))
+        brands = list(Brand.objects.filter(is_active=True).order_by("title"))
+        initial = draft_to_product_initial(ai_draft, categories=categories, brands=brands)
+    form = DashboardProductForm(instance=product, initial=initial)
+    if ai_draft and ai_draft.generated_images.exists() and not product:
+        form.fields["product_image"].required = False
+    return form
+
+
+def _build_ai_draft_form(product=None, ai_draft=None):
+    initial = {}
+    if ai_draft:
+        initial = {
+            "sku": ai_draft.sku,
+            "vendor_hint": ai_draft.vendor_hint,
+            "price": ai_draft.price,
+        }
+    elif product:
+        initial = {
+            "sku": product.sku,
+            "price": product.price,
+        }
+    return ProductAIDraftForm(initial=initial)
+
+
+def _apply_generated_images_to_product(*, draft, product, uploaded_primary):
+    candidates = list(draft.generated_images.order_by("sort_order", "id"))
+    if not candidates:
+        return False
+
+    if not uploaded_primary and not product.product_image:
+        primary_candidate = candidates[0]
+        primary_candidate.image.open("rb")
+        try:
+            product.product_image.save(
+                primary_candidate.image.name.rsplit("/", 1)[-1],
+                primary_candidate.image.file,
+                save=True,
+            )
+        finally:
+            primary_candidate.image.close()
+        gallery_candidates = candidates[1:]
+    else:
+        gallery_candidates = candidates
+
+    existing_names = set(product.p_images.values_list("image", flat=True))
+    for candidate in gallery_candidates:
+        if candidate.image.name in existing_names:
+            continue
+        candidate.image.open("rb")
+        try:
+            gallery_image = ProductImages(product=product)
+            gallery_image.image.save(
+                candidate.image.name.rsplit("/", 1)[-1],
+                candidate.image.file,
+                save=True,
+            )
+        finally:
+            candidate.image.close()
+    return True
 
 
 @staff_required
@@ -379,47 +482,151 @@ def dashboard_product_edit(request, product_id=None):
             pk=product_id,
         )
 
+    ai_draft = _get_ai_draft_for_request(request, product=product)
+
     if request.method == "POST":
-        form = DashboardProductForm(request.POST, request.FILES, instance=product)
-        image_formset = decorate_dashboard_formset(
-            ProductImageFormSet(request.POST, request.FILES, instance=product, prefix="images")
-        )
-        size_formset = decorate_dashboard_formset(
-            ProductSizeStockFormSet(request.POST, instance=product, prefix="sizes")
-        )
+        if "generate_ai_draft" in request.POST:
+            ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
+            form = _build_dashboard_product_form(product, ai_draft)
+            image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
+            size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
 
-        if form.is_valid() and image_formset.is_valid() and size_formset.is_valid():
-            with transaction.atomic():
-                with suspend_telegram_autopublish():
-                    saved_product = form.save()
-                    image_formset.instance = saved_product
-                    image_formset.save()
-                    size_formset.instance = saved_product
-                    size_formset.save()
+            if not gemini_is_configured():
+                messages.error(
+                    request,
+                    "Set GEMINI_API_KEY in your environment before generating AI product drafts.",
+                )
+            elif ai_draft_form.is_valid():
+                draft = ai_draft_form.save(commit=False)
+                draft.created_by = request.user
+                draft.product = product
+                draft.status = ProductAIDraft.STATUS_PENDING
+                draft.error_message = ""
+                draft.save()
 
-            should_publish = "save_and_publish" in request.POST
-            if should_publish and saved_product.is_active and not saved_product.is_sold_out:
-                posted = post_product_to_channel(saved_product, force=True)
-                if posted:
-                    messages.success(request, f"{saved_product.title} was saved and posted to Telegram.")
+                uploaded = request.FILES["reference_image"]
+                uploaded.seek(0)
+                image_bytes = uploaded.read()
+                uploaded.seek(0)
+
+                try:
+                    result = generate_product_ai_draft(
+                        image_bytes=image_bytes,
+                        mime_type=uploaded.content_type or "image/jpeg",
+                        sku=draft.sku,
+                        price=format_price_for_prompt(draft.price),
+                        vendor_hint=draft.vendor_hint,
+                    )
+                except ProductAIError as exc:
+                    draft.status = ProductAIDraft.STATUS_FAILED
+                    draft.error_message = str(exc)
+                    draft.save(update_fields=["status", "error_message", "updated_at"])
+                    messages.error(request, str(exc))
+                    ai_draft = draft
                 else:
+                    draft.status = ProductAIDraft.STATUS_SUCCEEDED
+                    draft.vendor_hint = draft.vendor_hint or (result.get("search_strategy") or {}).get("vendor_hint", "")
+                    draft.response_payload = result
+                    draft.source_links = result.get("sources") or []
+                    draft.image_plan = result.get("image_plan") or {}
+                    draft.error_message = ""
+                    draft.save(
+                        update_fields=[
+                            "status",
+                            "vendor_hint",
+                            "response_payload",
+                            "source_links",
+                            "image_plan",
+                            "error_message",
+                            "updated_at",
+                        ]
+                    )
+                    if product is None:
+                        request.session[AI_DRAFT_SESSION_KEY] = draft.id
+                    messages.success(request, "AI draft generated. Review the copy and image brief below before saving.")
+                    return redirect(_ai_draft_redirect_url(product, draft))
+            else:
+                messages.error(request, "Add a reference image, SKU, and price to generate an AI draft.")
+        elif "generate_ai_images" in request.POST:
+            form = _build_dashboard_product_form(product, ai_draft)
+            image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
+            size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
+            ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
+
+            if ai_draft is None:
+                messages.error(request, "Generate an AI draft first so image candidates have the right shot plan.")
+            else:
+                try:
+                    generate_free_image_candidates(ai_draft)
+                except ProductAIError as exc:
+                    messages.error(request, str(exc))
+                else:
+                    messages.success(request, "Free image candidates generated. Review them below before saving.")
+                    return redirect(_ai_draft_redirect_url(product, ai_draft))
+        else:
+            ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
+
+            form = DashboardProductForm(request.POST, request.FILES, instance=product)
+            if ai_draft and ai_draft.generated_images.exists() and "attach_ai_images" in request.POST and not product:
+                form.fields["product_image"].required = False
+            image_formset = decorate_dashboard_formset(
+                ProductImageFormSet(request.POST, request.FILES, instance=product, prefix="images")
+            )
+            size_formset = decorate_dashboard_formset(
+                ProductSizeStockFormSet(request.POST, instance=product, prefix="sizes")
+            )
+
+            if form.is_valid() and image_formset.is_valid() and size_formset.is_valid():
+                with transaction.atomic():
+                    with suspend_telegram_autopublish():
+                        uploaded_primary = bool(request.FILES.get("product_image"))
+                        saved_product = form.save()
+                        image_formset.instance = saved_product
+                        image_formset.save()
+                        size_formset.instance = saved_product
+                        size_formset.save()
+
+                        if ai_draft and ai_draft.product_id != saved_product.id:
+                            ai_draft.product = saved_product
+                            ai_draft.save(update_fields=["product", "updated_at"])
+                            request.session.pop(AI_DRAFT_SESSION_KEY, None)
+
+                        if ai_draft and "attach_ai_images" in request.POST:
+                            attached = _apply_generated_images_to_product(
+                                draft=ai_draft,
+                                product=saved_product,
+                                uploaded_primary=uploaded_primary,
+                            )
+                            if attached:
+                                messages.success(
+                                    request,
+                                    "AI-generated candidate images were attached to the product media gallery.",
+                                )
+
+                should_publish = "save_and_publish" in request.POST
+                if should_publish and saved_product.is_active and not saved_product.is_sold_out:
+                    posted = post_product_to_channel(saved_product, force=True)
+                    if posted:
+                        messages.success(request, f"{saved_product.title} was saved and posted to Telegram.")
+                    else:
+                        messages.warning(
+                            request,
+                            f"{saved_product.title} was saved, but Telegram publishing did not complete.",
+                        )
+                elif should_publish:
                     messages.warning(
                         request,
-                        f"{saved_product.title} was saved, but Telegram publishing did not complete.",
+                        f"{saved_product.title} was saved, but it must be active and in stock before Telegram publishing.",
                     )
-            elif should_publish:
-                messages.warning(
-                    request,
-                    f"{saved_product.title} was saved, but it must be active and in stock before Telegram publishing.",
-                )
-            else:
-                messages.success(request, f"{saved_product.title} was saved.")
+                else:
+                    messages.success(request, f"{saved_product.title} was saved.")
 
-            return redirect("store:dashboard-product-edit", product_id=saved_product.id)
+                return redirect("store:dashboard-product-edit", product_id=saved_product.id)
     else:
-        form = DashboardProductForm(instance=product)
+        form = _build_dashboard_product_form(product, ai_draft)
         image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
         size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
+        ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
 
     context = _dashboard_context(
         request,
@@ -430,6 +637,10 @@ def dashboard_product_edit(request, product_id=None):
         image_formset=image_formset,
         size_formset=size_formset,
         product=product,
+        ai_draft=ai_draft,
+        generated_ai_images=list(ai_draft.generated_images.all()) if ai_draft else [],
+        ai_draft_form=ai_draft_form,
+        gemini_is_configured=gemini_is_configured(),
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
     )

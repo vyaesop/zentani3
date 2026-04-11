@@ -193,6 +193,98 @@ class ProductImages(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProductAIDraft(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_SUCCEEDED = "succeeded"
+    STATUS_FAILED = "failed"
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Pending"),
+        (STATUS_SUCCEEDED, "Succeeded"),
+        (STATUS_FAILED, "Failed"),
+    )
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="ai_drafts",
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="product_ai_drafts",
+    )
+    sku = models.CharField(max_length=255, verbose_name="Source SKU")
+    vendor_hint = models.CharField(max_length=120, blank=True, verbose_name="Vendor Hint")
+    price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    reference_image = models.ImageField(
+        upload_to="ai-reference",
+        blank=True,
+        null=True,
+        verbose_name="Identifier Image",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    error_message = models.CharField(max_length=250, blank=True)
+    response_payload = models.JSONField(default=dict, blank=True)
+    source_links = models.JSONField(default=list, blank=True)
+    image_plan = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at", "-created_at")
+        indexes = [
+            models.Index(fields=["created_by", "updated_at"]),
+            models.Index(fields=["product", "updated_at"]),
+            models.Index(fields=["sku", "updated_at"]),
+            models.Index(fields=["status", "updated_at"]),
+        ]
+
+    def __str__(self):
+        return f"AI draft {self.sku} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        if self.reference_image and getattr(self.reference_image, "name", ""):
+            self.reference_image.name = _normalize_legacy_media_name(self.reference_image.name)
+        converted = _convert_uploaded_image_to_webp(self.reference_image)
+        if converted is not None:
+            self.reference_image = converted
+        super().save(*args, **kwargs)
+
+    @property
+    def extracted_fields(self):
+        return self.response_payload.get("catalog_fields", {})
+
+
+class ProductAIDraftImage(models.Model):
+    draft = models.ForeignKey(ProductAIDraft, on_delete=models.CASCADE, related_name="generated_images")
+    image = models.ImageField(upload_to="ai-generated", verbose_name="Generated Candidate Image")
+    shot_name = models.CharField(max_length=120)
+    prompt = models.TextField(blank=True)
+    aspect_ratio = models.CharField(max_length=20, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("sort_order", "id")
+        indexes = [
+            models.Index(fields=["draft", "sort_order"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, "name", ""):
+            self.image.name = _normalize_legacy_media_name(self.image.name)
+        converted = _convert_uploaded_image_to_webp(self.image)
+        if converted is not None:
+            self.image = converted
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.draft.sku} - {self.shot_name}"
+
+
 class ProductSizeStock(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="size_inventory")
     size = models.CharField(max_length=50)
