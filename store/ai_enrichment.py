@@ -517,20 +517,30 @@ def _call_external_generator(draft, *, base_url=""):
     if auth_token:
         headers["Authorization"] = f"Bearer {auth_token}"
 
+    timeout_seconds = int(getattr(settings, "AI_IMAGE_GENERATOR_TIMEOUT", 300))
+    max_attempts = int(getattr(settings, "AI_IMAGE_GENERATOR_RETRIES", 2))
     request = Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
         headers=headers,
         method="POST",
     )
-    try:
-        with urlopen(request, timeout=180) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        details = exc.read().decode("utf-8", errors="ignore")
-        raise ProductAIError(f"Image generator failed: {exc.code} {details}") from exc
-    except URLError as exc:
-        raise ProductAIError(f"Image generator failed: {exc.reason}") from exc
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                body = json.loads(response.read().decode("utf-8"))
+            last_error = None
+            break
+        except HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="ignore")
+            raise ProductAIError(f"Image generator failed: {exc.code} {details}") from exc
+        except URLError as exc:
+            last_error = exc
+            if attempt < max_attempts:
+                time.sleep(2 * attempt)
+                continue
+            raise ProductAIError(f"Image generator failed: {exc.reason}") from exc
 
     images = body.get("images") or []
     if not images:
