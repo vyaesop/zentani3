@@ -489,12 +489,8 @@
                 {% endif %}
 
                 {% if generated_ai_images %}
-                <label class="spring-dashboard-ai-toggle">
-                    <input type="checkbox" name="attach_ai_images" value="1">
-                    <span>Attach AI candidate images when saving</span>
-                </label>
                 <p class="spring-dashboard-ai-inline-note">
-                    If no primary image is uploaded, the first candidate becomes the cover image and the rest go to the gallery.
+                    When you save this approved draft, the first AI candidate becomes the cover image if you have not uploaded one, and the remaining candidates are added to the additional gallery images automatically.
                 </p>
                 {% endif %}
             </article>

@@ -511,7 +511,6 @@ class StoreFlowTests(TestCase):
                 "sizes-INITIAL_FORMS": "0",
                 "sizes-MIN_NUM_FORMS": "0",
                 "sizes-MAX_NUM_FORMS": "1000",
-                "attach_ai_images": "1",
             },
             follow=True,
         )

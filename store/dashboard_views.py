@@ -567,7 +567,7 @@ def dashboard_product_edit(request, product_id=None):
             ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
 
             form = DashboardProductForm(request.POST, request.FILES, instance=product)
-            if ai_draft and ai_draft.generated_images.exists() and "attach_ai_images" in request.POST and not product:
+            if ai_draft and ai_draft.generated_images.exists() and not product:
                 form.fields["product_image"].required = False
             image_formset = decorate_dashboard_formset(
                 ProductImageFormSet(request.POST, request.FILES, instance=product, prefix="images")
@@ -591,7 +591,7 @@ def dashboard_product_edit(request, product_id=None):
                             ai_draft.save(update_fields=["product", "updated_at"])
                             request.session.pop(AI_DRAFT_SESSION_KEY, None)
 
-                        if ai_draft and "attach_ai_images" in request.POST:
+                        if ai_draft and ai_draft.generated_images.exists():
                             attached = _apply_generated_images_to_product(
                                 draft=ai_draft,
                                 product=saved_product,

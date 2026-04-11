@@ -264,6 +264,31 @@ def _contain_resize(image, size):
     return canvas
 
 
+def _blurred_backdrop(reference_rgba, size, *, brightness=0.85, blur=26, tint=None):
+    backdrop = _cover_resize(reference_rgba, size)
+    backdrop = backdrop.filter(ImageFilter.GaussianBlur(blur))
+    backdrop = ImageEnhance.Brightness(backdrop).enhance(brightness)
+    if tint:
+        tint_layer = Image.new("RGBA", size, tint)
+        backdrop = Image.blend(backdrop, tint_layer, 0.28)
+    return backdrop
+
+
+def _framed_photo(reference_rgba, size, *, scale=0.78, border=18, matte="#ffffff", inner_fill="#f7f3ee"):
+    frame_width = int(size[0] * scale)
+    frame_height = int(size[1] * scale)
+    fitted = ImageOps.contain(
+        reference_rgba,
+        (max(20, frame_width - border * 2), max(20, frame_height - border * 2)),
+        method=Image.Resampling.LANCZOS,
+    )
+    card = Image.new("RGBA", (frame_width, frame_height), inner_fill)
+    inner_left = (frame_width - fitted.width) // 2
+    inner_top = (frame_height - fitted.height) // 2
+    card.alpha_composite(fitted, (inner_left, inner_top))
+    return ImageOps.expand(card, border=border, fill=matte)
+
+
 def _subject_shadow(subject, size, opacity=70, blur_radius=34, y_offset=32):
     alpha = subject.getchannel("A")
     shadow = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -277,46 +302,60 @@ def _subject_shadow(subject, size, opacity=70, blur_radius=34, y_offset=32):
 
 def _render_white_hero(reference_rgba, size):
     background = Image.new("RGBA", size, "#f8f4ee")
-    background = Image.alpha_composite(background, _linear_gradient(size, ("#ffffff", "#efe7db")))
-    subject = _contain_resize(reference_rgba, size)
-    canvas = Image.alpha_composite(background, _subject_shadow(subject, size, opacity=58, blur_radius=26, y_offset=20))
-    return Image.alpha_composite(canvas, subject)
+    background = Image.alpha_composite(background, _linear_gradient(size, ("#fffdfb", "#eee4d8")))
+    card = _framed_photo(reference_rgba, size, scale=0.74, border=16, matte="#ffffff", inner_fill="#fbf8f3")
+    card_canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    left = (size[0] - card.width) // 2
+    top = (size[1] - card.height) // 2
+    card_canvas.alpha_composite(card, (left, top))
+    canvas = Image.alpha_composite(background, _subject_shadow(card_canvas, size, opacity=42, blur_radius=22, y_offset=16))
+    return Image.alpha_composite(canvas, card_canvas)
 
 
 def _render_dark_hero(reference_rgba, size):
-    background = Image.new("RGBA", size, "#101010")
-    background = Image.alpha_composite(background, _radial_glow(size, "#2b2332", intensity=0.45))
-    subject = _contain_resize(reference_rgba, size)
-    enhanced = ImageEnhance.Contrast(subject).enhance(1.12)
-    enhanced = ImageEnhance.Color(enhanced).enhance(1.04)
-    canvas = Image.alpha_composite(background, _subject_shadow(enhanced, size, opacity=94, blur_radius=36, y_offset=26))
-    return _add_vignette(Image.alpha_composite(canvas, enhanced), 0.24)
+    background = _blurred_backdrop(reference_rgba, size, brightness=0.38, blur=30, tint="#1b1622")
+    background = Image.alpha_composite(background, _radial_glow(size, "#7f5f2e", intensity=0.22))
+    card = _framed_photo(reference_rgba, size, scale=0.66, border=12, matte="#d9c8a0", inner_fill="#171412")
+    card = ImageEnhance.Contrast(card).enhance(1.12)
+    card = ImageEnhance.Color(card).enhance(1.05)
+    card_canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    left = (size[0] - card.width) // 2
+    top = (size[1] - card.height) // 2
+    card_canvas.alpha_composite(card, (left, top))
+    canvas = Image.alpha_composite(background, _subject_shadow(card_canvas, size, opacity=110, blur_radius=34, y_offset=24))
+    return _add_vignette(Image.alpha_composite(canvas, card_canvas), 0.34)
 
 
 def _render_detail_crop(reference_rgba, size):
     cropped = _detail_focus(reference_rgba, size)
     cropped = ImageEnhance.Sharpness(cropped).enhance(1.35)
     cropped = ImageEnhance.Contrast(cropped).enhance(1.08)
-    background = Image.new("RGBA", size, "#ffffff")
-    return Image.alpha_composite(background, cropped)
+    return ImageOps.expand(cropped, border=18, fill="#ffffff")
 
 
 def _render_soft_editorial(reference_rgba, size):
-    background = Image.new("RGBA", size, "#ece4df")
-    background = Image.alpha_composite(background, _linear_gradient(size, ("#f7f1ec", "#d9cdc7")))
-    subject = _contain_resize(reference_rgba, size)
-    softened = ImageEnhance.Color(subject).enhance(1.06)
-    canvas = Image.alpha_composite(background, _subject_shadow(softened, size, opacity=48, blur_radius=28, y_offset=18))
-    return Image.alpha_composite(canvas, softened)
+    background = _blurred_backdrop(reference_rgba, size, brightness=0.72, blur=34, tint="#d8ccd5")
+    background = Image.alpha_composite(background, _linear_gradient(size, ("#f7f0ec", "#d8cbc7")))
+    card = _framed_photo(reference_rgba, size, scale=0.62, border=20, matte="#fffaf6", inner_fill="#efe5dd")
+    card = ImageEnhance.Color(card).enhance(1.08)
+    card_canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    left = int(size[0] * 0.18)
+    top = int(size[1] * 0.12)
+    card_canvas.alpha_composite(card, (left, top))
+    canvas = Image.alpha_composite(background, _subject_shadow(card_canvas, size, opacity=52, blur_radius=26, y_offset=20))
+    return Image.alpha_composite(canvas, card_canvas)
 
 
 def _render_angled_view(reference_rgba, size):
-    base = _cover_resize(reference_rgba, size)
-    rotated = base.rotate(-7, resample=Image.Resampling.BICUBIC, expand=False)
-    rotated = ImageEnhance.Contrast(rotated).enhance(1.1)
-    background = Image.new("RGBA", size, "#121212")
-    background = Image.alpha_composite(background, _radial_glow(size, "#4f3b2b", intensity=0.28))
-    return Image.blend(background, rotated, 0.92)
+    background = _blurred_backdrop(reference_rgba, size, brightness=0.44, blur=32, tint="#211a16")
+    card = _framed_photo(reference_rgba, size, scale=0.6, border=14, matte="#faf6f1", inner_fill="#151515")
+    rotated = card.rotate(-8, resample=Image.Resampling.BICUBIC, expand=True)
+    card_canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    left = (size[0] - rotated.width) // 2
+    top = (size[1] - rotated.height) // 2
+    card_canvas.alpha_composite(rotated, (left, top))
+    canvas = Image.alpha_composite(background, _subject_shadow(card_canvas, size, opacity=96, blur_radius=30, y_offset=20))
+    return _add_vignette(Image.alpha_composite(canvas, card_canvas), 0.22)
 
 
 def _linear_gradient(size, colors):
