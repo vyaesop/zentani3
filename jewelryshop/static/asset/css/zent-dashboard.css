@@ -740,6 +740,183 @@
     text-transform: uppercase;
 }
 
+.spring-dashboard-panel--ai {
+    gap: 18px;
+}
+
+.spring-dashboard-ai-status {
+    display: flex;
+    align-items: center;
+}
+
+.spring-dashboard-ai-copy,
+.spring-dashboard-ai-inline-note,
+.spring-dashboard-ai-shot-list p {
+    margin: 0;
+    color: #5e5a56;
+    line-height: 1.7;
+}
+
+.spring-dashboard-ai-intake,
+.spring-dashboard-ai-results,
+.spring-dashboard-ai-results__top,
+.spring-dashboard-ai-grid,
+.spring-dashboard-ai-links,
+.spring-dashboard-ai-shot-list,
+.spring-dashboard-ai-list,
+.spring-dashboard-ai-pill-list,
+.spring-dashboard-ai-inline-form,
+.spring-dashboard-ai-candidate-card,
+.spring-dashboard-ai-candidate-card__body {
+    display: flex;
+    flex-direction: column;
+}
+
+.spring-dashboard-ai-intake,
+.spring-dashboard-ai-results,
+.spring-dashboard-ai-grid,
+.spring-dashboard-ai-links,
+.spring-dashboard-ai-shot-list,
+.spring-dashboard-ai-pill-list,
+.spring-dashboard-ai-candidate-card,
+.spring-dashboard-ai-candidate-card__body {
+    gap: 14px;
+}
+
+.spring-dashboard-ai-results__top {
+    gap: 16px;
+}
+
+.spring-dashboard-ai-card {
+    padding: 18px;
+    border: 1px solid rgba(17, 17, 17, 0.08);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.spring-dashboard-ai-card h4,
+.spring-dashboard-ai-shot-list h4 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+}
+
+.spring-dashboard-ai-candidate-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.spring-dashboard-ai-candidate-card {
+    padding: 14px;
+    border: 1px solid rgba(17, 17, 17, 0.08);
+    border-radius: 18px;
+    background: rgba(250, 247, 243, 0.9);
+}
+
+.spring-dashboard-gallery-thumb--large {
+    min-height: 220px;
+}
+
+.spring-dashboard-gallery-thumb--large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.spring-dashboard-ai-candidate-card__body strong {
+    font-size: 15px;
+}
+
+.spring-dashboard-ai-candidate-card__body span {
+    color: #6a6762;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.spring-dashboard-ai-candidate-card__body p {
+    margin: 0;
+    color: #4d4944;
+    line-height: 1.6;
+}
+
+.spring-dashboard-ai-toggle {
+    display: flex;
+    align-items: start;
+    gap: 10px;
+    margin-top: 14px;
+    color: #1c1a18;
+}
+
+.spring-dashboard-ai-list {
+    gap: 12px;
+    margin: 0;
+}
+
+.spring-dashboard-ai-list div {
+    display: grid;
+    gap: 4px;
+}
+
+.spring-dashboard-ai-list dt {
+    color: #6a6762;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.spring-dashboard-ai-list dd {
+    margin: 0;
+    color: #111;
+    line-height: 1.6;
+}
+
+.spring-dashboard-ai-pill-list span {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(17, 17, 17, 0.04);
+    color: #1c1a18;
+    line-height: 1.5;
+}
+
+.spring-dashboard-ai-links a {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 1px solid rgba(17, 17, 17, 0.08);
+    border-radius: 16px;
+    color: inherit;
+    text-decoration: none;
+    background: rgba(250, 247, 243, 0.86);
+}
+
+.spring-dashboard-ai-links a:hover {
+    border-color: rgba(17, 17, 17, 0.14);
+    background: rgba(255, 255, 255, 0.94);
+}
+
+.spring-dashboard-ai-links strong {
+    font-size: 14px;
+}
+
+.spring-dashboard-ai-links span {
+    color: #6a6762;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.spring-dashboard-ai-shot-list article {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid rgba(17, 17, 17, 0.08);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
 @media (min-width: 768px) {
     .spring-dashboard-main {
         padding: 22px 20px 36px;
@@ -908,6 +1085,25 @@
 
     .spring-dashboard-formset-row--image .spring-dashboard-formset-row__grid {
         grid-template-columns: minmax(0, 1fr) 110px;
+    }
+
+    .spring-dashboard-ai-results__top {
+        flex-direction: row;
+        align-items: start;
+        justify-content: space-between;
+    }
+
+    .spring-dashboard-ai-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .spring-dashboard-ai-card--wide {
+        grid-column: 1 / -1;
+    }
+
+    .spring-dashboard-ai-candidate-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

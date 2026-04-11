@@ -28,6 +28,9 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 SITE_URL = os.getenv('SITE_URL', '').rstrip('/')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
+GEMINI_PRODUCT_MODEL = os.getenv('GEMINI_PRODUCT_MODEL', 'gemini-2.5-flash').strip() or 'gemini-2.5-flash'
+GEMINI_PRODUCT_FALLBACK_MODEL = os.getenv('GEMINI_PRODUCT_FALLBACK_MODEL', 'gemini-2.5-flash-lite').strip()
 
 
 # Application definition

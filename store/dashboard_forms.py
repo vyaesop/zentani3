@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Product, ProductImages, ProductSizeStock
+from .models import Product, ProductAIDraft, ProductImages, ProductSizeStock
 
 
 def _decorate_dashboard_fields(fields):
@@ -64,6 +64,27 @@ class DashboardProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["category"].queryset = self.fields["category"].queryset.order_by("title")
         self.fields["brand"].queryset = self.fields["brand"].queryset.order_by("title")
+        _decorate_dashboard_fields(self.fields)
+
+
+class ProductAIDraftForm(forms.ModelForm):
+    class Meta:
+        model = ProductAIDraft
+        fields = [
+            "sku",
+            "vendor_hint",
+            "price",
+            "reference_image",
+        ]
+        widgets = {
+            "sku": forms.TextInput(attrs={"placeholder": "Vendor SKU / source code"}),
+            "vendor_hint": forms.TextInput(attrs={"placeholder": "Manual local vendor name"}),
+            "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["reference_image"].required = True
         _decorate_dashboard_fields(self.fields)
 
 
