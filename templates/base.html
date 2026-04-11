@@ -16,7 +16,8 @@
     <meta name="theme-color" content="#111111">
 
     <title>{% block title %}Zentanee{% endblock %}</title>
-    <meta name="description" content="Zentanee fashion storefront.">
+    <meta name="description" content="{% block meta_description %}Zentanee fashion storefront.{% endblock %}">
+    {% block seo_head %}{% endblock %}
     <meta name="author" content="Zentanee">
     <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
 

@@ -14,10 +14,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .ai_enrichment import (
+    build_generator_payload,
     ProductAIError,
     draft_to_product_initial,
     format_price_for_prompt,
-    generate_free_image_candidates,
+    generate_reference_image_candidates,
     gemini_is_configured,
     generate_product_ai_draft,
 )
@@ -149,6 +150,13 @@ def _build_ai_draft_form(product=None, ai_draft=None):
             "price": product.price,
         }
     return ProductAIDraftForm(initial=initial)
+
+
+def _absolute_base_url(request):
+    site_url = getattr(settings, "SITE_URL", "").rstrip("/")
+    if site_url:
+        return site_url
+    return request.build_absolute_uri("/").rstrip("/")
 
 
 def _apply_generated_images_to_product(*, draft, product, uploaded_primary):
@@ -528,7 +536,9 @@ def dashboard_product_edit(request, product_id=None):
                     draft.vendor_hint = draft.vendor_hint or (result.get("search_strategy") or {}).get("vendor_hint", "")
                     draft.response_payload = result
                     draft.source_links = result.get("sources") or []
+                    draft.seo_payload = result.get("seo") or {}
                     draft.image_plan = result.get("image_plan") or {}
+                    draft.generator_payload = result.get("generation_package") or {}
                     draft.error_message = ""
                     draft.save(
                         update_fields=[
@@ -536,7 +546,9 @@ def dashboard_product_edit(request, product_id=None):
                             "vendor_hint",
                             "response_payload",
                             "source_links",
+                            "seo_payload",
                             "image_plan",
+                            "generator_payload",
                             "error_message",
                             "updated_at",
                         ]
@@ -557,11 +569,11 @@ def dashboard_product_edit(request, product_id=None):
                 messages.error(request, "Generate an AI draft first so image candidates have the right shot plan.")
             else:
                 try:
-                    generate_free_image_candidates(ai_draft)
+                    generate_reference_image_candidates(ai_draft, base_url=_absolute_base_url(request))
                 except ProductAIError as exc:
                     messages.error(request, str(exc))
                 else:
-                    messages.success(request, "Free image candidates generated. Review them below before saving.")
+                    messages.success(request, "AI image candidates generated. Review them below before saving.")
                     return redirect(_ai_draft_redirect_url(product, ai_draft))
         else:
             ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
@@ -639,6 +651,7 @@ def dashboard_product_edit(request, product_id=None):
         product=product,
         ai_draft=ai_draft,
         generated_ai_images=list(ai_draft.generated_images.all()) if ai_draft else [],
+        generator_payload=build_generator_payload(ai_draft, base_url=_absolute_base_url(request)) if ai_draft else {},
         ai_draft_form=ai_draft_form,
         gemini_is_configured=gemini_is_configured(),
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,

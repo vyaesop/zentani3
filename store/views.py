@@ -528,6 +528,120 @@ def _build_product_detail_context(request, product):
         "product_delivery_note": product.delivery_note or "Addis delivery usually lands within 1-3 days after confirmation.",
         "product_return_note": product.return_note or "If there is an issue with the order, contact support quickly so we can help.",
         "is_cash_on_delivery_only": True,
+        "seo_title": _product_seo_title(product),
+        "seo_description": _product_seo_description(product),
+        "seo_image_alt_text": _product_image_alt_text(product),
+        "product_canonical_url": request.build_absolute_uri(reverse("store:product-detail", kwargs={"slug": product.slug})),
+        "product_og_image_url": _product_og_image_url(request, product),
+        "product_schema_json": json.dumps(_product_schema(request, product, p_image, available_sizes_list)),
+        "breadcrumb_schema_json": json.dumps(_breadcrumb_schema(request, product)),
+    }
+
+
+def _product_seo_title(product):
+    if product.seo_title:
+        return product.seo_title
+    parts = [product.title]
+    if product.category_id:
+        parts.append(product.category.title)
+    parts.append("Zentanee Ethiopia")
+    return " | ".join(parts[:3])
+
+
+def _product_seo_description(product):
+    if product.seo_description:
+        return product.seo_description
+    details = [product.short_description or "", product.material or "", product.color or ""]
+    summary = " ".join(part.strip() for part in details if part and part.strip()).strip()
+    if not summary:
+        summary = f"Shop {product.title} at Zentanee Ethiopia."
+    return summary[:320]
+
+
+def _product_image_alt_text(product):
+    if product.image_alt_text:
+        return product.image_alt_text
+    descriptors = [product.color or "", product.title]
+    return " ".join(part.strip() for part in descriptors if part and part.strip()).strip() or product.title
+
+
+def _product_og_image_url(request, product):
+    if not product.product_image:
+        return ""
+    url = product.product_image.url
+    if url.startswith("/"):
+        return request.build_absolute_uri(url)
+    return url
+
+
+def _product_schema(request, product, gallery_images, available_sizes):
+    image_urls = []
+    for image in [product.product_image, *[item.image for item in gallery_images]]:
+        if not image:
+            continue
+        url = image.url
+        if url.startswith("/"):
+            url = request.build_absolute_uri(url)
+        image_urls.append(url)
+
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": product.title,
+        "description": _product_seo_description(product),
+        "sku": product.sku,
+        "category": product.category.title if product.category_id else "",
+        "image": image_urls,
+        "url": request.build_absolute_uri(reverse("store:product-detail", kwargs={"slug": product.slug})),
+        "brand": {
+            "@type": "Brand",
+            "name": product.brand.title if product.brand_id else "Zentanee",
+        },
+        "offers": {
+            "@type": "Offer",
+            "priceCurrency": "ETB",
+            "price": str(product.price),
+            "availability": "https://schema.org/InStock" if not product.is_sold_out else "https://schema.org/OutOfStock",
+            "url": request.build_absolute_uri(reverse("store:product-detail", kwargs={"slug": product.slug})),
+        },
+    }
+    if available_sizes:
+        schema["size"] = available_sizes
+    if product.color:
+        schema["color"] = product.color
+    if product.material:
+        schema["material"] = product.material
+    return schema
+
+
+def _breadcrumb_schema(request, product):
+    items = [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": request.build_absolute_uri(reverse("store:home"))},
+    ]
+    if product.category_id:
+        items.append(
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": product.category.title,
+                "item": request.build_absolute_uri(reverse("store:category-products", kwargs={"slug": product.category.slug})),
+            }
+        )
+        product_position = 3
+    else:
+        product_position = 2
+    items.append(
+        {
+            "@type": "ListItem",
+            "position": product_position,
+            "name": product.title,
+            "item": request.build_absolute_uri(reverse("store:product-detail", kwargs={"slug": product.slug})),
+        }
+    )
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": items,
     }
 
 

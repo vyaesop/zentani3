@@ -31,6 +31,8 @@ SITE_URL = os.getenv('SITE_URL', '').rstrip('/')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
 GEMINI_PRODUCT_MODEL = os.getenv('GEMINI_PRODUCT_MODEL', 'gemini-2.5-flash').strip() or 'gemini-2.5-flash'
 GEMINI_PRODUCT_FALLBACK_MODEL = os.getenv('GEMINI_PRODUCT_FALLBACK_MODEL', 'gemini-2.5-flash-lite').strip()
+AI_IMAGE_GENERATOR_ENDPOINT = os.getenv('AI_IMAGE_GENERATOR_ENDPOINT', '').strip()
+AI_IMAGE_GENERATOR_TOKEN = os.getenv('AI_IMAGE_GENERATOR_TOKEN', '').strip()
 
 
 # Application definition

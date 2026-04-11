@@ -457,7 +457,7 @@ class StoreFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 2)
-        self.assertContains(response, "Free image candidates generated")
+        self.assertContains(response, "AI image candidates generated")
         self.assertContains(response, "Studio White Hero")
 
     @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
