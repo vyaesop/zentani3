@@ -31,6 +31,9 @@ class DashboardProductForm(forms.ModelForm):
             "slug",
             "sku",
             "short_description",
+            "seo_title",
+            "seo_description",
+            "image_alt_text",
             "detail_description",
             "material",
             "color",
@@ -50,6 +53,7 @@ class DashboardProductForm(forms.ModelForm):
         ]
         widgets = {
             "short_description": forms.Textarea(attrs={"rows": 4}),
+            "seo_description": forms.Textarea(attrs={"rows": 3}),
             "detail_description": forms.Textarea(attrs={"rows": 8}),
             "fit_notes": forms.Textarea(attrs={"rows": 3}),
             "care_notes": forms.Textarea(attrs={"rows": 3}),
@@ -75,6 +79,7 @@ class ProductAIDraftForm(forms.ModelForm):
             "vendor_hint",
             "price",
             "reference_image",
+            "secondary_reference_image",
         ]
         widgets = {
             "sku": forms.TextInput(attrs={"placeholder": "Vendor SKU / source code"}),

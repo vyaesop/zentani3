@@ -134,6 +134,9 @@ class Product(models.Model):
     slug = models.SlugField(max_length=160, verbose_name="Product Slug")
     sku = models.CharField(max_length=255, unique=True, verbose_name="Unique Product ID (SKU)")
     short_description = models.TextField(verbose_name="Short Description")
+    seo_title = models.CharField(max_length=180, blank=True, verbose_name="SEO Title")
+    seo_description = models.CharField(max_length=320, blank=True, verbose_name="SEO Description")
+    image_alt_text = models.CharField(max_length=180, blank=True, verbose_name="Image Alt Text")
     available_sizes = models.CharField(max_length=100, blank=True, help_text="Comma-separated list of available sizes (e.g., S,M,L,XL)", verbose_name="Available Sizes")
     detail_description = models.TextField(blank=True, null=True, verbose_name="Detail Description")
     material = models.CharField(max_length=120, blank=True, verbose_name="Material")
@@ -225,11 +228,19 @@ class ProductAIDraft(models.Model):
         null=True,
         verbose_name="Identifier Image",
     )
+    secondary_reference_image = models.ImageField(
+        upload_to="ai-reference",
+        blank=True,
+        null=True,
+        verbose_name="Secondary Reference Image",
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     error_message = models.CharField(max_length=250, blank=True)
     response_payload = models.JSONField(default=dict, blank=True)
     source_links = models.JSONField(default=list, blank=True)
+    seo_payload = models.JSONField(default=dict, blank=True)
     image_plan = models.JSONField(default=dict, blank=True)
+    generator_payload = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -251,6 +262,11 @@ class ProductAIDraft(models.Model):
         converted = _convert_uploaded_image_to_webp(self.reference_image)
         if converted is not None:
             self.reference_image = converted
+        if self.secondary_reference_image and getattr(self.secondary_reference_image, "name", ""):
+            self.secondary_reference_image.name = _normalize_legacy_media_name(self.secondary_reference_image.name)
+        secondary_converted = _convert_uploaded_image_to_webp(self.secondary_reference_image)
+        if secondary_converted is not None:
+            self.secondary_reference_image = secondary_converted
         super().save(*args, **kwargs)
 
     @property

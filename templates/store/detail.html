@@ -2,7 +2,24 @@
 {% load static %}
 {% load image_optim %}
 
-{% block title %}Zentanee | {{ product.title }}{% endblock %}
+{% block title %}{{ seo_title }}{% endblock %}
+{% block meta_description %}{{ seo_description }}{% endblock %}
+{% block seo_head %}
+<link rel="canonical" href="{{ product_canonical_url }}">
+<meta property="og:type" content="product">
+<meta property="og:title" content="{{ seo_title }}">
+<meta property="og:description" content="{{ seo_description }}">
+<meta property="og:url" content="{{ product_canonical_url }}">
+{% if product_og_image_url %}
+<meta property="og:image" content="{{ product_og_image_url }}">
+{% endif %}
+<script type="application/ld+json">
+{{ product_schema_json|safe }}
+</script>
+<script type="application/ld+json">
+{{ breadcrumb_schema_json|safe }}
+</script>
+{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
@@ -19,7 +36,7 @@
           <section class="spring-product-gallery">
               <figure class="spring-product-gallery__main">
                   {% if product.product_image %}
-                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
                   {% else %}
                   <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                   {% endif %}
@@ -28,14 +45,14 @@
               <div class="spring-product-gallery__thumbs">
                   <button type="button" class="spring-thumb is-active" data-image="{% if product.product_image %}{{ product.product_image.url|cdn_optimize }}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
                       {% if product.product_image %}
-                      <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                      <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
                       {% else %}
                       <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                       {% endif %}
                   </button>
                   {% for image in p_image %}
                   <button type="button" class="spring-thumb" data-image="{{ image.image.url|cdn_optimize }}">
-                      <img src="{{ image.image.url|cdn_optimize }}" alt="{{ product.title }}">
+                      <img src="{{ image.image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
                   </button>
                   {% endfor %}
               </div>

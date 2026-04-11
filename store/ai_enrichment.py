@@ -97,6 +97,13 @@ Return strict JSON only with this shape:
     "suggested_brand": "string",
     "product_type": "string"
   }},
+  "seo": {{
+    "seo_title": "string",
+    "meta_description": "string",
+    "image_alt_text": "string",
+    "focus_keyphrase": "string",
+    "canonical_slug": "string"
+  }},
   "search_strategy": {{
     "vendor_hint": "string",
     "exact_queries": ["string"],
@@ -123,6 +130,21 @@ Return strict JSON only with this shape:
         "name": "Studio White Hero",
         "prompt": "string",
         "aspect_ratio": "1:1 or 4:5",
+        "priority": 1
+      }}
+    ]
+  }},
+  "generation_package": {{
+    "mode": "reference-guided",
+    "reference_strength": "high|medium|low",
+    "notes": "string",
+    "shots": [
+      {{
+        "name": "string",
+        "prompt": "string",
+        "negative_prompt": "string",
+        "aspect_ratio": "1:1 or 4:5",
+        "reference_images": ["primary", "secondary"],
         "priority": 1
       }}
     ]
@@ -190,10 +212,12 @@ def _safe_json_loads(text):
 def _normalize_payload(payload):
     normalized = {
         "catalog_fields": payload.get("catalog_fields") or {},
+        "seo": payload.get("seo") or {},
         "search_strategy": payload.get("search_strategy") or {},
         "confidence": payload.get("confidence") or {},
         "sources": payload.get("sources") or [],
         "image_plan": payload.get("image_plan") or {},
+        "generation_package": payload.get("generation_package") or {},
     }
     return normalized
 
@@ -239,6 +263,10 @@ def _default_shots_for_payload(payload):
 
 
 def _resolve_shots(payload):
+    generation_package = payload.get("generation_package") or {}
+    shots = generation_package.get("shots") or []
+    if shots:
+        return shots
     image_plan = payload.get("image_plan") or {}
     shots = image_plan.get("shots") or []
     return shots or _default_shots_for_payload(payload)
@@ -441,15 +469,82 @@ def _render_shot(reference_rgba, shot):
     return _render_white_hero(reference_rgba, size)
 
 
-def generate_free_image_candidates(draft):
+def _store_generated_candidate_images(draft, generated_items):
+    draft.generated_images.all().delete()
+    created_images = []
+    for index, item in enumerate(generated_items[:6], start=1):
+        if item.get("image_base64"):
+            binary = base64.b64decode(item["image_base64"])
+            filename = slugify(item.get("shot_name") or f"shot-{index}") or f"shot-{index}"
+            upload = SimpleUploadedFile(
+                f"{filename}.jpg",
+                binary,
+                content_type=item.get("content_type") or "image/jpeg",
+            )
+        elif item.get("image_url"):
+            request = Request(item["image_url"], headers={"User-Agent": "Zentanee AI Draft"})
+            with urlopen(request, timeout=90) as response:
+                binary = response.read()
+            filename = slugify(item.get("shot_name") or f"shot-{index}") or f"shot-{index}"
+            upload = SimpleUploadedFile(
+                f"{filename}.jpg",
+                binary,
+                content_type=item.get("content_type") or "image/jpeg",
+            )
+        else:
+            continue
+
+        created_images.append(
+            draft.generated_images.create(
+                image=upload,
+                shot_name=item.get("shot_name") or f"Shot {index}",
+                prompt=item.get("prompt") or "",
+                aspect_ratio=item.get("aspect_ratio") or "1:1",
+                sort_order=index,
+            )
+        )
+    return created_images
+
+
+def _call_external_generator(draft, *, base_url=""):
+    endpoint = getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip()
+    if not endpoint:
+        return None
+
+    payload = build_generator_payload(draft, base_url=base_url)
+    headers = {"Content-Type": "application/json"}
+    auth_token = getattr(settings, "AI_IMAGE_GENERATOR_TOKEN", "").strip()
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+
+    request = Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=180) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="ignore")
+        raise ProductAIError(f"Image generator failed: {exc.code} {details}") from exc
+    except URLError as exc:
+        raise ProductAIError(f"Image generator failed: {exc.reason}") from exc
+
+    images = body.get("images") or []
+    if not images:
+        raise ProductAIError("Image generator returned no images.")
+    return _store_generated_candidate_images(draft, images)
+
+
+def _generate_local_image_candidates(draft):
     if Image is None:
         raise ProductAIError("Pillow is required to generate local image candidates.")
     if not draft.reference_image:
         raise ProductAIError("Add a reference image before generating image candidates.")
     if not draft.response_payload:
         raise ProductAIError("Generate the AI draft before creating image candidates.")
-
-    draft.generated_images.all().delete()
 
     draft.reference_image.open("rb")
     try:
@@ -460,7 +555,7 @@ def generate_free_image_candidates(draft):
 
     reference_rgba = ImageOps.exif_transpose(reference).convert("RGBA")
     shots = _resolve_shots(draft.response_payload)
-    created_images = []
+    generated_items = []
 
     for index, shot in enumerate(shots[:4], start=1):
         rendered = _render_shot(reference_rgba, shot)
@@ -468,23 +563,34 @@ def generate_free_image_candidates(draft):
         rendered.convert("RGB").save(output, format="JPEG", quality=92, optimize=True)
         output.seek(0)
 
-        slug = slugify(shot.get("name") or f"shot-{index}") or f"shot-{index}"
-        upload = SimpleUploadedFile(
-            f"{slug}.jpg",
-            output.read(),
-            content_type="image/jpeg",
-        )
-        created_images.append(
-            draft.generated_images.create(
-                image=upload,
-                shot_name=shot.get("name") or f"Shot {index}",
-                prompt=shot.get("prompt") or "",
-                aspect_ratio=shot.get("aspect_ratio") or "1:1",
-                sort_order=index,
-            )
+        generated_items.append(
+            {
+                "image_base64": base64.b64encode(output.read()).decode("ascii"),
+                "content_type": "image/jpeg",
+                "shot_name": shot.get("name") or f"Shot {index}",
+                "prompt": shot.get("prompt") or "",
+                "aspect_ratio": shot.get("aspect_ratio") or "1:1",
+            }
         )
 
-    return created_images
+    return _store_generated_candidate_images(draft, generated_items)
+
+
+def generate_reference_image_candidates(draft, *, base_url=""):
+    try:
+        created = _call_external_generator(draft, base_url=base_url)
+    except ProductAIError:
+        raise
+    except Exception as exc:
+        raise ProductAIError(f"Image generator failed unexpectedly: {exc}") from exc
+
+    if created is not None:
+        return created
+    return _generate_local_image_candidates(draft)
+
+
+def generate_free_image_candidates(draft):
+    return _generate_local_image_candidates(draft)
 
 
 def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor_hint=""):
@@ -584,6 +690,9 @@ def draft_to_product_initial(draft, *, categories=(), brands=()):
         "slug": generated_slug,
         "sku": draft.sku,
         "short_description": (catalog_fields.get("short_description") or "").strip(),
+        "seo_title": ((payload.get("seo") or {}).get("seo_title") or "").strip(),
+        "seo_description": ((payload.get("seo") or {}).get("meta_description") or "").strip(),
+        "image_alt_text": ((payload.get("seo") or {}).get("image_alt_text") or "").strip(),
         "detail_description": (catalog_fields.get("detail_description") or "").strip(),
         "material": (catalog_fields.get("material") or "").strip(),
         "color": (catalog_fields.get("color") or "").strip(),
@@ -615,3 +724,53 @@ def format_price_for_prompt(price):
     if isinstance(price, Decimal):
         return price.quantize(Decimal("0.01"))
     return price
+
+
+def build_reference_image_payload(draft, *, base_url=""):
+    references = []
+    for label, field in (("primary", draft.reference_image), ("secondary", draft.secondary_reference_image)):
+        if not field:
+            continue
+        url = field.url or ""
+        if base_url and url.startswith("/"):
+            url = f"{base_url.rstrip('/')}{url}"
+        references.append(
+            {
+                "label": label,
+                "url": url,
+                "name": field.name,
+            }
+        )
+    return references
+
+
+def build_generator_payload(draft, *, base_url=""):
+    payload = draft.response_payload or {}
+    generation_package = payload.get("generation_package") or {}
+    image_plan = payload.get("image_plan") or {}
+    references = build_reference_image_payload(draft, base_url=base_url)
+    shots = _resolve_shots(payload)
+
+    return {
+        "draft_id": draft.id,
+        "sku": draft.sku,
+        "vendor_hint": draft.vendor_hint,
+        "product_title_hint": (payload.get("catalog_fields") or {}).get("title", ""),
+        "reference_images": references,
+        "reference_preservation_notes": image_plan.get("reference_preservation_notes", ""),
+        "negative_prompt": image_plan.get("negative_prompt", ""),
+        "mode": generation_package.get("mode") or "reference-guided",
+        "reference_strength": generation_package.get("reference_strength") or "high",
+        "notes": generation_package.get("notes") or "",
+        "shots": [
+            {
+                "name": shot.get("name", ""),
+                "prompt": shot.get("prompt", ""),
+                "negative_prompt": shot.get("negative_prompt") or image_plan.get("negative_prompt", ""),
+                "aspect_ratio": shot.get("aspect_ratio", "1:1"),
+                "reference_images": shot.get("reference_images") or ["primary"],
+                "priority": shot.get("priority", index + 1),
+            }
+            for index, shot in enumerate(shots)
+        ],
+    }
