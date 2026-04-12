@@ -37,6 +37,7 @@ In the Space settings, add:
 - `SDXL_GUIDANCE_SCALE` (default: `5.5`)
 - `SDXL_IMAGE_WIDTH` (default: `768` on CPU, `1024` on GPU)
 - `SDXL_IMAGE_HEIGHT` (default: `768` on CPU, `1024` on GPU)
+- `IMAGE_WORKER_ALLOWED_ORIGINS` (default: `*`, or set it to your storefront/dashboard origin)
 
 GPU is recommended for speed and quality.
 
@@ -71,6 +72,8 @@ The token is optional unless you restrict the Space.
   the primary reference before generation.
 - The Django app now sends one shot per request by default, which is more reliable on
   a free CPU Space than generating several images in a single HTTP response.
+- The dashboard can call the Space directly from the browser now, which avoids Vercel's
+  300-second function timeout during long image generation.
 
 If you later want stronger fidelity, you can add IP-Adapter or ControlNet to this
 worker without changing the dashboard payload format.

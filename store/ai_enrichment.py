@@ -507,6 +507,10 @@ def _store_generated_candidate_images(draft, generated_items):
     return created_images
 
 
+def store_generated_candidate_images(draft, generated_items):
+    return _store_generated_candidate_images(draft, generated_items)
+
+
 def _chunk_list(items, chunk_size):
     chunk_size = max(1, int(chunk_size or 1))
     for index in range(0, len(items), chunk_size):

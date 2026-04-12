@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 from functools import wraps
@@ -9,9 +10,11 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import Coalesce
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .ai_enrichment import (
     build_generator_payload,
@@ -21,6 +24,7 @@ from .ai_enrichment import (
     generate_reference_image_candidates,
     gemini_is_configured,
     generate_product_ai_draft,
+    store_generated_candidate_images,
 )
 from .dashboard_forms import (
     DashboardProductForm,
@@ -652,9 +656,36 @@ def dashboard_product_edit(request, product_id=None):
         ai_draft=ai_draft,
         generated_ai_images=list(ai_draft.generated_images.all()) if ai_draft else [],
         generator_payload=build_generator_payload(ai_draft, base_url=_absolute_base_url(request)) if ai_draft else {},
+        ai_image_generator_endpoint=getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip(),
+        ai_image_shots_per_request=max(1, int(getattr(settings, "AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST", 1))),
+        ai_generated_images_save_url=reverse("store:dashboard-ai-draft-generated-images", args=[ai_draft.id]) if ai_draft else "",
         ai_draft_form=ai_draft_form,
         gemini_is_configured=gemini_is_configured(),
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
     )
     return render(request, "dashboard/product_form.html", context)
+
+
+@staff_required
+@require_POST
+def dashboard_ai_draft_generated_images(request, draft_id):
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON payload."}, status=400)
+
+    images = payload.get("images") or []
+    if not isinstance(images, list) or not images:
+        return JsonResponse({"ok": False, "error": "No generated images were provided."}, status=400)
+
+    try:
+        created = store_generated_candidate_images(draft, images)
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": f"Could not save generated images: {exc}"}, status=400)
+
+    draft.error_message = ""
+    draft.save(update_fields=["error_message", "updated_at"])
+    return JsonResponse({"ok": True, "saved_count": len(created)})

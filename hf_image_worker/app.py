@@ -6,6 +6,7 @@ from typing import List, Optional
 import requests
 import torch
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 from diffusers import StableDiffusionXLImg2ImgPipeline
@@ -22,6 +23,16 @@ DEFAULT_IMAGE_HEIGHT = int(os.getenv("SDXL_IMAGE_HEIGHT", "768" if DEVICE == "cp
 
 
 app = FastAPI(title="Zentanee Image Worker")
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("IMAGE_WORKER_ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
+ALLOW_ALL_ORIGINS = "*" in ALLOWED_ORIGINS
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] if ALLOW_ALL_ORIGINS else ALLOWED_ORIGINS,
+    allow_credentials=not ALLOW_ALL_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ReferenceImage(BaseModel):
