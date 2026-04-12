@@ -1,5 +1,6 @@
 from decimal import Decimal
 from io import BytesIO
+import json
 import tempfile
 from unittest.mock import patch
 
@@ -566,3 +567,29 @@ class StoreFlowTests(TestCase):
 
         self.assertEqual(created, ["local"])
         generate_local_mock.assert_called_once_with(draft)
+
+    @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
+    def test_staff_user_can_save_browser_generated_ai_images(self):
+        draft = self._create_ai_draft()
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-ai-draft-generated-images", args=[draft.id]),
+            data=json.dumps(
+                {
+                    "images": [
+                        {
+                            "image_base64": "Zm9v",
+                            "content_type": "image/jpeg",
+                            "shot_name": "Studio White Hero",
+                            "prompt": "White background",
+                            "aspect_ratio": "4:5",
+                        }
+                    ]
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 1)

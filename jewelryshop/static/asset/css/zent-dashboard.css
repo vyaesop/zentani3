@@ -840,6 +840,18 @@
     line-height: 1.6;
 }
 
+.spring-dashboard-ai-inline-note[data-state="working"] {
+    color: #315ea9;
+}
+
+.spring-dashboard-ai-inline-note[data-state="success"] {
+    color: #237a42;
+}
+
+.spring-dashboard-ai-inline-note[data-state="error"] {
+    color: #992f2f;
+}
+
 .spring-dashboard-ai-toggle {
     display: flex;
     align-items: start;

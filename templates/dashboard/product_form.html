@@ -220,10 +220,28 @@
                     <span><strong>Mode:</strong> {{ generator_payload.mode|default:"reference-guided" }}</span>
                     <span><strong>Reference strength:</strong> {{ generator_payload.reference_strength|default:"high" }}</span>
                 </div>
+                {% if ai_image_generator_endpoint %}
+                <div class="spring-dashboard-ai-inline-form spring-dashboard-ai-inline-form--async">
+                    <button
+                        type="button"
+                        class="btn btn-outline-dark"
+                        data-ai-generate-images
+                        data-endpoint="{{ ai_image_generator_endpoint }}"
+                        data-save-url="{{ ai_generated_images_save_url }}"
+                        data-shots-per-request="{{ ai_image_shots_per_request }}"
+                    >
+                        Generate AI image candidates
+                    </button>
+                    <p class="spring-dashboard-ai-inline-note" data-ai-generate-status>
+                        Images will be generated directly in your browser session, then saved back to this draft automatically.
+                    </p>
+                </div>
+                {% else %}
                 <form method="post" class="spring-dashboard-ai-inline-form">
                     {% csrf_token %}
                     <button type="submit" name="generate_ai_images" value="1" class="btn btn-outline-dark">Generate AI image candidates</button>
                 </form>
+                {% endif %}
 
                 {% if generated_ai_images %}
                 <div class="spring-dashboard-ai-candidate-grid">
@@ -592,4 +610,122 @@
         </aside>
     </section>
 </form>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+{% if ai_draft and ai_image_generator_endpoint %}
+{{ generator_payload|json_script:"ai-generator-payload" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const button = document.querySelector('[data-ai-generate-images]');
+    const statusNode = document.querySelector('[data-ai-generate-status]');
+    const payloadNode = document.getElementById('ai-generator-payload');
+    if (!button || !statusNode || !payloadNode) return;
+
+    const endpoint = button.getAttribute('data-endpoint');
+    const saveUrl = button.getAttribute('data-save-url');
+    const shotsPerRequest = Math.max(1, Number(button.getAttribute('data-shots-per-request') || '1'));
+    const payload = JSON.parse(payloadNode.textContent);
+
+    function setStatus(message, type) {
+        statusNode.textContent = message;
+        statusNode.dataset.state = type || 'idle';
+    }
+
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    function chunkShots(shots, size) {
+        const chunks = [];
+        for (let index = 0; index < shots.length; index += size) {
+            chunks.push(shots.slice(index, index + size));
+        }
+        return chunks;
+    }
+
+    async function parseJsonResponse(response) {
+        const text = await response.text();
+        if (!text) return {};
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            return { detail: text };
+        }
+    }
+
+    button.addEventListener('click', async function () {
+        if (!endpoint || !saveUrl) {
+            setStatus('Image generation is not configured correctly yet.', 'error');
+            return;
+        }
+
+        const shots = Array.isArray(payload.shots) ? payload.shots : [];
+        if (!shots.length) {
+            setStatus('No image shots are available for this draft yet.', 'error');
+            return;
+        }
+
+        button.disabled = true;
+        const originalLabel = button.textContent;
+        button.textContent = 'Generating...';
+        setStatus('Sending the first shot to the hosted generator...', 'working');
+
+        try {
+            const allImages = [];
+            const shotBatches = chunkShots(shots, shotsPerRequest);
+
+            for (let index = 0; index < shotBatches.length; index += 1) {
+                const batch = shotBatches[index];
+                const batchPayload = Object.assign({}, payload, { shots: batch });
+                setStatus('Generating shot ' + (index + 1) + ' of ' + shotBatches.length + '...', 'working');
+
+                const generatorResponse = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(batchPayload)
+                });
+                const generatorBody = await parseJsonResponse(generatorResponse);
+                if (!generatorResponse.ok) {
+                    throw new Error(generatorBody.detail || generatorBody.error || 'The hosted image generator returned an error.');
+                }
+                if (Array.isArray(generatorBody.images)) {
+                    allImages.push.apply(allImages, generatorBody.images);
+                }
+            }
+
+            if (!allImages.length) {
+                throw new Error('The hosted image generator returned no images.');
+            }
+
+            setStatus('Saving generated images to this draft...', 'working');
+            const saveResponse = await fetch(saveUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ images: allImages })
+            });
+            const saveBody = await parseJsonResponse(saveResponse);
+            if (!saveResponse.ok || !saveBody.ok) {
+                throw new Error(saveBody.error || 'The generated images could not be saved back to the draft.');
+            }
+
+            setStatus('Images saved. Reloading the draft preview...', 'success');
+            window.location.reload();
+        } catch (error) {
+            setStatus(error.message || 'Image generation failed.', 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

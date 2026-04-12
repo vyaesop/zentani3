@@ -14,6 +14,7 @@ urlpatterns = [
     path('dashboard/products/', dashboard_views.dashboard_products, name="dashboard-products"),
     path('dashboard/products/new/', dashboard_views.dashboard_product_edit, name="dashboard-product-create"),
     path('dashboard/products/<int:product_id>/', dashboard_views.dashboard_product_edit, name="dashboard-product-edit"),
+    path('dashboard/ai-drafts/<int:draft_id>/generated-images/', dashboard_views.dashboard_ai_draft_generated_images, name="dashboard-ai-draft-generated-images"),
     path('', views.home, name="home"),
     # URL for Cart and Checkout
     path('add-to-cart/', views.add_to_cart, name="add-to-cart"),
