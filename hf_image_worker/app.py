@@ -15,8 +15,10 @@ MODEL_ID = os.getenv("SDXL_BASE_MODEL", "stabilityai/stable-diffusion-xl-base-1.
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.float16 if DEVICE == "cuda" else torch.float32
 
-DEFAULT_STEPS = int(os.getenv("SDXL_NUM_STEPS", "30"))
+DEFAULT_STEPS = int(os.getenv("SDXL_NUM_STEPS", "8" if DEVICE == "cpu" else "30"))
 DEFAULT_GUIDANCE = float(os.getenv("SDXL_GUIDANCE_SCALE", "5.5"))
+DEFAULT_IMAGE_WIDTH = int(os.getenv("SDXL_IMAGE_WIDTH", "768" if DEVICE == "cpu" else "1024"))
+DEFAULT_IMAGE_HEIGHT = int(os.getenv("SDXL_IMAGE_HEIGHT", "768" if DEVICE == "cpu" else "1024"))
 
 
 app = FastAPI(title="Zentanee Image Worker")
@@ -80,8 +82,10 @@ def _reference_strength_to_value(reference_strength: str) -> float:
 def _aspect_ratio_to_size(aspect_ratio: str) -> tuple[int, int]:
     ratio = (aspect_ratio or "1:1").strip()
     if ratio == "4:5":
+        if DEVICE == "cpu":
+            return (768, 960)
         return (1024, 1280)
-    return (1024, 1024)
+    return (DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT)
 
 
 def _combine_references(references: List[Image.Image]) -> Image.Image:
@@ -103,6 +107,16 @@ def _load_pipeline():
     )
     PIPELINE.to(DEVICE)
     PIPELINE.enable_xformers_memory_efficient_attention() if DEVICE == "cuda" else None
+
+
+@app.get("/health")
+def healthcheck():
+    return {
+        "status": "ok",
+        "device": DEVICE,
+        "model": MODEL_ID,
+        "steps": DEFAULT_STEPS,
+    }
 
 
 @app.post("/generate")

@@ -33,8 +33,10 @@ git push
 ### 4) Set Space environment variables
 In the Space settings, add:
 - `SDXL_BASE_MODEL` (default: `stabilityai/stable-diffusion-xl-base-1.0`)
-- `SDXL_NUM_STEPS` (default: `30`)
+- `SDXL_NUM_STEPS` (default: `8` on CPU, `30` on GPU)
 - `SDXL_GUIDANCE_SCALE` (default: `5.5`)
+- `SDXL_IMAGE_WIDTH` (default: `768` on CPU, `1024` on GPU)
+- `SDXL_IMAGE_HEIGHT` (default: `768` on CPU, `1024` on GPU)
 
 GPU is recommended for speed and quality.
 
@@ -45,11 +47,20 @@ POST /generate
 ```
 Body: the exact JSON payload produced by `build_generator_payload` in `store/ai_enrichment.py`.
 
+For a quick liveness check:
+```
+GET /health
+```
+
 ## Connect the Django App
 Set these variables in `.env`:
 ```
 AI_IMAGE_GENERATOR_ENDPOINT=https://vyaesop-zentanee.hf.space/generate
 AI_IMAGE_GENERATOR_TOKEN=
+AI_IMAGE_GENERATOR_TIMEOUT=300
+AI_IMAGE_GENERATOR_RETRIES=2
+AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST=1
+AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL=False
 ```
 The token is optional unless you restrict the Space.
 
@@ -58,6 +69,8 @@ The token is optional unless you restrict the Space.
 - It respects the `reference_strength` sent by the dashboard.
 - If you provide a secondary reference image, the worker blends it lightly with
   the primary reference before generation.
+- The Django app now sends one shot per request by default, which is more reliable on
+  a free CPU Space than generating several images in a single HTTP response.
 
 If you later want stronger fidelity, you can add IP-Adapter or ControlNet to this
 worker without changing the dashboard payload format.

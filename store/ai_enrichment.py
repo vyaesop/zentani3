@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+import socket
 import time
 from io import BytesIO
 from decimal import Decimal
@@ -506,6 +507,51 @@ def _store_generated_candidate_images(draft, generated_items):
     return created_images
 
 
+def _chunk_list(items, chunk_size):
+    chunk_size = max(1, int(chunk_size or 1))
+    for index in range(0, len(items), chunk_size):
+        yield items[index:index + chunk_size]
+
+
+def _post_generator_payload(endpoint, payload, headers, *, timeout_seconds, max_attempts):
+    last_timeout = None
+    last_network_error = None
+
+    for attempt in range(1, max_attempts + 1):
+        request = Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="ignore")
+            raise ProductAIError(f"Image generator failed: {exc.code} {details}") from exc
+        except socket.timeout as exc:
+            last_timeout = exc
+            if attempt < max_attempts:
+                time.sleep(2 * attempt)
+                continue
+        except URLError as exc:
+            last_network_error = exc
+            if attempt < max_attempts:
+                time.sleep(2 * attempt)
+                continue
+
+    if last_timeout is not None:
+        raise ProductAIError(
+            "The hosted image generator took too long to respond. "
+            "This usually means the free Hugging Face Space is still generating or waking up."
+        ) from last_timeout
+    if last_network_error is not None:
+        raise ProductAIError(f"Image generator failed: {last_network_error.reason}") from last_network_error
+
+    raise ProductAIError("Image generator failed without returning a response.")
+
+
 def _call_external_generator(draft, *, base_url=""):
     endpoint = getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip()
     if not endpoint:
@@ -519,30 +565,22 @@ def _call_external_generator(draft, *, base_url=""):
 
     timeout_seconds = int(getattr(settings, "AI_IMAGE_GENERATOR_TIMEOUT", 300))
     max_attempts = int(getattr(settings, "AI_IMAGE_GENERATOR_RETRIES", 2))
-    request = Request(
-        endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
-        method="POST",
-    )
-    last_error = None
-    for attempt in range(1, max_attempts + 1):
-        try:
-            with urlopen(request, timeout=timeout_seconds) as response:
-                body = json.loads(response.read().decode("utf-8"))
-            last_error = None
-            break
-        except HTTPError as exc:
-            details = exc.read().decode("utf-8", errors="ignore")
-            raise ProductAIError(f"Image generator failed: {exc.code} {details}") from exc
-        except URLError as exc:
-            last_error = exc
-            if attempt < max_attempts:
-                time.sleep(2 * attempt)
-                continue
-            raise ProductAIError(f"Image generator failed: {exc.reason}") from exc
+    shots = payload.get("shots") or []
+    shots_per_request = int(getattr(settings, "AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST", 1))
 
-    images = body.get("images") or []
+    images = []
+    for shot_batch in _chunk_list(shots, shots_per_request):
+        batch_payload = dict(payload)
+        batch_payload["shots"] = shot_batch
+        body = _post_generator_payload(
+            endpoint,
+            batch_payload,
+            headers,
+            timeout_seconds=timeout_seconds,
+            max_attempts=max_attempts,
+        )
+        images.extend(body.get("images") or [])
+
     if not images:
         raise ProductAIError("Image generator returned no images.")
     return _store_generated_candidate_images(draft, images)
@@ -587,11 +625,16 @@ def _generate_local_image_candidates(draft):
 
 
 def generate_reference_image_candidates(draft, *, base_url=""):
+    fallback_to_local = str(getattr(settings, "AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL", "false")).lower() == "true"
     try:
         created = _call_external_generator(draft, base_url=base_url)
     except ProductAIError:
+        if fallback_to_local:
+            return _generate_local_image_candidates(draft)
         raise
     except Exception as exc:
+        if fallback_to_local:
+            return _generate_local_image_candidates(draft)
         raise ProductAIError(f"Image generator failed unexpectedly: {exc}") from exc
 
     if created is not None:
