@@ -10,6 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
 
+from . import ai_enrichment
 from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product, ProductAIDraft, ProductAIDraftImage
 
 
@@ -520,3 +521,48 @@ class StoreFlowTests(TestCase):
         self.assertTrue(product.product_image.name)
         self.assertEqual(product.p_images.count(), 1)
         self.assertEqual(product.ai_drafts.count(), 1)
+
+    @override_settings(
+        DEBUG=True,
+        MEDIA_ROOT=tempfile.gettempdir(),
+        AI_IMAGE_GENERATOR_ENDPOINT="https://example.com/generate",
+        AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST=1,
+    )
+    @patch("store.ai_enrichment._store_generated_candidate_images")
+    @patch("store.ai_enrichment._post_generator_payload")
+    def test_external_generator_sends_one_shot_per_request(self, post_generator_payload_mock, store_generated_mock):
+        draft = self._create_ai_draft()
+        post_generator_payload_mock.side_effect = [
+            {"images": [{"image_base64": "Zm9v", "shot_name": "Studio White Hero"}]},
+            {"images": [{"image_base64": "YmFy", "shot_name": "Soft Editorial Portrait"}]},
+        ]
+        store_generated_mock.return_value = ["stored"]
+
+        created = ai_enrichment._call_external_generator(draft, base_url="https://example.com")
+
+        self.assertEqual(created, ["stored"])
+        self.assertEqual(post_generator_payload_mock.call_count, 2)
+        first_payload = post_generator_payload_mock.call_args_list[0].args[1]
+        second_payload = post_generator_payload_mock.call_args_list[1].args[1]
+        self.assertEqual(len(first_payload["shots"]), 1)
+        self.assertEqual(len(second_payload["shots"]), 1)
+        self.assertEqual(first_payload["shots"][0]["name"], "Studio White Hero")
+        self.assertEqual(second_payload["shots"][0]["name"], "Soft Editorial Portrait")
+
+    @override_settings(
+        DEBUG=True,
+        MEDIA_ROOT=tempfile.gettempdir(),
+        AI_IMAGE_GENERATOR_ENDPOINT="https://example.com/generate",
+        AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL=True,
+    )
+    @patch("store.ai_enrichment._generate_local_image_candidates")
+    @patch("store.ai_enrichment._call_external_generator")
+    def test_timeout_can_fall_back_to_local_candidates(self, call_external_mock, generate_local_mock):
+        draft = self._create_ai_draft()
+        call_external_mock.side_effect = ai_enrichment.ProductAIError("timeout")
+        generate_local_mock.return_value = ["local"]
+
+        created = ai_enrichment.generate_reference_image_candidates(draft, base_url="https://example.com")
+
+        self.assertEqual(created, ["local"])
+        generate_local_mock.assert_called_once_with(draft)
