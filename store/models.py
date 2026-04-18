@@ -200,12 +200,27 @@ class ProductAIDraft(models.Model):
     STATUS_PENDING = "pending"
     STATUS_SUCCEEDED = "succeeded"
     STATUS_FAILED = "failed"
+    PIPELINE_IDLE = "idle"
+    PIPELINE_QUEUED = "queued"
+    PIPELINE_ANALYZING = "analyzing"
+    PIPELINE_GENERATING_IMAGES = "generating_images"
+    PIPELINE_READY = "ready"
+    PIPELINE_MANUAL_REVIEW = "manual_review"
 
     STATUS_CHOICES = (
         (STATUS_PENDING, "Pending"),
         (STATUS_SUCCEEDED, "Succeeded"),
         (STATUS_FAILED, "Failed"),
     )
+    PIPELINE_STATE_CHOICES = (
+        (PIPELINE_IDLE, "Idle"),
+        (PIPELINE_QUEUED, "Queued"),
+        (PIPELINE_ANALYZING, "Generating Copy"),
+        (PIPELINE_GENERATING_IMAGES, "Generating Images"),
+        (PIPELINE_READY, "Ready"),
+        (PIPELINE_MANUAL_REVIEW, "Manual Review"),
+    )
+    ACTIVE_QUEUE_STATES = (PIPELINE_QUEUED, PIPELINE_ANALYZING, PIPELINE_GENERATING_IMAGES)
 
     product = models.ForeignKey(
         Product,
@@ -235,12 +250,18 @@ class ProductAIDraft(models.Model):
         verbose_name="Secondary Reference Image",
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    pipeline_state = models.CharField(max_length=30, choices=PIPELINE_STATE_CHOICES, default=PIPELINE_IDLE)
     error_message = models.CharField(max_length=250, blank=True)
+    last_error_stage = models.CharField(max_length=40, blank=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
     response_payload = models.JSONField(default=dict, blank=True)
     source_links = models.JSONField(default=list, blank=True)
     seo_payload = models.JSONField(default=dict, blank=True)
     image_plan = models.JSONField(default=dict, blank=True)
     generator_payload = models.JSONField(default=dict, blank=True)
+    queued_at = models.DateTimeField(null=True, blank=True)
+    processing_started_at = models.DateTimeField(null=True, blank=True)
+    processing_finished_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -251,6 +272,7 @@ class ProductAIDraft(models.Model):
             models.Index(fields=["product", "updated_at"]),
             models.Index(fields=["sku", "updated_at"]),
             models.Index(fields=["status", "updated_at"]),
+            models.Index(fields=["created_by", "pipeline_state", "updated_at"]),
         ]
 
     def __str__(self):
@@ -272,6 +294,11 @@ class ProductAIDraft(models.Model):
     @property
     def extracted_fields(self):
         return self.response_payload.get("catalog_fields", {})
+
+    @property
+    def queue_label(self):
+        labels = dict(self.PIPELINE_STATE_CHOICES)
+        return labels.get(self.pipeline_state, self.pipeline_state.replace("_", " ").title())
 
 
 class ProductAIDraftImage(models.Model):

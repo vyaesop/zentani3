@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, IntegerField, Q, Sum, When
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,13 +17,13 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .ai_enrichment import (
+    apply_ai_draft_result,
     build_generator_payload,
     ProductAIError,
     draft_to_product_initial,
-    format_price_for_prompt,
     generate_reference_image_candidates,
+    generate_product_ai_payload_for_draft,
     gemini_is_configured,
-    generate_product_ai_draft,
     store_generated_candidate_images,
 )
 from .dashboard_forms import (
@@ -55,6 +55,7 @@ from .telegram_notify import (
 
 STATUS_VALUES = {value for value, _ in STATUS_CHOICES}
 AI_DRAFT_SESSION_KEY = "dashboard_product_ai_draft_id"
+AI_QUEUE_LIMIT = 20
 
 
 def staff_required(view_func):
@@ -154,6 +155,67 @@ def _build_ai_draft_form(product=None, ai_draft=None):
             "price": product.price,
         }
     return ProductAIDraftForm(initial=initial)
+
+
+def _active_ai_queue_queryset(user):
+    return ProductAIDraft.objects.filter(
+        created_by=user,
+        pipeline_state__in=ProductAIDraft.ACTIVE_QUEUE_STATES,
+    )
+
+
+def _queueable_drafts_queryset(user):
+    return ProductAIDraft.objects.filter(created_by=user).order_by(
+        Case(
+            When(pipeline_state=ProductAIDraft.PIPELINE_ANALYZING, then=0),
+            When(pipeline_state=ProductAIDraft.PIPELINE_GENERATING_IMAGES, then=1),
+            When(pipeline_state=ProductAIDraft.PIPELINE_QUEUED, then=2),
+            When(pipeline_state=ProductAIDraft.PIPELINE_MANUAL_REVIEW, then=3),
+            When(pipeline_state=ProductAIDraft.PIPELINE_READY, then=4),
+            default=5,
+            output_field=IntegerField(),
+        ),
+        "-updated_at",
+        "-created_at",
+    )
+
+
+def _mark_draft_manual_review(draft, *, error_message, stage):
+    draft.status = ProductAIDraft.STATUS_FAILED
+    draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
+    draft.error_message = str(error_message)[:250]
+    draft.last_error_stage = stage
+    draft.processing_finished_at = timezone.now()
+    draft.save(
+        update_fields=[
+            "status",
+            "pipeline_state",
+            "error_message",
+            "last_error_stage",
+            "processing_finished_at",
+            "updated_at",
+        ]
+    )
+    return draft
+
+
+def _queue_draft_json(request, draft):
+    return {
+        "id": draft.id,
+        "sku": draft.sku,
+        "vendor_hint": draft.vendor_hint,
+        "price": str(draft.price) if draft.price is not None else "",
+        "status": draft.status,
+        "pipeline_state": draft.pipeline_state,
+        "queue_label": draft.queue_label,
+        "title": draft.extracted_fields.get("title") or draft.sku,
+        "error_message": draft.error_message,
+        "generated_images_count": draft.generated_images.count(),
+        "edit_url": _ai_draft_redirect_url(draft.product, draft),
+        "process_url": reverse("store:dashboard-ai-draft-process", args=[draft.id]),
+        "manual_review_url": reverse("store:dashboard-ai-draft-manual-review", args=[draft.id]),
+        "save_images_url": reverse("store:dashboard-ai-draft-generated-images", args=[draft.id]),
+    }
 
 
 def _absolute_base_url(request):
@@ -486,6 +548,54 @@ def dashboard_products(request):
 
 
 @staff_required
+def dashboard_ai_queue(request):
+    queue_count = _active_ai_queue_queryset(request.user).count()
+
+    if request.method == "POST":
+        ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
+        if not gemini_is_configured():
+            messages.error(request, "Set GEMINI_API_KEY in your environment before queueing AI drafts.")
+        elif queue_count >= AI_QUEUE_LIMIT:
+            messages.error(request, f"You can only keep {AI_QUEUE_LIMIT} active AI drafts in the queue at a time.")
+        elif ai_draft_form.is_valid():
+            draft = ai_draft_form.save(commit=False)
+            draft.created_by = request.user
+            draft.status = ProductAIDraft.STATUS_PENDING
+            draft.pipeline_state = ProductAIDraft.PIPELINE_QUEUED
+            draft.queued_at = timezone.now()
+            draft.error_message = ""
+            draft.last_error_stage = ""
+            draft.save()
+            messages.success(
+                request,
+                f"{draft.sku} was added to the AI queue. It will process in the background while you keep adding more.",
+            )
+            return redirect("store:dashboard-ai-queue")
+        else:
+            messages.error(request, "Add a reference image, SKU, and price before queueing a draft.")
+    else:
+        ai_draft_form = ProductAIDraftForm()
+
+    queue_items = list(_queueable_drafts_queryset(request.user)[:40])
+    context = _dashboard_context(
+        request,
+        section="ai-queue",
+        title="AI Queue",
+        intro="Queue up to twenty products, let AI process them in the background, and come back to ready-to-finish drafts instead of babysitting each one.",
+        ai_draft_form=ai_draft_form,
+        queue_items=queue_items,
+        queue_items_json=[_queue_draft_json(request, draft) for draft in queue_items],
+        queue_limit=AI_QUEUE_LIMIT,
+        queue_count=queue_count,
+        queue_remaining=max(0, AI_QUEUE_LIMIT - queue_count),
+        ai_image_generator_endpoint=getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip(),
+        ai_image_shots_per_request=max(1, int(getattr(settings, "AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST", 1))),
+        gemini_is_configured=gemini_is_configured(),
+    )
+    return render(request, "dashboard/ai_queue.html", context)
+
+
+@staff_required
 def dashboard_product_edit(request, product_id=None):
     product = None
     if product_id is not None:
@@ -513,49 +623,28 @@ def dashboard_product_edit(request, product_id=None):
                 draft.created_by = request.user
                 draft.product = product
                 draft.status = ProductAIDraft.STATUS_PENDING
+                draft.pipeline_state = ProductAIDraft.PIPELINE_IDLE
                 draft.error_message = ""
+                draft.last_error_stage = ""
                 draft.save()
 
-                uploaded = request.FILES["reference_image"]
-                uploaded.seek(0)
-                image_bytes = uploaded.read()
-                uploaded.seek(0)
-
                 try:
-                    result = generate_product_ai_draft(
-                        image_bytes=image_bytes,
-                        mime_type=uploaded.content_type or "image/jpeg",
-                        sku=draft.sku,
-                        price=format_price_for_prompt(draft.price),
-                        vendor_hint=draft.vendor_hint,
-                    )
+                    result = generate_product_ai_payload_for_draft(draft)
                 except ProductAIError as exc:
                     draft.status = ProductAIDraft.STATUS_FAILED
                     draft.error_message = str(exc)
-                    draft.save(update_fields=["status", "error_message", "updated_at"])
+                    draft.last_error_stage = "content"
+                    draft.save(update_fields=["status", "error_message", "last_error_stage", "updated_at"])
                     messages.error(request, str(exc))
                     ai_draft = draft
                 else:
-                    draft.status = ProductAIDraft.STATUS_SUCCEEDED
-                    draft.vendor_hint = draft.vendor_hint or (result.get("search_strategy") or {}).get("vendor_hint", "")
-                    draft.response_payload = result
-                    draft.source_links = result.get("sources") or []
-                    draft.seo_payload = result.get("seo") or {}
-                    draft.image_plan = result.get("image_plan") or {}
-                    draft.generator_payload = result.get("generation_package") or {}
-                    draft.error_message = ""
-                    draft.save(
-                        update_fields=[
-                            "status",
-                            "vendor_hint",
-                            "response_payload",
-                            "source_links",
-                            "seo_payload",
-                            "image_plan",
-                            "generator_payload",
-                            "error_message",
-                            "updated_at",
-                        ]
+                    apply_ai_draft_result(
+                        draft,
+                        result,
+                        status=ProductAIDraft.STATUS_SUCCEEDED,
+                        pipeline_state=ProductAIDraft.PIPELINE_IDLE,
+                        error_message="",
+                        last_error_stage="",
                     )
                     if product is None:
                         request.session[AI_DRAFT_SESSION_KEY] = draft.id
@@ -572,11 +661,44 @@ def dashboard_product_edit(request, product_id=None):
             if ai_draft is None:
                 messages.error(request, "Generate an AI draft first so image candidates have the right shot plan.")
             else:
+                ai_draft.pipeline_state = ProductAIDraft.PIPELINE_GENERATING_IMAGES
+                ai_draft.processing_started_at = ai_draft.processing_started_at or timezone.now()
+                ai_draft.save(update_fields=["pipeline_state", "processing_started_at", "updated_at"])
                 try:
                     generate_reference_image_candidates(ai_draft, base_url=_absolute_base_url(request))
                 except ProductAIError as exc:
+                    ai_draft.status = ProductAIDraft.STATUS_FAILED
+                    ai_draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
+                    ai_draft.error_message = str(exc)
+                    ai_draft.last_error_stage = "images"
+                    ai_draft.processing_finished_at = timezone.now()
+                    ai_draft.save(
+                        update_fields=[
+                            "status",
+                            "pipeline_state",
+                            "error_message",
+                            "last_error_stage",
+                            "processing_finished_at",
+                            "updated_at",
+                        ]
+                    )
                     messages.error(request, str(exc))
                 else:
+                    ai_draft.status = ProductAIDraft.STATUS_SUCCEEDED
+                    ai_draft.pipeline_state = ProductAIDraft.PIPELINE_READY
+                    ai_draft.processing_finished_at = timezone.now()
+                    ai_draft.error_message = ""
+                    ai_draft.last_error_stage = ""
+                    ai_draft.save(
+                        update_fields=[
+                            "status",
+                            "pipeline_state",
+                            "processing_finished_at",
+                            "error_message",
+                            "last_error_stage",
+                            "updated_at",
+                        ]
+                    )
                     messages.success(request, "AI image candidates generated. Review them below before saving.")
                     return redirect(_ai_draft_redirect_url(product, ai_draft))
         else:
@@ -669,6 +791,123 @@ def dashboard_product_edit(request, product_id=None):
 
 @staff_required
 @require_POST
+def dashboard_ai_draft_process(request, draft_id):
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+
+    if draft.generated_images.exists():
+        if draft.pipeline_state != ProductAIDraft.PIPELINE_READY:
+            draft.pipeline_state = ProductAIDraft.PIPELINE_READY
+            draft.status = ProductAIDraft.STATUS_SUCCEEDED
+            draft.processing_finished_at = timezone.now()
+            draft.save(update_fields=["pipeline_state", "status", "processing_finished_at", "updated_at"])
+        return JsonResponse(
+            {
+                "ok": True,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "draft": _queue_draft_json(request, draft),
+            }
+        )
+
+    if draft.response_payload:
+        draft.pipeline_state = ProductAIDraft.PIPELINE_GENERATING_IMAGES
+        draft.error_message = ""
+        draft.last_error_stage = ""
+        draft.processing_started_at = draft.processing_started_at or timezone.now()
+        draft.save(
+            update_fields=[
+                "pipeline_state",
+                "error_message",
+                "last_error_stage",
+                "processing_started_at",
+                "updated_at",
+            ]
+        )
+        return JsonResponse(
+            {
+                "ok": True,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "generator_payload": build_generator_payload(draft, base_url=_absolute_base_url(request)),
+                "draft": _queue_draft_json(request, draft),
+            }
+        )
+
+    draft.pipeline_state = ProductAIDraft.PIPELINE_ANALYZING
+    draft.processing_started_at = timezone.now()
+    draft.attempt_count += 1
+    draft.error_message = ""
+    draft.last_error_stage = ""
+    draft.save(
+        update_fields=[
+            "pipeline_state",
+            "processing_started_at",
+            "attempt_count",
+            "error_message",
+            "last_error_stage",
+            "updated_at",
+        ]
+    )
+
+    try:
+        result = generate_product_ai_payload_for_draft(draft)
+    except ProductAIError as exc:
+        _mark_draft_manual_review(draft, error_message=exc, stage="content")
+        return JsonResponse(
+            {
+                "ok": False,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "error": str(exc),
+                "draft": _queue_draft_json(request, draft),
+            },
+            status=200,
+        )
+
+    apply_ai_draft_result(
+        draft,
+        result,
+        status=ProductAIDraft.STATUS_SUCCEEDED,
+        pipeline_state=ProductAIDraft.PIPELINE_GENERATING_IMAGES,
+        error_message="",
+        last_error_stage="",
+    )
+    return JsonResponse(
+        {
+            "ok": True,
+            "pipeline_state": draft.pipeline_state,
+            "queue_label": draft.queue_label,
+            "generator_payload": build_generator_payload(draft, base_url=_absolute_base_url(request)),
+            "draft": _queue_draft_json(request, draft),
+        }
+    )
+
+
+@staff_required
+@require_POST
+def dashboard_ai_draft_manual_review(request, draft_id):
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        payload = {}
+
+    error_message = payload.get("error") or "This draft needs manual review."
+    error_stage = payload.get("stage") or "pipeline"
+    _mark_draft_manual_review(draft, error_message=error_message, stage=error_stage)
+    return JsonResponse(
+        {
+            "ok": True,
+            "pipeline_state": draft.pipeline_state,
+            "queue_label": draft.queue_label,
+            "draft": _queue_draft_json(request, draft),
+        }
+    )
+
+
+@staff_required
+@require_POST
 def dashboard_ai_draft_generated_images(request, draft_id):
     draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
 
@@ -687,5 +926,18 @@ def dashboard_ai_draft_generated_images(request, draft_id):
         return JsonResponse({"ok": False, "error": f"Could not save generated images: {exc}"}, status=400)
 
     draft.error_message = ""
-    draft.save(update_fields=["error_message", "updated_at"])
-    return JsonResponse({"ok": True, "saved_count": len(created)})
+    draft.last_error_stage = ""
+    draft.pipeline_state = ProductAIDraft.PIPELINE_READY
+    draft.status = ProductAIDraft.STATUS_SUCCEEDED
+    draft.processing_finished_at = timezone.now()
+    draft.save(
+        update_fields=[
+            "error_message",
+            "last_error_stage",
+            "pipeline_state",
+            "status",
+            "processing_finished_at",
+            "updated_at",
+        ]
+    )
+    return JsonResponse({"ok": True, "saved_count": len(created), "draft": _queue_draft_json(request, draft)})

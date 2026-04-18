@@ -9,11 +9,14 @@ app_name = 'store'
 
 urlpatterns = [
     path('dashboard/', dashboard_views.dashboard_home, name="dashboard-home"),
+    path('dashboard/ai-queue/', dashboard_views.dashboard_ai_queue, name="dashboard-ai-queue"),
     path('dashboard/orders/', dashboard_views.dashboard_orders, name="dashboard-orders"),
     path('dashboard/telegram-orders/', dashboard_views.dashboard_telegram_orders, name="dashboard-telegram-orders"),
     path('dashboard/products/', dashboard_views.dashboard_products, name="dashboard-products"),
     path('dashboard/products/new/', dashboard_views.dashboard_product_edit, name="dashboard-product-create"),
     path('dashboard/products/<int:product_id>/', dashboard_views.dashboard_product_edit, name="dashboard-product-edit"),
+    path('dashboard/ai-drafts/<int:draft_id>/process/', dashboard_views.dashboard_ai_draft_process, name="dashboard-ai-draft-process"),
+    path('dashboard/ai-drafts/<int:draft_id>/manual-review/', dashboard_views.dashboard_ai_draft_manual_review, name="dashboard-ai-draft-manual-review"),
     path('dashboard/ai-drafts/<int:draft_id>/generated-images/', dashboard_views.dashboard_ai_draft_generated_images, name="dashboard-ai-draft-generated-images"),
     path('', views.home, name="home"),
     # URL for Cart and Checkout

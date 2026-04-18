@@ -105,8 +105,12 @@ IS_VERCEL = os.getenv('VERCEL') == '1'
 
 if DATABASE_URL:
     # Use managed DB URL in production/serverless environments.
+    database_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    if database_config.get('ENGINE') != 'django.db.backends.sqlite3':
+        database_config.setdefault('OPTIONS', {})
+        database_config['OPTIONS']['sslmode'] = 'require'
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+        'default': database_config
     }
 else:
     if IS_VERCEL or not DEBUG:
