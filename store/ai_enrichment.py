@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+from django.db import close_old_connections, connections
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils.text import slugify
 
@@ -471,6 +472,8 @@ def _render_shot(reference_rgba, shot):
 
 
 def _store_generated_candidate_images(draft, generated_items):
+    connections.close_all()
+    close_old_connections()
     draft.generated_images.all().delete()
     created_images = []
     for index, item in enumerate(generated_items[:6], start=1):
@@ -504,6 +507,8 @@ def _store_generated_candidate_images(draft, generated_items):
                 sort_order=index,
             )
         )
+        connections.close_all()
+        close_old_connections()
     return created_images
 
 
@@ -729,6 +734,66 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
 
     parsed["search_strategy"]["vendor_hint"] = parsed["search_strategy"].get("vendor_hint") or resolved_vendor_hint
     return parsed
+
+
+def generate_product_ai_payload_for_draft(draft):
+    if not draft.reference_image:
+        raise ProductAIError("Add a reference image before generating an AI draft.")
+
+    draft.reference_image.open("rb")
+    try:
+        image_bytes = draft.reference_image.read()
+        mime_type = getattr(draft.reference_image.file, "content_type", None) or "image/jpeg"
+    finally:
+        draft.reference_image.close()
+
+    return generate_product_ai_draft(
+        image_bytes=image_bytes,
+        mime_type=mime_type,
+        sku=draft.sku,
+        price=format_price_for_prompt(draft.price),
+        vendor_hint=draft.vendor_hint,
+    )
+
+
+def apply_ai_draft_result(
+    draft,
+    result,
+    *,
+    status=None,
+    pipeline_state=None,
+    error_message="",
+    last_error_stage="",
+):
+    draft.vendor_hint = draft.vendor_hint or (result.get("search_strategy") or {}).get("vendor_hint", "")
+    draft.response_payload = result
+    draft.source_links = result.get("sources") or []
+    draft.seo_payload = result.get("seo") or {}
+    draft.image_plan = result.get("image_plan") or {}
+    draft.generator_payload = result.get("generation_package") or {}
+    draft.error_message = error_message
+    draft.last_error_stage = last_error_stage
+    if status:
+        draft.status = status
+    if pipeline_state:
+        draft.pipeline_state = pipeline_state
+    update_fields = [
+        "vendor_hint",
+        "response_payload",
+        "source_links",
+        "seo_payload",
+        "image_plan",
+        "generator_payload",
+        "error_message",
+        "last_error_stage",
+        "updated_at",
+    ]
+    if status:
+        update_fields.append("status")
+    if pipeline_state:
+        update_fields.append("pipeline_state")
+    draft.save(update_fields=update_fields)
+    return draft
 
 
 def draft_to_product_initial(draft, *, categories=(), brands=()):

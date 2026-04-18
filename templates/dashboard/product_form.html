@@ -52,6 +52,7 @@
         </div>
         <div class="spring-dashboard-editor__header-actions">
             <button type="submit" name="generate_ai_draft" value="1" class="btn btn-dark">Generate AI draft</button>
+            <a href="{% url 'store:dashboard-ai-queue' %}" class="btn btn-outline-dark">Open AI queue</a>
             {% if not gemini_is_configured %}
             <p class="spring-dashboard-ai-inline-note">Add `GEMINI_API_KEY` to your environment to enable this workflow.</p>
             {% endif %}

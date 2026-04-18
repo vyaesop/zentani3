@@ -47,6 +47,10 @@
                     <i class="fas fa-tags"></i>
                     <span>Products</span>
                 </a>
+                <a href="{% url 'store:dashboard-ai-queue' %}" class="{% if dashboard_section == 'ai-queue' %}is-active{% endif %}">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>AI Queue</span>
+                </a>
             </nav>
 
             <div class="spring-dashboard-sidebar__panel">

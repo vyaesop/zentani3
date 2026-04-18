@@ -1,0 +1,308 @@
+{% extends "dashboard/base.html" %}
+{% load image_optim %}
+
+{% block dashboard_content %}
+<section class="spring-dashboard-panel spring-dashboard-panel--ai">
+    <div class="spring-dashboard-section-head">
+        <div>
+            <p class="spring-dashboard-panel__eyebrow">Background AI drafting</p>
+            <h3>Queue products while the AI keeps working</h3>
+        </div>
+        <div class="spring-dashboard-ai-status">
+            {% if gemini_is_configured %}
+            <span class="spring-dashboard-badge spring-dashboard-badge--delivered">Gemini ready</span>
+            {% else %}
+            <span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Gemini key missing</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="spring-dashboard-ai-pill-list">
+        <span><strong>Active queue:</strong> {{ queue_count }} / {{ queue_limit }}</span>
+        <span><strong>Remaining slots:</strong> {{ queue_remaining }}</span>
+        <span><strong>Image runner:</strong> {% if ai_image_generator_endpoint %}Hosted worker ready{% else %}No hosted image worker{% endif %}</span>
+    </div>
+
+    <p class="spring-dashboard-ai-copy">
+        Queue one product at a time with the reference image, SKU, vendor, and price. The browser keeps processing queued drafts in the background, so slow or failed items can fall into manual review without blocking the rest.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="spring-dashboard-ai-intake">
+        {% csrf_token %}
+        <div class="spring-dashboard-form-grid">
+            <label class="spring-dashboard-field">
+                <span>Source SKU</span>
+                {{ ai_draft_form.sku }}
+                {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field">
+                <span>Price</span>
+                {{ ai_draft_form.price }}
+                {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field">
+                <span>Local vendor</span>
+                {{ ai_draft_form.vendor_hint }}
+                {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field spring-dashboard-field--wide">
+                <span>Identifier image</span>
+                {{ ai_draft_form.reference_image }}
+                {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+            <label class="spring-dashboard-field spring-dashboard-field--wide">
+                <span>Optional second reference image</span>
+                {{ ai_draft_form.secondary_reference_image }}
+                {% for error in ai_draft_form.secondary_reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+            </label>
+        </div>
+        <div class="spring-dashboard-editor__header-actions">
+            <button type="submit" class="btn btn-dark">Add To AI Queue</button>
+            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-outline-dark">Open single draft editor</a>
+        </div>
+    </form>
+</section>
+
+<section class="spring-dashboard-panel">
+    <div class="spring-dashboard-section-head">
+        <div>
+            <p class="spring-dashboard-panel__eyebrow">Queue monitor</p>
+            <h3>Draft progress</h3>
+        </div>
+    </div>
+
+    {% if queue_items %}
+    <div class="spring-dashboard-ai-queue-list" data-ai-queue-root data-ai-image-endpoint="{{ ai_image_generator_endpoint }}" data-ai-shots-per-request="{{ ai_image_shots_per_request }}">
+        {% for draft in queue_items %}
+        <article
+            class="spring-dashboard-ai-queue-item"
+            data-ai-queue-item
+            data-draft-id="{{ draft.id }}"
+            data-state="{{ draft.pipeline_state }}"
+            data-process-url="{% url 'store:dashboard-ai-draft-process' draft.id %}"
+            data-manual-review-url="{% url 'store:dashboard-ai-draft-manual-review' draft.id %}"
+            data-save-url="{% url 'store:dashboard-ai-draft-generated-images' draft.id %}"
+        >
+            <div class="spring-dashboard-section-head">
+                <div>
+                    <p class="spring-dashboard-panel__eyebrow">{{ draft.created_at|date:"M d, H:i" }}</p>
+                    <h4 data-ai-queue-title>{{ draft.extracted_fields.title|default:draft.sku }}</h4>
+                </div>
+                <span class="spring-dashboard-badge {% if draft.pipeline_state == 'ready' %}spring-dashboard-badge--delivered{% elif draft.pipeline_state == 'manual_review' %}spring-dashboard-badge--cancelled{% elif draft.pipeline_state == 'queued' %}spring-dashboard-badge--pending{% else %}spring-dashboard-badge--accepted{% endif %}" data-ai-queue-badge>
+                    {{ draft.queue_label }}
+                </span>
+            </div>
+
+            <div class="spring-dashboard-ai-list">
+                <div>
+                    <dt>SKU</dt>
+                    <dd>{{ draft.sku }}</dd>
+                </div>
+                <div>
+                    <dt>Vendor</dt>
+                    <dd>{{ draft.vendor_hint|default:"-" }}</dd>
+                </div>
+                <div>
+                    <dt>Attempts</dt>
+                    <dd data-ai-queue-attempts>{{ draft.attempt_count }}</dd>
+                </div>
+                <div>
+                    <dt>Images</dt>
+                    <dd data-ai-queue-images>{{ draft.generated_images.count }}</dd>
+                </div>
+            </div>
+
+            {% if draft.reference_image %}
+            <div class="spring-dashboard-gallery-thumb spring-dashboard-gallery-thumb--queue">
+                <img src="{{ draft.reference_image.url|cdn_optimize }}" alt="{{ draft.sku }}">
+            </div>
+            {% endif %}
+
+            <p class="spring-dashboard-ai-inline-note" data-ai-queue-message>
+                {% if draft.error_message %}
+                {{ draft.error_message }}
+                {% elif draft.pipeline_state == "ready" %}
+                Draft is ready for final size and inventory edits.
+                {% elif draft.pipeline_state == "manual_review" %}
+                This draft needs manual review before posting.
+                {% else %}
+                Waiting for the queue runner.
+                {% endif %}
+            </p>
+
+            <div class="spring-dashboard-editor__header-actions">
+                <a href="{% if draft.product %}{% url 'store:dashboard-product-edit' draft.product.id %}?ai_draft={{ draft.id }}{% else %}{% url 'store:dashboard-product-create' %}?ai_draft={{ draft.id }}{% endif %}" class="btn btn-outline-dark">Open Draft</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="spring-dashboard-empty">No queued AI drafts yet. Add one above and the queue runner will take it from there.</div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const queueRoot = document.querySelector('[data-ai-queue-root]');
+    if (!queueRoot) return;
+
+    const imageEndpoint = queueRoot.getAttribute('data-ai-image-endpoint');
+    const shotsPerRequest = Math.max(1, Number(queueRoot.getAttribute('data-ai-shots-per-request') || '1'));
+    let queueRunning = false;
+
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    function updateRow(row, draftData, messageOverride) {
+        if (!row || !draftData) return;
+        row.dataset.state = draftData.pipeline_state || row.dataset.state;
+        const badge = row.querySelector('[data-ai-queue-badge]');
+        if (badge) {
+            badge.textContent = draftData.queue_label || row.dataset.state;
+            badge.className = 'spring-dashboard-badge';
+            if (draftData.pipeline_state === 'ready') {
+                badge.classList.add('spring-dashboard-badge--delivered');
+            } else if (draftData.pipeline_state === 'manual_review') {
+                badge.classList.add('spring-dashboard-badge--cancelled');
+            } else if (draftData.pipeline_state === 'queued') {
+                badge.classList.add('spring-dashboard-badge--pending');
+            } else {
+                badge.classList.add('spring-dashboard-badge--accepted');
+            }
+        }
+        const title = row.querySelector('[data-ai-queue-title]');
+        if (title && draftData.title) title.textContent = draftData.title;
+        const message = row.querySelector('[data-ai-queue-message]');
+        if (message) message.textContent = messageOverride || draftData.error_message || 'Queue state updated.';
+        const attempts = row.querySelector('[data-ai-queue-attempts]');
+        if (attempts && typeof draftData.attempt_count !== 'undefined') attempts.textContent = draftData.attempt_count;
+        const images = row.querySelector('[data-ai-queue-images]');
+        if (images && typeof draftData.generated_images_count !== 'undefined') images.textContent = draftData.generated_images_count;
+    }
+
+    async function parseJsonResponse(response) {
+        const text = await response.text();
+        if (!text) return {};
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            return { detail: text };
+        }
+    }
+
+    function chunkShots(shots, size) {
+        const chunks = [];
+        for (let index = 0; index < shots.length; index += size) {
+            chunks.push(shots.slice(index, index + size));
+        }
+        return chunks;
+    }
+
+    async function saveManualReview(row, message, stage) {
+        const response = await fetch(row.getAttribute('data-manual-review-url'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ error: message, stage: stage })
+        });
+        const body = await parseJsonResponse(response);
+        if (body && body.draft) {
+            updateRow(row, body.draft, message);
+        }
+    }
+
+    async function generateImagesForDraft(row, generatorPayload) {
+        if (!imageEndpoint) {
+            throw new Error('The hosted image generator endpoint is not configured.');
+        }
+        const allImages = [];
+        const shotBatches = chunkShots(generatorPayload.shots || [], shotsPerRequest);
+
+        for (let index = 0; index < shotBatches.length; index += 1) {
+            const batchPayload = Object.assign({}, generatorPayload, { shots: shotBatches[index] });
+            updateRow(row, { pipeline_state: 'generating_images', queue_label: 'Generating Images' }, 'Generating image shot ' + (index + 1) + ' of ' + shotBatches.length + '...');
+            const generatorResponse = await fetch(imageEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(batchPayload)
+            });
+            const generatorBody = await parseJsonResponse(generatorResponse);
+            if (!generatorResponse.ok) {
+                throw new Error(generatorBody.detail || generatorBody.error || 'The hosted image generator returned an error.');
+            }
+            if (Array.isArray(generatorBody.images)) {
+                allImages.push.apply(allImages, generatorBody.images);
+            }
+        }
+
+        if (!allImages.length) {
+            throw new Error('The hosted image generator returned no images.');
+        }
+
+        updateRow(row, { pipeline_state: 'generating_images', queue_label: 'Saving Images' }, 'Saving generated images to this draft...');
+        const saveResponse = await fetch(row.getAttribute('data-save-url'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ images: allImages })
+        });
+        const saveBody = await parseJsonResponse(saveResponse);
+        if (!saveResponse.ok || !saveBody.ok) {
+            throw new Error(saveBody.error || 'The generated images could not be saved back to the draft.');
+        }
+        updateRow(row, saveBody.draft, 'Draft is ready for review and posting.');
+    }
+
+    async function processRow(row) {
+        const response = await fetch(row.getAttribute('data-process-url'), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        const body = await parseJsonResponse(response);
+        if (body && body.draft) {
+            updateRow(row, body.draft, body.error || 'Queue state updated.');
+        }
+        if (!body.ok) {
+            return;
+        }
+        if (body.pipeline_state === 'generating_images' && body.generator_payload) {
+            await generateImagesForDraft(row, body.generator_payload);
+        }
+    }
+
+    async function runQueueLoop() {
+        if (queueRunning) return;
+        queueRunning = true;
+        try {
+            while (true) {
+                const nextRow = queueRoot.querySelector('[data-ai-queue-item][data-state="analyzing"], [data-ai-queue-item][data-state="generating_images"], [data-ai-queue-item][data-state="queued"]');
+                if (!nextRow) break;
+                try {
+                    await processRow(nextRow);
+                } catch (error) {
+                    await saveManualReview(nextRow, error.message || 'This draft needs manual review.', 'images');
+                }
+            }
+        } finally {
+            queueRunning = false;
+        }
+    }
+
+    runQueueLoop();
+    window.setInterval(runQueueLoop, 12000);
+});
+</script>
+{% endblock %}

@@ -137,6 +137,75 @@ class StoreFlowTests(TestCase):
         )
         return draft
 
+    def _mock_ai_result(self, *, title="Purple Abaya"):
+        return {
+            "catalog_fields": {
+                "title": title,
+                "slug_hint": "purple-abaya",
+                "short_description": "Elegant modest abaya.",
+                "detail_description": "A flowing modest abaya with soft drape.",
+                "material": "Cotton blend",
+                "color": "Purple",
+                "fit_notes": "Relaxed fit.",
+                "care_notes": "Hand wash cold.",
+                "delivery_note": "Fast delivery.",
+                "return_note": "Return within 3 days.",
+                "suggested_category": "Rings",
+                "suggested_brand": "Zent",
+                "product_type": "Abaya",
+            },
+            "confidence": {
+                "overall": "medium",
+                "reasoning_notes": ["Good color match."],
+                "needs_manual_review": ["Confirm fabric blend."],
+            },
+            "sources": [],
+            "search_strategy": {
+                "vendor_hint": "Mercato Studio",
+                "exact_queries": ["AI-SKU-1"],
+                "fallback_queries": ["purple abaya"],
+            },
+            "seo": {
+                "seo_title": "Purple Abaya | Zent",
+                "meta_description": "Elegant modest abaya.",
+                "image_alt_text": "Purple abaya product image",
+                "focus_keyphrase": "purple abaya",
+            },
+            "image_plan": {
+                "reference_preservation_notes": "Keep the product unchanged.",
+                "negative_prompt": "No extra garments.",
+                "shots": [
+                    {
+                        "name": "Studio White Hero",
+                        "prompt": "Clean white hero with true color fidelity.",
+                        "aspect_ratio": "4:5",
+                        "priority": 1,
+                    },
+                    {
+                        "name": "Soft Editorial Portrait",
+                        "prompt": "Premium neutral backdrop with fabric drape.",
+                        "aspect_ratio": "4:5",
+                        "priority": 2,
+                    },
+                ],
+            },
+            "generation_package": {
+                "mode": "reference-guided",
+                "reference_strength": "high",
+                "notes": "Keep the item unchanged.",
+                "shots": [
+                    {
+                        "name": "Studio White Hero",
+                        "prompt": "Clean white hero with true color fidelity.",
+                        "negative_prompt": "No extra garments.",
+                        "aspect_ratio": "4:5",
+                        "reference_images": ["primary"],
+                        "priority": 1,
+                    }
+                ],
+            },
+        }
+
     def test_add_to_cart_requires_post(self):
         self.client.login(username="0911000000", password="test-pass-123")
 
@@ -593,3 +662,85 @@ class StoreFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 1)
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    def test_staff_user_can_queue_ai_draft(self):
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-ai-queue"),
+            {
+                "sku": "QUEUE-1",
+                "vendor_hint": "Mercato Studio",
+                "price": "249.99",
+                "reference_image": self._make_uploaded_image(name="queue-1.jpg", color="purple"),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        draft = ProductAIDraft.objects.get(sku="QUEUE-1")
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_QUEUED)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_PENDING)
+        self.assertContains(response, "QUEUE-1")
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    def test_queue_process_endpoint_returns_generator_payload(self, generate_payload_mock):
+        draft = ProductAIDraft.objects.create(
+            created_by=self.staff_user,
+            sku="QUEUE-2",
+            vendor_hint="Mercato Studio",
+            price=Decimal("349.00"),
+            reference_image=self._make_uploaded_image(name="queue-2.jpg", color="purple"),
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+        generate_payload_mock.return_value = self._mock_ai_result(title="Queued Abaya")
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_GENERATING_IMAGES)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_SUCCEEDED)
+        self.assertIn("generator_payload", response.json())
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    def test_queue_process_endpoint_marks_manual_review_on_failure(self, generate_payload_mock):
+        draft = ProductAIDraft.objects.create(
+            created_by=self.staff_user,
+            sku="QUEUE-3",
+            vendor_hint="Mercato Studio",
+            price=Decimal("349.00"),
+            reference_image=self._make_uploaded_image(name="queue-3.jpg", color="purple"),
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+        generate_payload_mock.side_effect = ai_enrichment.ProductAIError("Gemini failed")
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_FAILED)
+        self.assertEqual(response.json()["ok"], False)
