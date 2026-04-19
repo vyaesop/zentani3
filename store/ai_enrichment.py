@@ -50,7 +50,7 @@ def _prompt_for_product_enrichment(sku, price, vendor_hint):
     vendor_text = vendor_hint or "unknown"
     price_text = str(price) if price not in (None, "") else "unknown"
     return f"""
-You are helping a local e-commerce merchandising team create a product draft from a single identifier image.
+You are helping a local e-commerce merchandising team called Zentanee create a product draft from a single identifier image.
 
 The uploaded image is a private reference image used only to identify the item and guide future image generation briefs.
 Do not assume the image itself will be used as the storefront hero image.
