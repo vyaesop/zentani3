@@ -130,6 +130,8 @@ class Brand(models.Model):
 
 
 class Product(models.Model):
+    DEFAULT_STOCK_PER_SIZE = 10
+
     title = models.CharField(max_length=150, verbose_name="Product Title")
     slug = models.SlugField(max_length=160, verbose_name="Product Slug")
     sku = models.CharField(max_length=255, unique=True, verbose_name="Unique Product ID (SKU)")
@@ -171,6 +173,71 @@ class Product(models.Model):
     def __str__(self):
         return self.title
 
+    def _normalized_size_values(self):
+        seen = set()
+        normalized_sizes = []
+        for chunk in (self.available_sizes or "").replace("\r", "\n").replace(",", "\n").split("\n"):
+            value = " ".join(chunk.split()).strip()
+            if not value:
+                continue
+            lookup = value.casefold()
+            if lookup in seen:
+                continue
+            seen.add(lookup)
+            normalized_sizes.append(value)
+        return normalized_sizes
+
+    def _sync_size_inventory(self):
+        if not self.pk:
+            return
+
+        desired_sizes = self._normalized_size_values()
+        desired_keys = {size.casefold() for size in desired_sizes}
+        existing_inventory = {
+            item.size.casefold(): item
+            for item in ProductSizeStock.objects.filter(product=self)
+            if item.size and item.size.strip()
+        }
+        kept_quantities = []
+
+        for lookup_key, inventory_row in existing_inventory.items():
+            if lookup_key not in desired_keys:
+                inventory_row.delete()
+
+        for size in desired_sizes:
+            lookup_key = size.casefold()
+            inventory_row = existing_inventory.get(lookup_key)
+            if inventory_row:
+                if inventory_row.size != size:
+                    inventory_row.size = size
+                    inventory_row.save(update_fields=["size", "updated_at"])
+                kept_quantities.append(inventory_row.quantity)
+                continue
+
+            inventory_row = ProductSizeStock.objects.create(
+                product=self,
+                size=size,
+                quantity=self.DEFAULT_STOCK_PER_SIZE,
+            )
+            kept_quantities.append(inventory_row.quantity)
+
+        if desired_sizes:
+            total_quantity = sum(kept_quantities)
+            sold_out = total_quantity <= 0
+            if self.stock_quantity != total_quantity or self.is_sold_out != sold_out:
+                self.stock_quantity = total_quantity
+                self.is_sold_out = sold_out
+                Product.objects.filter(pk=self.pk).update(
+                    stock_quantity=total_quantity,
+                    is_sold_out=sold_out,
+                    updated_at=self.updated_at,
+                )
+            return
+
+        if self.stock_quantity < 0:
+            Product.objects.filter(pk=self.pk).update(stock_quantity=0)
+            self.stock_quantity = 0
+
     def save(self, *args, **kwargs):
         if self.product_image and getattr(self.product_image, "name", ""):
             self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
@@ -178,6 +245,7 @@ class Product(models.Model):
         if converted is not None:
             self.product_image = converted
         super().save(*args, **kwargs)
+        self._sync_size_inventory()
     
 class ProductImages(models.Model):
     image = models.ImageField(upload_to="product-images", default="product.jpg")

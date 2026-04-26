@@ -1,31 +1,31 @@
 {% extends "dashboard/base.html" %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-stats">
-    <article class="spring-dashboard-stat">
-        <span>Visible products</span>
+<section class="spring-dashboard-stat-grid">
+    <article class="spring-dashboard-stat-card">
+        <span>Catalog products</span>
         <strong>{{ product_summary.total }}</strong>
         <p>{{ product_summary.active }} active</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Featured</span>
         <strong>{{ product_summary.featured }}</strong>
-        <p>Highlighted on the storefront</p>
+        <p>Live in highlighted slots</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Sold out</span>
         <strong>{{ product_summary.sold_out }}</strong>
-        <p>Need replenishment or deactivation</p>
+        <p>Need replenishment or hiding</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Low stock</span>
         <strong>{{ product_summary.low_stock }}</strong>
-        <p>Three units or fewer remaining</p>
+        <p>Three units or fewer left</p>
     </article>
 </section>
 
 <section class="spring-dashboard-panel">
-    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--wide">
+    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--catalog">
         <label>
             <span>Search</span>
             <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="Title, SKU, slug, collection, brand">
@@ -44,7 +44,7 @@
             <select name="state" class="spring-dashboard-control">
                 <option value="">All states</option>
                 <option value="active" {% if filters.state == "active" %}selected{% endif %}>Active</option>
-                <option value="inactive" {% if filters.state == "inactive" %}selected{% endif %}>Inactive</option>
+                <option value="inactive" {% if filters.state == "inactive" %}selected{% endif %}>Hidden</option>
                 <option value="featured" {% if filters.state == "featured" %}selected{% endif %}>Featured</option>
                 <option value="sold-out" {% if filters.state == "sold-out" %}selected{% endif %}>Sold out</option>
                 <option value="low-stock" {% if filters.state == "low-stock" %}selected{% endif %}>Low stock</option>
@@ -57,64 +57,62 @@
     </form>
 </section>
 
-<section class="spring-dashboard-product-grid">
-    {% for product in products %}
-    <article class="spring-dashboard-product-card">
-        <div class="spring-dashboard-product-card__top">
-            <div>
-                <p class="spring-dashboard-order-card__eyebrow">{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</p>
-                <h3>{{ product.title }}</h3>
-                <p>{{ product.sku }}</p>
-            </div>
-            <div class="spring-dashboard-product-card__badges">
-                {% if product.is_featured %}<span class="spring-dashboard-badge spring-dashboard-badge--delivered">Featured</span>{% endif %}
-                {% if not product.is_active %}<span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Hidden</span>{% endif %}
-                {% if product.is_sold_out %}<span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Sold out</span>{% endif %}
-            </div>
+<section class="spring-dashboard-panel">
+    <div class="spring-dashboard-section-head">
+        <div>
+            <p class="spring-dashboard-kicker">Catalog list</p>
+            <h3>Products ready for quick editing</h3>
         </div>
+        <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Add product</a>
+    </div>
 
-        <div class="spring-dashboard-product-card__meta">
-            <div>
-                <span>Price</span>
-                <strong>{{ product.price }}</strong>
+    <div class="spring-dashboard-catalog-list">
+        {% for product in products %}
+        <article class="spring-dashboard-catalog-row">
+            <div class="spring-dashboard-catalog-row__main">
+                <div>
+                    <p class="spring-dashboard-kicker">{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</p>
+                    <h3>{{ product.title }}</h3>
+                    <p>{{ product.sku }}</p>
+                </div>
+                <div class="spring-dashboard-token-list">
+                    {% if product.is_featured %}<span>Featured</span>{% endif %}
+                    {% if not product.is_active %}<span>Hidden</span>{% endif %}
+                    {% if product.is_sold_out %}<span>Sold out</span>{% endif %}
+                </div>
             </div>
-            <div>
-                <span>Stock</span>
-                <strong>{{ product.stock_quantity }}</strong>
-            </div>
-            <div>
-                <span>Sizes</span>
-                <strong>{{ product.available_sizes|default:"-" }}</strong>
-            </div>
-        </div>
 
-        <div class="spring-dashboard-product-card__actions">
-            <a href="{% url 'store:dashboard-product-edit' product.id %}" class="btn btn-dark">Edit product</a>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="product_id" value="{{ product.id }}">
-                <input type="hidden" name="action" value="publish_telegram">
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <button type="submit" class="btn btn-outline-dark">Post to Telegram</button>
-            </form>
-        </div>
-    </article>
-    {% empty %}
-    <section class="spring-dashboard-panel">
+            <div class="spring-dashboard-catalog-row__meta">
+                <div>
+                    <span>Price</span>
+                    <strong>{{ product.price }}</strong>
+                </div>
+                <div>
+                    <span>Stock</span>
+                    <strong>{{ product.stock_quantity }}</strong>
+                </div>
+                <div>
+                    <span>Sizes</span>
+                    <strong>{{ product.available_sizes|default:"-" }}</strong>
+                </div>
+            </div>
+
+            <div class="spring-dashboard-catalog-row__actions">
+                <a href="{% url 'store:dashboard-product-edit' product.id %}" class="btn btn-dark">Edit</a>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    <input type="hidden" name="action" value="publish_telegram">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-outline-dark">Post to Telegram</button>
+                </form>
+            </div>
+        </article>
+        {% empty %}
         <div class="spring-dashboard-empty">No products matched the current filter.</div>
-    </section>
-    {% endfor %}
+        {% endfor %}
+    </div>
 </section>
 
-{% if products.paginator.num_pages > 1 %}
-<section class="spring-dashboard-pagination">
-    {% if products.has_previous %}
-    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ products.previous_page_number }}">Previous</a>
-    {% endif %}
-    <span>Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
-    {% if products.has_next %}
-    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ products.next_page_number }}">Next</a>
-    {% endif %}
-</section>
-{% endif %}
+{% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Product pages' %}
 {% endblock %}

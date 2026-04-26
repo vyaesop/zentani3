@@ -5,7 +5,7 @@
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-directory">
-      {% include 'store/_collection_header.html' with kicker='Brands' title='All Brands' description='Shop by brand.' count=brands|length %}
+      {% include 'store/_collection_header.html' with kicker='Brands' title='All Brands' description='Shop by brand.' count=directory_count %}
 
       <div class="spring-collection-grid">
           {% for brand in brands %}
@@ -15,6 +15,8 @@
           <p class="text-muted mb-0">Brands will appear here once they are active in admin.</p>
           {% endfor %}
       </div>
+
+      {% include 'store/_collection_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_query=page_query aria_label='Brand directory pages' %}
   </div>
 </main>
 {% endblock content %}

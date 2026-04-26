@@ -12,7 +12,7 @@ from django.urls import reverse
 from PIL import Image
 
 from . import ai_enrichment
-from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Product, ProductAIDraft, ProductAIDraftImage
+from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Order, Product, ProductAIDraft, ProductAIDraftImage
 
 
 class StoreFlowTests(TestCase):
@@ -247,6 +247,12 @@ class StoreFlowTests(TestCase):
             code="aff-test-code",
             is_active=True,
         )
+        Address.objects.create(
+            user=self.user,
+            address="Bole Atlas",
+            city="Addis Ababa",
+            phone=self.user.username,
+        )
 
         Cart.objects.create(user=self.user, product=self.product, quantity=2, size="M")
         self.client.login(username="0911000000", password="test-pass-123")
@@ -268,6 +274,12 @@ class StoreFlowTests(TestCase):
             user=self.user,
             code="aff-self-code",
             is_active=True,
+        )
+        Address.objects.create(
+            user=self.user,
+            address="Megenagna",
+            city="Addis Ababa",
+            phone=self.user.username,
         )
 
         Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
@@ -412,55 +424,9 @@ class StoreFlowTests(TestCase):
         self.assertEqual(order.status, "Delivered")
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="test-gemini-key")
-    @patch("store.dashboard_views.generate_product_ai_draft")
-    def test_staff_user_can_generate_ai_product_draft(self, generate_product_ai_draft_mock):
-        generate_product_ai_draft_mock.return_value = {
-            "catalog_fields": {
-                "title": "Midnight Linen Shirt",
-                "slug_hint": "midnight-linen-shirt",
-                "short_description": "A crisp shirt drafted from the AI intake flow.",
-                "detail_description": "Relaxed linen shirt with a clean front and an elevated finish.",
-                "material": "Linen blend",
-                "color": "Midnight navy",
-                "fit_notes": "Relaxed through the body.",
-                "care_notes": "Cold wash and line dry.",
-                "delivery_note": "Ships in 2-4 business days.",
-                "return_note": "Easy return within 7 days.",
-                "suggested_category": "Rings",
-                "suggested_brand": "Zent",
-                "product_type": "Shirt",
-            },
-            "confidence": {
-                "overall": "medium",
-                "reasoning_notes": ["Strong silhouette match from the reference image."],
-                "needs_manual_review": ["Confirm fabric composition with the vendor."],
-            },
-            "sources": [
-                {
-                    "title": "Vendor match",
-                    "url": "https://example.com/vendor-item",
-                    "match_type": "exact",
-                    "notes": "Matched by SKU.",
-                }
-            ],
-            "search_strategy": {
-                "vendor_hint": "Mercato Studio",
-                "exact_queries": ["SKU-100"],
-                "fallback_queries": ["SKU shirt navy"],
-            },
-            "image_plan": {
-                "reference_preservation_notes": "Keep the garment silhouette unchanged.",
-                "negative_prompt": "No extra garments or altered details.",
-                "shots": [
-                    {
-                        "name": "Studio White Hero",
-                        "prompt": "Reference-guided studio hero on a clean white background.",
-                        "aspect_ratio": "4:5",
-                        "priority": 1,
-                    }
-                ],
-            },
-        }
+    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    def test_staff_user_can_generate_ai_product_draft(self, generate_product_ai_payload_for_draft_mock):
+        generate_product_ai_payload_for_draft_mock.return_value = self._mock_ai_result(title="Midnight Linen Shirt")
 
         self.client.login(username="0911444555", password="test-pass-123")
 
@@ -488,9 +454,9 @@ class StoreFlowTests(TestCase):
         follow_up = self.client.get(response.url)
         self.assertEqual(follow_up.status_code, 200)
         self.assertContains(follow_up, "Midnight Linen Shirt")
-        self.assertContains(follow_up, "Studio White Hero")
         self.assertContains(follow_up, "Mercato Studio")
         self.assertContains(follow_up, "value=\"SKU-100\"", html=False)
+        self.assertContains(follow_up, "Generate copy from a reference image")
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="")
     def test_ai_draft_generation_requires_configured_key(self):
@@ -513,42 +479,8 @@ class StoreFlowTests(TestCase):
         self.assertEqual(ProductAIDraft.objects.count(), 0)
 
     @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
-    def test_staff_user_can_generate_free_ai_image_candidates(self):
+    def test_staff_user_can_save_product_with_auto_size_inventory(self):
         draft = self._create_ai_draft()
-        session = self.client.session
-        session["dashboard_product_ai_draft_id"] = draft.id
-        session.save()
-        self.client.login(username="0911444555", password="test-pass-123")
-
-        response = self.client.post(
-            reverse("store:dashboard-product-create"),
-            {"generate_ai_images": "1"},
-            follow=True,
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 2)
-        self.assertContains(response, "AI image candidates generated")
-        self.assertContains(response, "Studio White Hero")
-
-    @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
-    def test_staff_user_can_save_product_with_attached_ai_images(self):
-        draft = self._create_ai_draft()
-        draft.generated_images.create(
-            image=self._make_uploaded_image(name="candidate-1.jpg", color="white"),
-            shot_name="Studio White Hero",
-            prompt="Primary candidate",
-            aspect_ratio="4:5",
-            sort_order=1,
-        )
-        draft.generated_images.create(
-            image=self._make_uploaded_image(name="candidate-2.jpg", color="gray"),
-            shot_name="Soft Editorial Portrait",
-            prompt="Gallery candidate",
-            aspect_ratio="4:5",
-            sort_order=2,
-        )
-
         session = self.client.session
         session["dashboard_product_ai_draft_id"] = draft.id
         session.save()
@@ -568,9 +500,9 @@ class StoreFlowTests(TestCase):
                 "care_notes": "Hand wash cold.",
                 "delivery_note": "Fast delivery.",
                 "return_note": "Return within 3 days.",
-                "available_sizes": "",
-                "stock_quantity": "4",
+                "available_sizes": "S, M, L",
                 "price": "349.00",
+                "product_image": self._make_uploaded_image(name="product-primary.jpg", color="black"),
                 "category": str(self.category.id),
                 "brand": str(self.brand.id),
                 "is_active": "on",
@@ -578,18 +510,17 @@ class StoreFlowTests(TestCase):
                 "images-INITIAL_FORMS": "0",
                 "images-MIN_NUM_FORMS": "0",
                 "images-MAX_NUM_FORMS": "1000",
-                "sizes-TOTAL_FORMS": "0",
-                "sizes-INITIAL_FORMS": "0",
-                "sizes-MIN_NUM_FORMS": "0",
-                "sizes-MAX_NUM_FORMS": "1000",
             },
             follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
         product = Product.objects.get(sku="AI-SKU-1")
-        self.assertTrue(product.product_image.name)
-        self.assertEqual(product.p_images.count(), 1)
+        self.assertEqual(product.stock_quantity, 30)
+        self.assertEqual(
+            list(product.size_inventory.order_by("size").values_list("size", "quantity")),
+            [("L", 10), ("M", 10), ("S", 10)],
+        )
         self.assertEqual(product.ai_drafts.count(), 1)
 
     @override_settings(
@@ -638,7 +569,7 @@ class StoreFlowTests(TestCase):
         generate_local_mock.assert_called_once_with(draft)
 
     @override_settings(DEBUG=True, MEDIA_ROOT=tempfile.gettempdir())
-    def test_staff_user_can_save_browser_generated_ai_images(self):
+    def test_ai_image_endpoint_is_retired(self):
         draft = self._create_ai_draft()
         self.client.login(username="0911444555", password="test-pass-123")
 
@@ -660,8 +591,8 @@ class StoreFlowTests(TestCase):
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 1)
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(ProductAIDraftImage.objects.filter(draft=draft).count(), 0)
 
     @override_settings(
         DEBUG=True,
@@ -669,25 +600,13 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    def test_staff_user_can_queue_ai_draft(self):
+    def test_dashboard_ai_queue_redirects_to_product_create(self):
         self.client.login(username="0911444555", password="test-pass-123")
 
-        response = self.client.post(
-            reverse("store:dashboard-ai-queue"),
-            {
-                "sku": "QUEUE-1",
-                "vendor_hint": "Mercato Studio",
-                "price": "249.99",
-                "reference_image": self._make_uploaded_image(name="queue-1.jpg", color="purple"),
-            },
-            follow=True,
-        )
-
+        response = self.client.get(reverse("store:dashboard-ai-queue"), follow=True)
         self.assertEqual(response.status_code, 200)
-        draft = ProductAIDraft.objects.get(sku="QUEUE-1")
-        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_QUEUED)
-        self.assertEqual(draft.status, ProductAIDraft.STATUS_PENDING)
-        self.assertContains(response, "QUEUE-1")
+        self.assertContains(response, "AI image queue has been retired")
+        self.assertContains(response, "Post a new product")
 
     @override_settings(
         DEBUG=True,
@@ -695,8 +614,7 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
-    def test_queue_process_endpoint_returns_generator_payload(self, generate_payload_mock):
+    def test_queue_process_endpoint_returns_gone(self):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
             sku="QUEUE-2",
@@ -706,16 +624,53 @@ class StoreFlowTests(TestCase):
             status=ProductAIDraft.STATUS_PENDING,
             pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
         )
-        generate_payload_mock.return_value = self._mock_ai_result(title="Queued Abaya")
         self.client.login(username="0911444555", password="test-pass-123")
 
         response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
 
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response.json()["ok"], False)
+
+    @override_settings(DEBUG=True)
+    def test_categories_and_brands_pages_are_paginated(self):
+        for index in range(1, 28):
+            Category.objects.create(
+                title=f"Category {index}",
+                slug=f"category-{index}",
+                is_active=True,
+                is_featured=False,
+            )
+            Brand.objects.create(
+                title=f"Brand {index}",
+                slug=f"brand-{index}",
+                is_active=True,
+                is_featured=False,
+            )
+
+        categories_response = self.client.get(reverse("store:all-categories"))
+        brands_response = self.client.get(reverse("store:all-brands"))
+
+        self.assertEqual(categories_response.status_code, 200)
+        self.assertEqual(brands_response.status_code, 200)
+        self.assertContains(categories_response, "Page 1 of")
+        self.assertContains(brands_response, "Page 1 of")
+
+    def test_customer_orders_page_is_paginated(self):
+        self.client.login(username="0911000000", password="test-pass-123")
+        for index in range(13):
+            Order.objects.create(
+                user=self.user,
+                product=self.product,
+                quantity=1,
+                size="M",
+                price_at_purchase=Decimal("100.00"),
+                line_total=Decimal("100.00"),
+            )
+
+        response = self.client.get(reverse("store:orders"))
+
         self.assertEqual(response.status_code, 200)
-        draft.refresh_from_db()
-        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_GENERATING_IMAGES)
-        self.assertEqual(draft.status, ProductAIDraft.STATUS_SUCCEEDED)
-        self.assertIn("generator_payload", response.json())
+        self.assertContains(response, "Page 1 of 2")
 
     @override_settings(
         DEBUG=True,
@@ -723,8 +678,7 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
-    def test_queue_process_endpoint_marks_manual_review_on_failure(self, generate_payload_mock):
+    def test_manual_review_endpoint_returns_gone(self):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
             sku="QUEUE-3",
@@ -734,13 +688,13 @@ class StoreFlowTests(TestCase):
             status=ProductAIDraft.STATUS_PENDING,
             pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
         )
-        generate_payload_mock.side_effect = ai_enrichment.ProductAIError("Gemini failed")
         self.client.login(username="0911444555", password="test-pass-123")
 
-        response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
+        response = self.client.post(
+            reverse("store:dashboard-ai-draft-manual-review", args=[draft.id]),
+            data=json.dumps({"error": "retired"}),
+            content_type="application/json",
+        )
 
-        self.assertEqual(response.status_code, 200)
-        draft.refresh_from_db()
-        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
-        self.assertEqual(draft.status, ProductAIDraft.STATUS_FAILED)
+        self.assertEqual(response.status_code, 410)
         self.assertEqual(response.json()["ok"], False)

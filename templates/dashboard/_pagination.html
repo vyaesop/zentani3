@@ -1,0 +1,17 @@
+{% if page_obj.has_other_pages %}
+<nav class="spring-dashboard-pagination" aria-label="{{ aria_label|default:'Dashboard pages' }}">
+    <a class="{% if not page_obj.has_previous %}is-disabled{% endif %}" {% if page_obj.has_previous %}href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ page_obj.previous_page_number }}"{% endif %}>Prev</a>
+    <div class="spring-dashboard-pagination__pages">
+        {% for p in page_numbers %}
+            {% if p == '…' or p == '...' or p == 'â€¦' or p == 'Ã¢â‚¬Â¦' %}
+            <span class="is-disabled">&hellip;</span>
+            {% elif p == page_obj.number %}
+            <span class="is-active">{{ p }}</span>
+            {% else %}
+            <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ p }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <a class="{% if not page_obj.has_next %}is-disabled{% endif %}" {% if page_obj.has_next %}href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ page_obj.next_page_number }}"{% endif %}>Next</a>
+</nav>
+{% endif %}

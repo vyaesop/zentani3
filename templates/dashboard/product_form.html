@@ -2,295 +2,113 @@
 {% load image_optim %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-panel spring-dashboard-panel--ai">
+{% if form.non_field_errors or image_formset.non_form_errors %}
+<section class="spring-dashboard-panel spring-dashboard-panel--danger">
+    {% for error in form.non_field_errors %}
+    <p>{{ error }}</p>
+    {% endfor %}
+    {% for error in image_formset.non_form_errors %}
+    <p>{{ error }}</p>
+    {% endfor %}
+</section>
+{% endif %}
+
+<section class="spring-dashboard-editor-hero">
+    <div>
+        <p class="spring-dashboard-kicker">Fast posting flow</p>
+        <h2>{% if product %}Edit {{ product.title }}{% else %}Post a new product{% endif %}</h2>
+        <p>Desktop is tuned for quick scanning and fewer clicks. Enter sizes once, and each new size is stocked at {{ stock_per_size }} units automatically.</p>
+    </div>
+    <div class="spring-dashboard-editor-hero__meta">
+        <div>
+            <span>Stock policy</span>
+            <strong>{{ stock_per_size }} per size</strong>
+        </div>
+        <div>
+            <span>Current total stock</span>
+            <strong>{% if product %}{{ product.stock_quantity }}{% else %}Auto after save{% endif %}</strong>
+        </div>
+        <div>
+            <span>Status</span>
+            <strong>{% if product and product.is_sold_out %}Sold out{% elif product and product.is_active %}Live{% else %}Draft{% endif %}</strong>
+        </div>
+    </div>
+</section>
+
+{% if gemini_is_configured %}
+<section class="spring-dashboard-panel spring-dashboard-panel--subtle">
     <div class="spring-dashboard-section-head">
         <div>
-            <p class="spring-dashboard-panel__eyebrow">AI merchandising intake</p>
-            <h3>Identify from a private source image</h3>
-        </div>
-        <div class="spring-dashboard-ai-status">
-            {% if gemini_is_configured %}
-            <span class="spring-dashboard-badge spring-dashboard-badge--delivered">Gemini ready</span>
-            {% else %}
-            <span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Gemini key missing</span>
-            {% endif %}
+            <p class="spring-dashboard-kicker">Optional AI assist</p>
+            <h3>Generate copy from a reference image</h3>
         </div>
     </div>
-
-    <p class="spring-dashboard-ai-copy">
-        Upload an identifier image, your source SKU, your local vendor name, and the price. AI will draft the copy, collect source links when it can, and prepare shot briefs for a free reference-guided image generator. Sizes still stay fully manual below.
-    </p>
-
-    <form method="post" enctype="multipart/form-data" class="spring-dashboard-ai-intake">
+    <form method="post" enctype="multipart/form-data" class="spring-dashboard-form-grid spring-dashboard-form-grid--assist">
         {% csrf_token %}
-        <div class="spring-dashboard-form-grid">
-            <label class="spring-dashboard-field">
-                <span>Source SKU</span>
-                {{ ai_draft_form.sku }}
-                {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field">
-                <span>Price</span>
-                {{ ai_draft_form.price }}
-                {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field">
-                <span>Local vendor</span>
-                {{ ai_draft_form.vendor_hint }}
-                {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field spring-dashboard-field--wide">
-                <span>Identifier image</span>
-                {{ ai_draft_form.reference_image }}
-                {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field spring-dashboard-field--wide">
-                <span>Optional second reference image</span>
-                {{ ai_draft_form.secondary_reference_image }}
-                {% for error in ai_draft_form.secondary_reference_image.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-        </div>
-        <div class="spring-dashboard-editor__header-actions">
-            <button type="submit" name="generate_ai_draft" value="1" class="btn btn-dark">Generate AI draft</button>
-            <a href="{% url 'store:dashboard-ai-queue' %}" class="btn btn-outline-dark">Open AI queue</a>
-            {% if not gemini_is_configured %}
-            <p class="spring-dashboard-ai-inline-note">Add `GEMINI_API_KEY` to your environment to enable this workflow.</p>
-            {% endif %}
+        <label class="spring-dashboard-field">
+            <span>Source SKU</span>
+            {{ ai_draft_form.sku }}
+            {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field">
+            <span>Price</span>
+            {{ ai_draft_form.price }}
+            {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field">
+            <span>Vendor</span>
+            {{ ai_draft_form.vendor_hint }}
+            {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field spring-dashboard-field--wide">
+            <span>Reference image</span>
+            {{ ai_draft_form.reference_image }}
+            {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <div class="spring-dashboard-assist-actions">
+            <button type="submit" name="generate_ai_draft" value="1" class="btn btn-outline-dark">Generate product copy</button>
+            <p>Optional only. No AI image generation is used anywhere in this flow.</p>
         </div>
     </form>
-
-    {% if ai_draft %}
-    <div class="spring-dashboard-ai-results">
-        <div class="spring-dashboard-ai-results__top">
-            <div>
-                <p class="spring-dashboard-panel__eyebrow">Latest draft</p>
-                <h4>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</h4>
-                <p class="spring-dashboard-ai-copy">
-                    {% if ai_draft.status == "succeeded" %}
-                    Review the draft below, then continue in the main product form. The main editor has been prefilled from this draft.
-                    {% elif ai_draft.status == "failed" %}
-                    {{ ai_draft.error_message|default:"AI draft generation did not complete." }}
-                    {% else %}
-                    Draft is still pending.
-                    {% endif %}
-                </p>
-            </div>
-            {% if ai_draft.reference_image %}
-            <div class="spring-dashboard-gallery-thumb">
-                <img src="{{ ai_draft.reference_image.url|cdn_optimize }}" alt="AI identifier reference">
-            </div>
-            {% endif %}
-        </div>
-
-        {% if ai_draft.status == "succeeded" %}
-        <div class="spring-dashboard-ai-grid">
-            <article class="spring-dashboard-ai-card">
-                <p class="spring-dashboard-panel__eyebrow">Draft copy</p>
-                <dl class="spring-dashboard-ai-list">
-                    <div>
-                        <dt>Title</dt>
-                        <dd>{{ ai_draft.response_payload.catalog_fields.title|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Local vendor</dt>
-                        <dd>{{ ai_draft.vendor_hint|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Category hint</dt>
-                        <dd>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Brand hint</dt>
-                        <dd>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Material</dt>
-                        <dd>{{ ai_draft.response_payload.catalog_fields.material|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Color</dt>
-                        <dd>{{ ai_draft.response_payload.catalog_fields.color|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Confidence</dt>
-                        <dd>{{ ai_draft.response_payload.confidence.overall|default:"-" }}</dd>
-                    </div>
-                </dl>
-            </article>
-
-            <article class="spring-dashboard-ai-card">
-                <p class="spring-dashboard-panel__eyebrow">SEO preview</p>
-                <dl class="spring-dashboard-ai-list">
-                    <div>
-                        <dt>SEO title</dt>
-                        <dd>{{ ai_draft.seo_payload.seo_title|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Meta description</dt>
-                        <dd>{{ ai_draft.seo_payload.meta_description|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Image alt text</dt>
-                        <dd>{{ ai_draft.seo_payload.image_alt_text|default:"-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>Focus keyphrase</dt>
-                        <dd>{{ ai_draft.seo_payload.focus_keyphrase|default:"-" }}</dd>
-                    </div>
-                </dl>
-            </article>
-
-            <article class="spring-dashboard-ai-card">
-                <p class="spring-dashboard-panel__eyebrow">Review flags</p>
-                <div class="spring-dashboard-ai-pill-list">
-                    {% for note in ai_draft.response_payload.confidence.needs_manual_review %}
-                    <span>{{ note }}</span>
-                    {% empty %}
-                    <span>No manual review flags returned.</span>
-                    {% endfor %}
-                </div>
-                <p class="spring-dashboard-panel__eyebrow">Reasoning notes</p>
-                <div class="spring-dashboard-ai-pill-list">
-                    {% for note in ai_draft.response_payload.confidence.reasoning_notes %}
-                    <span>{{ note }}</span>
-                    {% empty %}
-                    <span>No extra notes returned.</span>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
-                <p class="spring-dashboard-panel__eyebrow">Source links</p>
-                <div class="spring-dashboard-ai-links">
-                    {% for source in ai_draft.source_links %}
-                    <a href="{{ source.url }}" target="_blank" rel="noreferrer">
-                        <strong>{{ source.title|default:source.url }}</strong>
-                        <span>{{ source.match_type|default:"source" }}</span>
-                    </a>
-                    {% empty %}
-                    <p class="spring-dashboard-empty">No sources were returned by Gemini.</p>
-                    {% endfor %}
-                </div>
-            </article>
-
-            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
-                <p class="spring-dashboard-panel__eyebrow">Image generation brief</p>
-                <p class="spring-dashboard-ai-copy">{{ ai_draft.image_plan.reference_preservation_notes|default:"Preserve the exact product while improving staging, background, and lighting." }}</p>
-                <div class="spring-dashboard-ai-pill-list">
-                    <span><strong>Negative prompt:</strong> {{ ai_draft.image_plan.negative_prompt|default:"No hallucinated logos, no extra garments, no altered product proportions." }}</span>
-                </div>
-                <div class="spring-dashboard-ai-shot-list">
-                    {% for shot in ai_draft.image_plan.shots %}
-                    <article>
-                        <div class="spring-dashboard-section-head">
-                            <div>
-                                <p class="spring-dashboard-panel__eyebrow">Priority {{ shot.priority|default:forloop.counter }}</p>
-                                <h4>{{ shot.name|default:"Shot brief" }}</h4>
-                            </div>
-                            <span>{{ shot.aspect_ratio|default:"1:1" }}</span>
-                        </div>
-                        <p>{{ shot.prompt }}</p>
-                    </article>
-                    {% empty %}
-                    <div class="spring-dashboard-empty">No image briefs returned yet.</div>
-                        {% endfor %}
-                </div>
-            </article>
-
-            <article class="spring-dashboard-ai-card spring-dashboard-ai-card--wide">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-panel__eyebrow">Image generator package</p>
-                        <h4>Reference-guided payload</h4>
-                    </div>
-                </div>
-                <p class="spring-dashboard-ai-copy">
-                    The app now prepares a real reference-guided payload: reference image links, shot prompts, and negative prompts. If no external image worker is configured yet, it falls back to the local renderer.
-                </p>
-                {% if generator_payload.reference_images %}
-                <div class="spring-dashboard-ai-links">
-                    {% for reference in generator_payload.reference_images %}
-                    <a href="{{ reference.url }}" target="_blank" rel="noreferrer">
-                        <strong>{{ reference.label|title }} reference</strong>
-                        <span>{{ reference.name }}</span>
-                    </a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                <div class="spring-dashboard-ai-pill-list">
-                    <span><strong>Mode:</strong> {{ generator_payload.mode|default:"reference-guided" }}</span>
-                    <span><strong>Reference strength:</strong> {{ generator_payload.reference_strength|default:"high" }}</span>
-                </div>
-                {% if ai_image_generator_endpoint %}
-                <div class="spring-dashboard-ai-inline-form spring-dashboard-ai-inline-form--async">
-                    <button
-                        type="button"
-                        class="btn btn-outline-dark"
-                        data-ai-generate-images
-                        data-endpoint="{{ ai_image_generator_endpoint }}"
-                        data-save-url="{{ ai_generated_images_save_url }}"
-                        data-shots-per-request="{{ ai_image_shots_per_request }}"
-                    >
-                        Generate AI image candidates
-                    </button>
-                    <p class="spring-dashboard-ai-inline-note" data-ai-generate-status>
-                        Images will be generated directly in your browser session, then saved back to this draft automatically.
-                    </p>
-                </div>
-                {% else %}
-                <form method="post" class="spring-dashboard-ai-inline-form">
-                    {% csrf_token %}
-                    <button type="submit" name="generate_ai_images" value="1" class="btn btn-outline-dark">Generate AI image candidates</button>
-                </form>
-                {% endif %}
-
-                {% if generated_ai_images %}
-                <div class="spring-dashboard-ai-candidate-grid">
-                    {% for generated_image in generated_ai_images %}
-                    <article class="spring-dashboard-ai-candidate-card">
-                        <div class="spring-dashboard-gallery-thumb spring-dashboard-gallery-thumb--large">
-                            <img src="{{ generated_image.image.url|cdn_optimize }}" alt="{{ generated_image.shot_name }}">
-                        </div>
-                        <div class="spring-dashboard-ai-candidate-card__body">
-                            <strong>{{ generated_image.shot_name }}</strong>
-                            <span>{{ generated_image.aspect_ratio|default:"1:1" }}</span>
-                            <p>{{ generated_image.prompt }}</p>
-                        </div>
-                    </article>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="spring-dashboard-empty">No free candidate images have been generated yet.</div>
-                {% endif %}
-            </article>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
 </section>
+{% endif %}
+
+{% if ai_draft and ai_draft.status == "succeeded" %}
+<section class="spring-dashboard-ai-summary">
+    <article class="spring-dashboard-panel">
+        <p class="spring-dashboard-kicker">AI draft</p>
+        <h3>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</h3>
+        <p class="spring-dashboard-muted">Review these suggestions, then keep only what helps the listing read clearly.</p>
+    </article>
+    <article class="spring-dashboard-panel">
+        <span class="spring-dashboard-label">Suggested category</span>
+        <strong>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"-" }}</strong>
+        <span class="spring-dashboard-label">Suggested brand</span>
+        <strong>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"-" }}</strong>
+    </article>
+    <article class="spring-dashboard-panel">
+        <span class="spring-dashboard-label">Material</span>
+        <strong>{{ ai_draft.response_payload.catalog_fields.material|default:"-" }}</strong>
+        <span class="spring-dashboard-label">Color</span>
+        <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"-" }}</strong>
+    </article>
+    <article class="spring-dashboard-panel">
+        <span class="spring-dashboard-label">SEO title</span>
+        <strong>{{ ai_draft.seo_payload.seo_title|default:"-" }}</strong>
+        <span class="spring-dashboard-label">Meta description</span>
+        <strong>{{ ai_draft.seo_payload.meta_description|default:"-" }}</strong>
+    </article>
+</section>
+{% endif %}
 
 <form method="post" enctype="multipart/form-data" class="spring-dashboard-editor">
     {% csrf_token %}
 
-    {% if form.non_field_errors or image_formset.non_form_errors or size_formset.non_form_errors %}
-    <section class="spring-dashboard-panel spring-dashboard-panel--danger">
-        {% for error in form.non_field_errors %}
-        <p>{{ error }}</p>
-        {% endfor %}
-        {% for error in image_formset.non_form_errors %}
-        <p>{{ error }}</p>
-        {% endfor %}
-        {% for error in size_formset.non_form_errors %}
-        <p>{{ error }}</p>
-        {% endfor %}
-    </section>
-    {% endif %}
-
     <section class="spring-dashboard-editor__header">
         <div>
-            <p class="spring-dashboard-panel__eyebrow">Merchandising workspace</p>
-            <h2>{% if product %}{{ product.title }}{% else %}New product draft{% endif %}</h2>
-            <p>Everything the team needs for merchandising, sizing, stock, and launch readiness in one place.</p>
+            <p class="spring-dashboard-kicker">Product workspace</p>
+            <h2>{% if product %}{{ product.title }}{% else %}Ready to publish{% endif %}</h2>
+            <p>Everything important stays above the fold on desktop: identity, pricing, sizes, media, status, and the publish action.</p>
         </div>
         <div class="spring-dashboard-editor__header-actions">
             <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Back to products</a>
@@ -299,13 +117,13 @@
         </div>
     </section>
 
-    <section class="spring-dashboard-editor__grid">
+    <section class="spring-dashboard-editor__layout">
         <div class="spring-dashboard-editor__main">
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Core product data</p>
-                        <h3>Identity</h3>
+                        <p class="spring-dashboard-kicker">Identity</p>
+                        <h3>Core product details</h3>
                     </div>
                 </div>
                 <div class="spring-dashboard-form-grid">
@@ -330,21 +148,6 @@
                         {% for error in form.short_description.errors %}<small>{{ error }}</small>{% endfor %}
                     </label>
                     <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>SEO title</span>
-                        {{ form.seo_title }}
-                        {% for error in form.seo_title.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>SEO description</span>
-                        {{ form.seo_description }}
-                        {% for error in form.seo_description.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Image alt text</span>
-                        {{ form.image_alt_text }}
-                        {% for error in form.image_alt_text.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
                         <span>Detail description</span>
                         {{ form.detail_description }}
                         {% for error in form.detail_description.errors %}<small>{{ error }}</small>{% endfor %}
@@ -355,8 +158,8 @@
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Catalog structure</p>
-                        <h3>Merchandising attributes</h3>
+                        <p class="spring-dashboard-kicker">Merchandising</p>
+                        <h3>Catalog placement and product info</h3>
                     </div>
                 </div>
                 <div class="spring-dashboard-form-grid">
@@ -381,9 +184,10 @@
                         {% for error in form.color.errors %}<small>{{ error }}</small>{% endfor %}
                     </label>
                     <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Available sizes</span>
+                        <span>Sizes</span>
                         {{ form.available_sizes }}
                         {% for error in form.available_sizes.errors %}<small>{{ error }}</small>{% endfor %}
+                        <em>Use commas or new lines. Each new size is created with {{ stock_per_size }} units automatically.</em>
                     </label>
                     <label class="spring-dashboard-field spring-dashboard-field--wide">
                         <span>Fit notes</span>
@@ -401,8 +205,8 @@
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Commerce settings</p>
-                        <h3>Pricing and delivery copy</h3>
+                        <p class="spring-dashboard-kicker">Commerce</p>
+                        <h3>Pricing and customer-facing copy</h3>
                     </div>
                 </div>
                 <div class="spring-dashboard-form-grid">
@@ -412,9 +216,9 @@
                         {% for error in form.price.errors %}<small>{{ error }}</small>{% endfor %}
                     </label>
                     <label class="spring-dashboard-field">
-                        <span>Total stock</span>
-                        {{ form.stock_quantity }}
-                        {% for error in form.stock_quantity.errors %}<small>{{ error }}</small>{% endfor %}
+                        <span>Image alt text</span>
+                        {{ form.image_alt_text }}
+                        {% for error in form.image_alt_text.errors %}<small>{{ error }}</small>{% endfor %}
                     </label>
                     <label class="spring-dashboard-field spring-dashboard-field--wide">
                         <span>Delivery note</span>
@@ -429,62 +233,31 @@
                 </div>
             </article>
 
-            <article class="spring-dashboard-panel" id="size-formset">
+            <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Inventory rows</p>
-                        <h3>Size-level stock</h3>
+                        <p class="spring-dashboard-kicker">Search</p>
+                        <h3>SEO details</h3>
                     </div>
-                    <button type="button" class="btn btn-outline-dark" data-formset-add="size-formset">Add size row</button>
                 </div>
-                <p class="spring-dashboard-ai-copy">Keep sizes and stock manual here so the catalog always matches your real inventory.</p>
-
-                <div class="spring-dashboard-formset" data-formset-rows>
-                    {{ size_formset.management_form }}
-                    {% for size_form in size_formset %}
-                    <div class="spring-dashboard-formset-row" data-formset-row>
-                        {% for hidden_field in size_form.hidden_fields %}{{ hidden_field }}{% endfor %}
-                        <div class="spring-dashboard-formset-row__grid">
-                            <label class="spring-dashboard-field">
-                                <span>Size</span>
-                                {{ size_form.size }}
-                                {% for error in size_form.size.errors %}<small>{{ error }}</small>{% endfor %}
-                            </label>
-                            <label class="spring-dashboard-field">
-                                <span>Quantity</span>
-                                {{ size_form.quantity }}
-                                {% for error in size_form.quantity.errors %}<small>{{ error }}</small>{% endfor %}
-                            </label>
-                        </div>
-                        {{ size_form.DELETE }}
-                        <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
-                    </div>
-                    {% empty %}
-                    {% endfor %}
-                    <template>
-                        <div class="spring-dashboard-formset-row" data-formset-row>
-                            {% for hidden_field in size_formset.empty_form.hidden_fields %}{{ hidden_field }}{% endfor %}
-                            <div class="spring-dashboard-formset-row__grid">
-                                <label class="spring-dashboard-field">
-                                    <span>Size</span>
-                                    {{ size_formset.empty_form.size }}
-                                </label>
-                                <label class="spring-dashboard-field">
-                                    <span>Quantity</span>
-                                    {{ size_formset.empty_form.quantity }}
-                                </label>
-                            </div>
-                            {{ size_formset.empty_form.DELETE }}
-                            <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
-                        </div>
-                    </template>
+                <div class="spring-dashboard-form-grid">
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>SEO title</span>
+                        {{ form.seo_title }}
+                        {% for error in form.seo_title.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>SEO description</span>
+                        {{ form.seo_description }}
+                        {% for error in form.seo_description.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
                 </div>
             </article>
 
             <article class="spring-dashboard-panel" id="image-formset">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Gallery management</p>
+                        <p class="spring-dashboard-kicker">Gallery</p>
                         <h3>Additional images</h3>
                     </div>
                     <button type="button" class="btn btn-outline-dark" data-formset-add="image-formset">Add image</button>
@@ -532,14 +305,13 @@
             <article class="spring-dashboard-panel spring-dashboard-panel--sticky">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Launch controls</p>
-                        <h3>Status</h3>
+                        <p class="spring-dashboard-kicker">Launch</p>
+                        <h3>Status controls</h3>
                     </div>
                 </div>
-
                 <div class="spring-dashboard-switches">
                     <label>{{ form.is_active }} <span>Visible on storefront</span></label>
-                    <label>{{ form.is_featured }} <span>Featured merchandising slot</span></label>
+                    <label>{{ form.is_featured }} <span>Featured placement</span></label>
                     <label>{{ form.is_sold_out }} <span>Mark as sold out</span></label>
                 </div>
             </article>
@@ -547,26 +319,37 @@
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Primary image</p>
-                        <h3>Cover media</h3>
+                        <p class="spring-dashboard-kicker">Primary media</p>
+                        <h3>Cover image</h3>
                     </div>
                 </div>
                 <label class="spring-dashboard-field spring-dashboard-field--wide">
-                    <span>Primary product image</span>
+                    <span>Main product image</span>
                     {{ form.product_image }}
                     {% for error in form.product_image.errors %}<small>{{ error }}</small>{% endfor %}
                 </label>
-
                 {% if product and product.product_image %}
                 <div class="spring-dashboard-cover-preview">
                     <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
                 </div>
                 {% endif %}
+            </article>
 
-                {% if generated_ai_images %}
-                <p class="spring-dashboard-ai-inline-note">
-                    When you save this approved draft, the first AI candidate becomes the cover image if you have not uploaded one, and the remaining candidates are added to the additional gallery images automatically.
-                </p>
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-kicker">Inventory rule</p>
+                        <h3>Size setup preview</h3>
+                    </div>
+                </div>
+                {% if size_tokens %}
+                <div class="spring-dashboard-token-list">
+                    {% for size in size_tokens %}
+                    <span>{{ size }} · {{ stock_per_size }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="spring-dashboard-muted">No sizes entered yet. Add sizes to auto-create inventory rows on save.</p>
                 {% endif %}
             </article>
 
@@ -574,8 +357,8 @@
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Affiliate link pattern</p>
-                        <h3>Shareable path</h3>
+                        <p class="spring-dashboard-kicker">Affiliate path</p>
+                        <h3>Shareable link format</h3>
                     </div>
                 </div>
                 <div class="spring-dashboard-code">
@@ -595,8 +378,8 @@
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
-                        <p class="spring-dashboard-panel__eyebrow">Gallery preview</p>
-                        <h3>Current assets</h3>
+                        <p class="spring-dashboard-kicker">Current gallery</p>
+                        <h3>Existing media</h3>
                     </div>
                 </div>
                 <div class="spring-dashboard-gallery-grid">
@@ -611,122 +394,4 @@
         </aside>
     </section>
 </form>
-{% endblock %}
-
-{% block extra_scripts %}
-{{ block.super }}
-{% if ai_draft and ai_image_generator_endpoint %}
-{{ generator_payload|json_script:"ai-generator-payload" }}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const button = document.querySelector('[data-ai-generate-images]');
-    const statusNode = document.querySelector('[data-ai-generate-status]');
-    const payloadNode = document.getElementById('ai-generator-payload');
-    if (!button || !statusNode || !payloadNode) return;
-
-    const endpoint = button.getAttribute('data-endpoint');
-    const saveUrl = button.getAttribute('data-save-url');
-    const shotsPerRequest = Math.max(1, Number(button.getAttribute('data-shots-per-request') || '1'));
-    const payload = JSON.parse(payloadNode.textContent);
-
-    function setStatus(message, type) {
-        statusNode.textContent = message;
-        statusNode.dataset.state = type || 'idle';
-    }
-
-    function getCsrfToken() {
-        const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
-        return tokenInput ? tokenInput.value : '';
-    }
-
-    function chunkShots(shots, size) {
-        const chunks = [];
-        for (let index = 0; index < shots.length; index += size) {
-            chunks.push(shots.slice(index, index + size));
-        }
-        return chunks;
-    }
-
-    async function parseJsonResponse(response) {
-        const text = await response.text();
-        if (!text) return {};
-        try {
-            return JSON.parse(text);
-        } catch (error) {
-            return { detail: text };
-        }
-    }
-
-    button.addEventListener('click', async function () {
-        if (!endpoint || !saveUrl) {
-            setStatus('Image generation is not configured correctly yet.', 'error');
-            return;
-        }
-
-        const shots = Array.isArray(payload.shots) ? payload.shots : [];
-        if (!shots.length) {
-            setStatus('No image shots are available for this draft yet.', 'error');
-            return;
-        }
-
-        button.disabled = true;
-        const originalLabel = button.textContent;
-        button.textContent = 'Generating...';
-        setStatus('Sending the first shot to the hosted generator...', 'working');
-
-        try {
-            const allImages = [];
-            const shotBatches = chunkShots(shots, shotsPerRequest);
-
-            for (let index = 0; index < shotBatches.length; index += 1) {
-                const batch = shotBatches[index];
-                const batchPayload = Object.assign({}, payload, { shots: batch });
-                setStatus('Generating shot ' + (index + 1) + ' of ' + shotBatches.length + '...', 'working');
-
-                const generatorResponse = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(batchPayload)
-                });
-                const generatorBody = await parseJsonResponse(generatorResponse);
-                if (!generatorResponse.ok) {
-                    throw new Error(generatorBody.detail || generatorBody.error || 'The hosted image generator returned an error.');
-                }
-                if (Array.isArray(generatorBody.images)) {
-                    allImages.push.apply(allImages, generatorBody.images);
-                }
-            }
-
-            if (!allImages.length) {
-                throw new Error('The hosted image generator returned no images.');
-            }
-
-            setStatus('Saving generated images to this draft...', 'working');
-            const saveResponse = await fetch(saveUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                body: JSON.stringify({ images: allImages })
-            });
-            const saveBody = await parseJsonResponse(saveResponse);
-            if (!saveResponse.ok || !saveBody.ok) {
-                throw new Error(saveBody.error || 'The generated images could not be saved back to the draft.');
-            }
-
-            setStatus('Images saved. Reloading the draft preview...', 'success');
-            window.location.reload();
-        } catch (error) {
-            setStatus(error.message || 'Image generation failed.', 'error');
-        } finally {
-            button.disabled = false;
-            button.textContent = originalLabel;
-        }
-    });
-});
-</script>
-{% endif %}
 {% endblock %}

@@ -1,68 +1,68 @@
 {% extends "dashboard/base.html" %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-grid spring-dashboard-grid--hero">
+<section class="spring-dashboard-overview-hero">
     <article class="spring-dashboard-panel spring-dashboard-panel--hero">
-        <p class="spring-dashboard-panel__eyebrow">Today at a glance</p>
-        <h2>Operational visibility without the admin clutter.</h2>
-        <p>The control room is focused on the workflows your team uses every day: order movement, Telegram follow-up, and product readiness.</p>
+        <p class="spring-dashboard-kicker">Operational snapshot</p>
+        <h2>Clearer routing for product posting, fulfillment, and Telegram follow-up.</h2>
+        <p>This dashboard is trimmed down for the daily actions that matter: add products fast, scan stock quickly, and move orders without admin clutter.</p>
         <div class="spring-dashboard-hero-actions">
-            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-dark">Open order queue</a>
-            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-outline-dark">Add a product</a>
+            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post a product</a>
+            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-outline-dark">Open orders</a>
         </div>
     </article>
 
-    <article class="spring-dashboard-panel spring-dashboard-panel--compact">
-        <p class="spring-dashboard-panel__eyebrow">Pending pressure points</p>
-        <div class="spring-dashboard-kpi-list">
+    <article class="spring-dashboard-panel">
+        <p class="spring-dashboard-kicker">Pressure points</p>
+        <div class="spring-dashboard-mini-stats">
             <div>
+                <span>Pending storefront</span>
                 <strong>{{ order_stats.pending }}</strong>
-                <span>Pending storefront orders</span>
             </div>
             <div>
+                <span>Pending Telegram</span>
                 <strong>{{ telegram_stats.pending }}</strong>
-                <span>Pending Telegram orders</span>
             </div>
             <div>
+                <span>Sold out</span>
                 <strong>{{ product_stats.sold_out }}</strong>
-                <span>Sold out products</span>
             </div>
             <div>
+                <span>Pending payouts</span>
                 <strong>{{ affiliate_stats.pending }}</strong>
-                <span>Pending affiliate payouts</span>
             </div>
         </div>
     </article>
 </section>
 
-<section class="spring-dashboard-stats">
-    <article class="spring-dashboard-stat">
+<section class="spring-dashboard-stat-grid">
+    <article class="spring-dashboard-stat-card">
         <span>Products</span>
         <strong>{{ product_stats.total }}</strong>
         <p>{{ product_stats.active }} active, {{ product_stats.featured }} featured</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Storefront orders</span>
         <strong>{{ order_stats.total }}</strong>
         <p>{{ order_stats.weekly }} created in the last 7 days</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Revenue booked</span>
         <strong>{{ order_stats.revenue }}</strong>
-        <p>Across all saved order lines</p>
+        <p>Across saved order lines</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Telegram orders</span>
         <strong>{{ telegram_stats.total }}</strong>
         <p>{{ telegram_stats.active }} currently active</p>
     </article>
 </section>
 
-<section class="spring-dashboard-grid">
+<section class="spring-dashboard-grid spring-dashboard-grid--two">
     <article class="spring-dashboard-panel">
         <div class="spring-dashboard-section-head">
             <div>
-                <p class="spring-dashboard-panel__eyebrow">Recent storefront orders</p>
+                <p class="spring-dashboard-kicker">Recent storefront orders</p>
                 <h3>Latest activity</h3>
             </div>
             <a href="{% url 'store:dashboard-orders' %}">View all</a>
@@ -75,7 +75,7 @@
                     <p>{{ order.user.get_full_name|default:order.user.username }} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</p>
                 </div>
                 <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-badge spring-dashboard-badge--{{ order.status|slugify }}">{{ order.status }}</span>
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
                     <small>{{ order.ordered_date|date:"M d, H:i" }}</small>
                 </div>
             </div>
@@ -88,35 +88,7 @@
     <article class="spring-dashboard-panel">
         <div class="spring-dashboard-section-head">
             <div>
-                <p class="spring-dashboard-panel__eyebrow">Recent Telegram orders</p>
-                <h3>Chat commerce queue</h3>
-            </div>
-            <a href="{% url 'store:dashboard-telegram-orders' %}">View all</a>
-        </div>
-        <div class="spring-dashboard-list">
-            {% for order in recent_telegram_orders %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>TG-{{ order.id }} · {{ order.product_title }}</strong>
-                    <p>{{ order.customer_full_name }} · {{ order.customer_city }}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-badge spring-dashboard-badge--{{ order.status|slugify }}">{{ order.status }}</span>
-                    <small>{{ order.created_at|date:"M d, H:i" }}</small>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">No Telegram orders have been captured yet.</p>
-            {% endfor %}
-        </div>
-    </article>
-</section>
-
-<section class="spring-dashboard-grid">
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-panel__eyebrow">Merchandising watchlist</p>
+                <p class="spring-dashboard-kicker">Merchandising watchlist</p>
                 <h3>Low stock and sold out</h3>
             </div>
             <a href="{% url 'store:dashboard-products' %}?state=low-stock">Open catalog</a>
@@ -130,9 +102,9 @@
                 </div>
                 <div class="spring-dashboard-list-row__meta">
                     {% if product.is_sold_out %}
-                    <span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Sold out</span>
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--cancelled">Sold out</span>
                     {% else %}
-                    <span class="spring-dashboard-badge spring-dashboard-badge--packed">{{ product.stock_quantity }} left</span>
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--packed">{{ product.stock_quantity }} left</span>
                     {% endif %}
                     <a href="{% url 'store:dashboard-product-edit' product.id %}">Edit</a>
                 </div>
@@ -142,11 +114,39 @@
             {% endfor %}
         </div>
     </article>
+</section>
+
+<section class="spring-dashboard-grid spring-dashboard-grid--two">
+    <article class="spring-dashboard-panel">
+        <div class="spring-dashboard-section-head">
+            <div>
+                <p class="spring-dashboard-kicker">Recent Telegram orders</p>
+                <h3>Chat sales</h3>
+            </div>
+            <a href="{% url 'store:dashboard-telegram-orders' %}">View all</a>
+        </div>
+        <div class="spring-dashboard-list">
+            {% for order in recent_telegram_orders %}
+            <div class="spring-dashboard-list-row">
+                <div>
+                    <strong>TG-{{ order.id }} · {{ order.product_title }}</strong>
+                    <p>{{ order.customer_full_name }} · {{ order.customer_city }}</p>
+                </div>
+                <div class="spring-dashboard-list-row__meta">
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
+                    <small>{{ order.created_at|date:"M d, H:i" }}</small>
+                </div>
+            </div>
+            {% empty %}
+            <p class="spring-dashboard-empty">No Telegram orders have been captured yet.</p>
+            {% endfor %}
+        </div>
+    </article>
 
     <article class="spring-dashboard-panel">
         <div class="spring-dashboard-section-head">
             <div>
-                <p class="spring-dashboard-panel__eyebrow">Top sellers</p>
+                <p class="spring-dashboard-kicker">Top sellers</p>
                 <h3>Most ordered products</h3>
             </div>
             <a href="{% url 'store:dashboard-products' %}">Open products</a>
@@ -159,62 +159,12 @@
                     <p>{{ product.sku }} · {{ product.category.title }}</p>
                 </div>
                 <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-badge spring-dashboard-badge--delivered">{{ product.order_volume }} orders</span>
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--delivered">{{ product.order_volume }} orders</span>
                     <a href="{% url 'store:dashboard-product-edit' product.id %}">Edit</a>
                 </div>
             </div>
             {% empty %}
             <p class="spring-dashboard-empty">Top-selling products will appear here once orders accumulate.</p>
-            {% endfor %}
-        </div>
-    </article>
-</section>
-
-<section class="spring-dashboard-grid">
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-panel__eyebrow">Fresh feedback</p>
-                <h3>Latest reviews</h3>
-            </div>
-        </div>
-        <div class="spring-dashboard-list">
-            {% for review in latest_reviews %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>{{ review.product.title }} · {{ review.rating }}/5</strong>
-                    <p>{{ review.user.username }}{% if review.title %} · {{ review.title }}{% endif %}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <small>{{ review.created_at|date:"M d, H:i" }}</small>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">Customer reviews will appear here when shoppers start submitting them.</p>
-            {% endfor %}
-        </div>
-    </article>
-
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-panel__eyebrow">Demand signals</p>
-                <h3>Restock requests</h3>
-            </div>
-        </div>
-        <div class="spring-dashboard-list">
-            {% for request_item in latest_restock_requests %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>{{ request_item.product.title }}</strong>
-                    <p>{{ request_item.email }}{% if request_item.size %} · {{ request_item.size }}{% endif %}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <small>{{ request_item.created_at|date:"M d, H:i" }}</small>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">Restock requests will appear here when products sell through.</p>
             {% endfor %}
         </div>
     </article>
