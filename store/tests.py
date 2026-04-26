@@ -600,13 +600,13 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    def test_dashboard_ai_queue_redirects_to_product_create(self):
+    def test_dashboard_ai_queue_loads(self):
         self.client.login(username="0911444555", password="test-pass-123")
 
-        response = self.client.get(reverse("store:dashboard-ai-queue"), follow=True)
+        response = self.client.get(reverse("store:dashboard-ai-queue"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "AI image queue has been retired")
-        self.assertContains(response, "Post a new product")
+        self.assertContains(response, "Queue Gemini copy generation")
+        self.assertContains(response, "Add to queue")
 
     @override_settings(
         DEBUG=True,
@@ -614,7 +614,34 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    def test_queue_process_endpoint_returns_gone(self):
+    def test_staff_user_can_queue_ai_draft(self):
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-ai-queue"),
+            {
+                "sku": "QUEUE-1",
+                "vendor_hint": "Mercato Studio",
+                "price": "249.99",
+                "reference_image": self._make_uploaded_image(name="queue-1.jpg", color="purple"),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        draft = ProductAIDraft.objects.get(sku="QUEUE-1")
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_QUEUED)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_PENDING)
+        self.assertContains(response, "QUEUE-1")
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    def test_queue_process_endpoint_generates_copy(self, generate_payload_mock):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
             sku="QUEUE-2",
@@ -624,12 +651,17 @@ class StoreFlowTests(TestCase):
             status=ProductAIDraft.STATUS_PENDING,
             pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
         )
+        generate_payload_mock.return_value = self._mock_ai_result(title="Queued Abaya")
         self.client.login(username="0911444555", password="test-pass-123")
 
         response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
 
-        self.assertEqual(response.status_code, 410)
-        self.assertEqual(response.json()["ok"], False)
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_READY)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_SUCCEEDED)
+        self.assertEqual(response.json()["ok"], True)
+        self.assertEqual(response.json()["draft"]["title"], "Queued Abaya")
 
     @override_settings(DEBUG=True)
     def test_categories_and_brands_pages_are_paginated(self):
@@ -678,7 +710,8 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    def test_manual_review_endpoint_returns_gone(self):
+    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    def test_queue_process_endpoint_marks_manual_review_on_failure(self, generate_payload_mock):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
             sku="QUEUE-3",
@@ -688,13 +721,40 @@ class StoreFlowTests(TestCase):
             status=ProductAIDraft.STATUS_PENDING,
             pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
         )
+        generate_payload_mock.side_effect = ai_enrichment.ProductAIError("Gemini failed")
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
+        self.assertEqual(draft.status, ProductAIDraft.STATUS_FAILED)
+        self.assertEqual(response.json()["ok"], False)
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    def test_manual_review_endpoint_marks_draft(self):
+        draft = ProductAIDraft.objects.create(
+            created_by=self.staff_user,
+            sku="QUEUE-4",
+            vendor_hint="Mercato Studio",
+            price=Decimal("349.00"),
+            reference_image=self._make_uploaded_image(name="queue-4.jpg", color="purple"),
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
         self.client.login(username="0911444555", password="test-pass-123")
 
         response = self.client.post(
             reverse("store:dashboard-ai-draft-manual-review", args=[draft.id]),
-            data=json.dumps({"error": "retired"}),
-            content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 410)
-        self.assertEqual(response.json()["ok"], False)
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
+        self.assertEqual(response.json()["ok"], True)

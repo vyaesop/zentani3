@@ -4,6 +4,7 @@
         radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 28%),
         linear-gradient(180deg, #efede8 0%, #e7e3dc 100%);
     color: #121212;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .spring-dashboard-shell {
@@ -91,7 +92,8 @@
 
 .spring-dashboard-brand__text small,
 .spring-dashboard-kicker,
-.spring-dashboard-label {
+.spring-dashboard-label,
+.spring-dashboard-panel__eyebrow {
     color: #8e897f;
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -577,6 +579,10 @@
     min-height: 120px;
 }
 
+.spring-dashboard-gallery-thumb--queue {
+    min-height: 220px;
+}
+
 .spring-dashboard-formset-row {
     padding: 16px;
     border: 1px solid rgba(18, 18, 18, 0.08);
@@ -737,6 +743,80 @@
 }
 
 @media (max-width: 767.98px) {
+    .spring-dashboard-sidebar {
+        width: 100%;
+        max-width: 100%;
+        padding: calc(18px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+    }
+
+    .spring-dashboard-main {
+        padding: calc(14px + env(safe-area-inset-top)) 12px calc(28px + env(safe-area-inset-bottom));
+        gap: 14px;
+    }
+
+    .spring-dashboard-panel,
+    .spring-dashboard-stat-card,
+    .spring-dashboard-editor-hero,
+    .spring-dashboard-catalog-row,
+    .spring-dashboard-ops-card {
+        padding: 16px;
+        border-radius: 20px;
+    }
+
+    .spring-dashboard-header h1,
+    .spring-dashboard-editor-hero h2,
+    .spring-dashboard-editor__header h2 {
+        font-size: clamp(28px, 8vw, 34px);
+        line-height: 0.98;
+    }
+
+    .spring-dashboard-header__actions,
+    .spring-dashboard-editor__header-actions,
+    .spring-dashboard-catalog-row__actions,
+    .spring-dashboard-assist-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        width: 100%;
+    }
+
+    .spring-dashboard-header__actions .spring-dashboard-user {
+        grid-column: 1 / -1;
+    }
+
+    .spring-dashboard-editor__header-actions .btn,
+    .spring-dashboard-header__actions .btn,
+    .spring-dashboard-catalog-row__actions .btn,
+    .spring-dashboard-catalog-row__actions form,
+    .spring-dashboard-catalog-row__actions form .btn,
+    .spring-dashboard-assist-actions .btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .spring-dashboard-catalog-row__actions form {
+        display: block;
+    }
+
+    .spring-dashboard-user {
+        padding: 12px 14px;
+    }
+
+    .spring-dashboard-nav a,
+    .spring-dashboard-sidebar__panel a {
+        min-height: 50px;
+        padding-inline: 14px;
+    }
+
+    .spring-dashboard-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .spring-dashboard-pagination__pages {
+        justify-content: flex-start;
+    }
+
     .spring-dashboard-table,
     .spring-dashboard-table thead,
     .spring-dashboard-table tbody,

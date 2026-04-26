@@ -50,6 +50,7 @@ from .telegram_notify import (
 
 STATUS_VALUES = {value for value, _ in STATUS_CHOICES}
 AI_DRAFT_SESSION_KEY = "dashboard_product_ai_draft_id"
+AI_QUEUE_LIMIT = 20
 DEFAULT_STOCK_PER_SIZE = 10
 LOW_STOCK_THRESHOLD = 3
 
@@ -167,6 +168,58 @@ def _build_ai_draft_form(product=None, ai_draft=None):
             "price": product.price,
         }
     return ProductAIDraftForm(initial=initial)
+
+
+def _active_ai_queue_queryset(user):
+    return ProductAIDraft.objects.filter(
+        created_by=user,
+        pipeline_state__in=(
+            ProductAIDraft.PIPELINE_QUEUED,
+            ProductAIDraft.PIPELINE_ANALYZING,
+        ),
+    )
+
+
+def _queueable_drafts_queryset(user):
+    return ProductAIDraft.objects.filter(created_by=user).order_by(
+        "-updated_at",
+        "-created_at",
+    )
+
+
+def _mark_draft_manual_review(draft, *, error_message, stage):
+    draft.status = ProductAIDraft.STATUS_FAILED
+    draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
+    draft.error_message = str(error_message)[:250]
+    draft.last_error_stage = stage
+    draft.processing_finished_at = timezone.now()
+    draft.save(
+        update_fields=[
+            "status",
+            "pipeline_state",
+            "error_message",
+            "last_error_stage",
+            "processing_finished_at",
+            "updated_at",
+        ]
+    )
+    return draft
+
+
+def _queue_draft_json(draft):
+    return {
+        "id": draft.id,
+        "sku": draft.sku,
+        "vendor_hint": draft.vendor_hint,
+        "price": str(draft.price) if draft.price is not None else "",
+        "status": draft.status,
+        "pipeline_state": draft.pipeline_state,
+        "queue_label": draft.queue_label,
+        "title": draft.extracted_fields.get("title") or draft.sku,
+        "error_message": draft.error_message,
+        "attempt_count": draft.attempt_count,
+        "edit_url": _ai_draft_redirect_url(draft.product, draft),
+    }
 
 
 @staff_required
@@ -462,8 +515,47 @@ def dashboard_products(request):
 
 @staff_required
 def dashboard_ai_queue(request):
-    messages.info(request, "The AI image queue has been retired. Use the product editor for the fastest posting flow.")
-    return redirect("store:dashboard-product-create")
+    queue_count = _active_ai_queue_queryset(request.user).count()
+
+    if request.method == "POST":
+        ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
+        if not gemini_is_configured():
+            messages.error(request, "Set GEMINI_API_KEY in your environment before queueing AI drafts.")
+        elif queue_count >= AI_QUEUE_LIMIT:
+            messages.error(request, f"You can only keep {AI_QUEUE_LIMIT} active AI drafts in the queue at a time.")
+        elif ai_draft_form.is_valid():
+            draft = ai_draft_form.save(commit=False)
+            draft.created_by = request.user
+            draft.status = ProductAIDraft.STATUS_PENDING
+            draft.pipeline_state = ProductAIDraft.PIPELINE_QUEUED
+            draft.queued_at = timezone.now()
+            draft.error_message = ""
+            draft.last_error_stage = ""
+            draft.save()
+            messages.success(
+                request,
+                f"{draft.sku} was added to the Gemini queue. Copy generation will run without image generation.",
+            )
+            return redirect("store:dashboard-ai-queue")
+        else:
+            messages.error(request, "Add a reference image, SKU, and price before queueing a draft.")
+    else:
+        ai_draft_form = ProductAIDraftForm()
+
+    queue_items = list(_queueable_drafts_queryset(request.user)[:40])
+    context = _dashboard_context(
+        request,
+        section="ai-queue",
+        title="Gemini Queue",
+        intro="Queue multiple products, let Gemini draft the merchandising copy from your reference images, then open each draft when it is ready to finish.",
+        ai_draft_form=ai_draft_form,
+        queue_items=queue_items,
+        queue_limit=AI_QUEUE_LIMIT,
+        queue_count=queue_count,
+        queue_remaining=max(0, AI_QUEUE_LIMIT - queue_count),
+        gemini_is_configured=gemini_is_configured(),
+    )
+    return render(request, "dashboard/ai_queue.html", context)
 
 
 @staff_required
@@ -599,24 +691,96 @@ def dashboard_product_edit(request, product_id=None):
 @staff_required
 @require_POST
 def dashboard_ai_draft_process(request, draft_id):
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+
+    if draft.response_payload and draft.pipeline_state == ProductAIDraft.PIPELINE_READY:
+        return JsonResponse(
+            {
+                "ok": True,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "draft": _queue_draft_json(draft),
+            }
+        )
+
+    if draft.response_payload and draft.pipeline_state not in {ProductAIDraft.PIPELINE_MANUAL_REVIEW}:
+        draft.pipeline_state = ProductAIDraft.PIPELINE_READY
+        draft.status = ProductAIDraft.STATUS_SUCCEEDED
+        draft.processing_finished_at = timezone.now()
+        draft.save(update_fields=["pipeline_state", "status", "processing_finished_at", "updated_at"])
+        return JsonResponse(
+            {
+                "ok": True,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "draft": _queue_draft_json(draft),
+            }
+        )
+
+    draft.pipeline_state = ProductAIDraft.PIPELINE_ANALYZING
+    draft.processing_started_at = timezone.now()
+    draft.processing_finished_at = None
+    draft.attempt_count += 1
+    draft.error_message = ""
+    draft.last_error_stage = ""
+    draft.save(
+        update_fields=[
+            "pipeline_state",
+            "processing_started_at",
+            "processing_finished_at",
+            "attempt_count",
+            "error_message",
+            "last_error_stage",
+            "updated_at",
+        ]
+    )
+
+    try:
+        result = generate_product_ai_payload_for_draft(draft)
+    except ProductAIError as exc:
+        _mark_draft_manual_review(draft, error_message=exc, stage="content")
+        return JsonResponse(
+            {
+                "ok": False,
+                "pipeline_state": draft.pipeline_state,
+                "queue_label": draft.queue_label,
+                "error": str(exc),
+                "draft": _queue_draft_json(draft),
+            }
+        )
+
+    apply_ai_draft_result(
+        draft,
+        result,
+        status=ProductAIDraft.STATUS_SUCCEEDED,
+        pipeline_state=ProductAIDraft.PIPELINE_READY,
+        error_message="",
+        last_error_stage="",
+    )
+    draft.processing_finished_at = timezone.now()
+    draft.save(update_fields=["processing_finished_at", "updated_at"])
     return JsonResponse(
         {
-            "ok": False,
-            "error": "The AI image queue has been retired.",
-        },
-        status=410,
+            "ok": True,
+            "pipeline_state": draft.pipeline_state,
+            "queue_label": draft.queue_label,
+            "draft": _queue_draft_json(draft),
+        }
     )
 
 
 @staff_required
 @require_POST
 def dashboard_ai_draft_manual_review(request, draft_id):
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+    _mark_draft_manual_review(draft, error_message="Queued draft sent to manual review.", stage="content")
     return JsonResponse(
         {
-            "ok": False,
-            "error": "The AI image queue has been retired.",
-        },
-        status=410,
+            "ok": True,
+            "pipeline_state": draft.pipeline_state,
+            "queue_label": draft.queue_label,
+            "draft": _queue_draft_json(draft),
+        }
     )
 
 

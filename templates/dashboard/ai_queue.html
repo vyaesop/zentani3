@@ -2,62 +2,70 @@
 {% load image_optim %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-panel spring-dashboard-panel--ai">
+<section class="spring-dashboard-panel spring-dashboard-panel--subtle">
     <div class="spring-dashboard-section-head">
         <div>
-            <p class="spring-dashboard-panel__eyebrow">Background AI drafting</p>
-            <h3>Queue products while the AI keeps working</h3>
+            <p class="spring-dashboard-kicker">Background drafting</p>
+            <h3>Queue Gemini copy generation</h3>
         </div>
-        <div class="spring-dashboard-ai-status">
-            {% if gemini_is_configured %}
-            <span class="spring-dashboard-badge spring-dashboard-badge--delivered">Gemini ready</span>
-            {% else %}
-            <span class="spring-dashboard-badge spring-dashboard-badge--cancelled">Gemini key missing</span>
-            {% endif %}
+        {% if gemini_is_configured %}
+        <span class="spring-dashboard-status-pill spring-dashboard-status-pill--delivered">Gemini ready</span>
+        {% else %}
+        <span class="spring-dashboard-status-pill spring-dashboard-status-pill--cancelled">Gemini key missing</span>
+        {% endif %}
+    </div>
+
+    <div class="spring-dashboard-mini-stats">
+        <div>
+            <span>Active queue</span>
+            <strong>{{ queue_count }}</strong>
+            <p>Currently queued or analyzing</p>
+        </div>
+        <div>
+            <span>Queue limit</span>
+            <strong>{{ queue_limit }}</strong>
+            <p>Maximum active drafts</p>
+        </div>
+        <div>
+            <span>Open slots</span>
+            <strong>{{ queue_remaining }}</strong>
+            <p>Available right now</p>
         </div>
     </div>
 
-    <div class="spring-dashboard-ai-pill-list">
-        <span><strong>Active queue:</strong> {{ queue_count }} / {{ queue_limit }}</span>
-        <span><strong>Remaining slots:</strong> {{ queue_remaining }}</span>
-        <span><strong>Image runner:</strong> {% if ai_image_generator_endpoint %}Hosted worker ready{% else %}No hosted image worker{% endif %}</span>
-    </div>
-
-    <p class="spring-dashboard-ai-copy">
-        Queue one product at a time with the reference image, SKU, vendor, and price. The browser keeps processing queued drafts in the background, so slow or failed items can fall into manual review without blocking the rest.
+    <p class="spring-dashboard-muted">
+        Upload a reference image, source SKU, vendor hint, and price. Gemini will only draft product information and SEO suggestions here. No image generation runs in this queue.
     </p>
 
-    <form method="post" enctype="multipart/form-data" class="spring-dashboard-ai-intake">
+    <form method="post" enctype="multipart/form-data" class="spring-dashboard-form-grid spring-dashboard-form-grid--assist">
         {% csrf_token %}
-        <div class="spring-dashboard-form-grid">
-            <label class="spring-dashboard-field">
-                <span>Source SKU</span>
-                {{ ai_draft_form.sku }}
-                {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field">
-                <span>Price</span>
-                {{ ai_draft_form.price }}
-                {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field">
-                <span>Local vendor</span>
-                {{ ai_draft_form.vendor_hint }}
-                {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field spring-dashboard-field--wide">
-                <span>Identifier image</span>
-                {{ ai_draft_form.reference_image }}
-                {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-            <label class="spring-dashboard-field spring-dashboard-field--wide">
-                <span>Optional second reference image</span>
-                {{ ai_draft_form.secondary_reference_image }}
-                {% for error in ai_draft_form.secondary_reference_image.errors %}<small>{{ error }}</small>{% endfor %}
-            </label>
-        </div>
-        <div class="spring-dashboard-editor__header-actions">
-            <button type="submit" class="btn btn-dark">Add To AI Queue</button>
+        <label class="spring-dashboard-field">
+            <span>Source SKU</span>
+            {{ ai_draft_form.sku }}
+            {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field">
+            <span>Price</span>
+            {{ ai_draft_form.price }}
+            {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field">
+            <span>Vendor</span>
+            {{ ai_draft_form.vendor_hint }}
+            {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field spring-dashboard-field--wide">
+            <span>Reference image</span>
+            {{ ai_draft_form.reference_image }}
+            {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <label class="spring-dashboard-field spring-dashboard-field--wide">
+            <span>Optional second reference image</span>
+            {{ ai_draft_form.secondary_reference_image }}
+            {% for error in ai_draft_form.secondary_reference_image.errors %}<small>{{ error }}</small>{% endfor %}
+        </label>
+        <div class="spring-dashboard-assist-actions">
+            <button type="submit" class="btn btn-dark">Add to queue</button>
             <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-outline-dark">Open single draft editor</a>
         </div>
     </form>
@@ -66,50 +74,33 @@
 <section class="spring-dashboard-panel">
     <div class="spring-dashboard-section-head">
         <div>
-            <p class="spring-dashboard-panel__eyebrow">Queue monitor</p>
-            <h3>Draft progress</h3>
+            <p class="spring-dashboard-kicker">Queue monitor</p>
+            <h3>Gemini draft progress</h3>
         </div>
     </div>
 
     {% if queue_items %}
-    <div class="spring-dashboard-ai-queue-list" data-ai-queue-root data-ai-image-endpoint="{{ ai_image_generator_endpoint }}" data-ai-shots-per-request="{{ ai_image_shots_per_request }}">
+    <div class="spring-dashboard-card-grid" data-ai-queue-root>
         {% for draft in queue_items %}
         <article
-            class="spring-dashboard-ai-queue-item"
+            class="spring-dashboard-ops-card spring-dashboard-ops-card--queue"
             data-ai-queue-item
-            data-draft-id="{{ draft.id }}"
             data-state="{{ draft.pipeline_state }}"
             data-process-url="{% url 'store:dashboard-ai-draft-process' draft.id %}"
             data-manual-review-url="{% url 'store:dashboard-ai-draft-manual-review' draft.id %}"
-            data-save-url="{% url 'store:dashboard-ai-draft-generated-images' draft.id %}"
         >
-            <div class="spring-dashboard-section-head">
+            <div class="spring-dashboard-ops-card__top">
                 <div>
-                    <p class="spring-dashboard-panel__eyebrow">{{ draft.created_at|date:"M d, H:i" }}</p>
-                    <h4 data-ai-queue-title>{{ draft.extracted_fields.title|default:draft.sku }}</h4>
+                    <p class="spring-dashboard-kicker">{{ draft.created_at|date:"M d, H:i" }}</p>
+                    <h3 data-ai-queue-title>{{ draft.extracted_fields.title|default:draft.sku }}</h3>
+                    <p>{{ draft.sku }}{% if draft.vendor_hint %} · {{ draft.vendor_hint }}{% endif %}</p>
                 </div>
-                <span class="spring-dashboard-badge {% if draft.pipeline_state == 'ready' %}spring-dashboard-badge--delivered{% elif draft.pipeline_state == 'manual_review' %}spring-dashboard-badge--cancelled{% elif draft.pipeline_state == 'queued' %}spring-dashboard-badge--pending{% else %}spring-dashboard-badge--accepted{% endif %}" data-ai-queue-badge>
+                <span
+                    class="spring-dashboard-status-pill {% if draft.pipeline_state == 'ready' %}spring-dashboard-status-pill--delivered{% elif draft.pipeline_state == 'manual_review' %}spring-dashboard-status-pill--cancelled{% elif draft.pipeline_state == 'queued' %}spring-dashboard-status-pill--pending{% else %}spring-dashboard-status-pill--accepted{% endif %}"
+                    data-ai-queue-badge
+                >
                     {{ draft.queue_label }}
                 </span>
-            </div>
-
-            <div class="spring-dashboard-ai-list">
-                <div>
-                    <dt>SKU</dt>
-                    <dd>{{ draft.sku }}</dd>
-                </div>
-                <div>
-                    <dt>Vendor</dt>
-                    <dd>{{ draft.vendor_hint|default:"-" }}</dd>
-                </div>
-                <div>
-                    <dt>Attempts</dt>
-                    <dd data-ai-queue-attempts>{{ draft.attempt_count }}</dd>
-                </div>
-                <div>
-                    <dt>Images</dt>
-                    <dd data-ai-queue-images>{{ draft.generated_images.count }}</dd>
-                </div>
             </div>
 
             {% if draft.reference_image %}
@@ -118,26 +109,49 @@
             </div>
             {% endif %}
 
-            <p class="spring-dashboard-ai-inline-note" data-ai-queue-message>
+            <div class="spring-dashboard-ops-card__meta">
+                <div>
+                    <span>Attempts</span>
+                    <strong data-ai-queue-attempts>{{ draft.attempt_count }}</strong>
+                    <p>Processing retries</p>
+                </div>
+                <div>
+                    <span>Price</span>
+                    <strong>{{ draft.price|default:"-" }}</strong>
+                    <p>Source price</p>
+                </div>
+                <div>
+                    <span>Status</span>
+                    <strong>{{ draft.status|title }}</strong>
+                    <p>{{ draft.last_error_stage|default:"No error stage" }}</p>
+                </div>
+            </div>
+
+            <p class="spring-dashboard-muted" data-ai-queue-message>
                 {% if draft.error_message %}
                 {{ draft.error_message }}
                 {% elif draft.pipeline_state == "ready" %}
-                Draft is ready for final size and inventory edits.
+                Draft is ready to open and finish in the product editor.
                 {% elif draft.pipeline_state == "manual_review" %}
                 This draft needs manual review before posting.
+                {% elif draft.pipeline_state == "analyzing" %}
+                Gemini is generating the product information now.
                 {% else %}
-                Waiting for the queue runner.
+                Waiting for the queue runner to start this draft.
                 {% endif %}
             </p>
 
-            <div class="spring-dashboard-editor__header-actions">
-                <a href="{% if draft.product %}{% url 'store:dashboard-product-edit' draft.product.id %}?ai_draft={{ draft.id }}{% else %}{% url 'store:dashboard-product-create' %}?ai_draft={{ draft.id }}{% endif %}" class="btn btn-outline-dark">Open Draft</a>
+            <div class="spring-dashboard-catalog-row__actions">
+                <a href="{% if draft.product %}{% url 'store:dashboard-product-edit' draft.product.id %}?ai_draft={{ draft.id }}{% else %}{% url 'store:dashboard-product-create' %}?ai_draft={{ draft.id }}{% endif %}" class="btn btn-outline-dark">Open draft</a>
+                {% if draft.pipeline_state != "manual_review" and draft.pipeline_state != "ready" %}
+                <button type="button" class="btn btn-outline-dark" data-ai-manual-review>Send to manual review</button>
+                {% endif %}
             </div>
         </article>
         {% endfor %}
     </div>
     {% else %}
-    <div class="spring-dashboard-empty">No queued AI drafts yet. Add one above and the queue runner will take it from there.</div>
+    <div class="spring-dashboard-empty">No queued Gemini drafts yet. Add one above and the queue will process it in the background.</div>
     {% endif %}
 </section>
 {% endblock %}
@@ -149,40 +163,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const queueRoot = document.querySelector('[data-ai-queue-root]');
     if (!queueRoot) return;
 
-    const imageEndpoint = queueRoot.getAttribute('data-ai-image-endpoint');
-    const shotsPerRequest = Math.max(1, Number(queueRoot.getAttribute('data-ai-shots-per-request') || '1'));
     let queueRunning = false;
 
     function getCsrfToken() {
         const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
         return tokenInput ? tokenInput.value : '';
-    }
-
-    function updateRow(row, draftData, messageOverride) {
-        if (!row || !draftData) return;
-        row.dataset.state = draftData.pipeline_state || row.dataset.state;
-        const badge = row.querySelector('[data-ai-queue-badge]');
-        if (badge) {
-            badge.textContent = draftData.queue_label || row.dataset.state;
-            badge.className = 'spring-dashboard-badge';
-            if (draftData.pipeline_state === 'ready') {
-                badge.classList.add('spring-dashboard-badge--delivered');
-            } else if (draftData.pipeline_state === 'manual_review') {
-                badge.classList.add('spring-dashboard-badge--cancelled');
-            } else if (draftData.pipeline_state === 'queued') {
-                badge.classList.add('spring-dashboard-badge--pending');
-            } else {
-                badge.classList.add('spring-dashboard-badge--accepted');
-            }
-        }
-        const title = row.querySelector('[data-ai-queue-title]');
-        if (title && draftData.title) title.textContent = draftData.title;
-        const message = row.querySelector('[data-ai-queue-message]');
-        if (message) message.textContent = messageOverride || draftData.error_message || 'Queue state updated.';
-        const attempts = row.querySelector('[data-ai-queue-attempts]');
-        if (attempts && typeof draftData.attempt_count !== 'undefined') attempts.textContent = draftData.attempt_count;
-        const images = row.querySelector('[data-ai-queue-images]');
-        if (images && typeof draftData.generated_images_count !== 'undefined') images.textContent = draftData.generated_images_count;
     }
 
     async function parseJsonResponse(response) {
@@ -195,73 +180,57 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function chunkShots(shots, size) {
-        const chunks = [];
-        for (let index = 0; index < shots.length; index += size) {
-            chunks.push(shots.slice(index, index + size));
-        }
-        return chunks;
+    function badgeClassForState(state) {
+        if (state === 'ready') return 'spring-dashboard-status-pill spring-dashboard-status-pill--delivered';
+        if (state === 'manual_review') return 'spring-dashboard-status-pill spring-dashboard-status-pill--cancelled';
+        if (state === 'queued') return 'spring-dashboard-status-pill spring-dashboard-status-pill--pending';
+        return 'spring-dashboard-status-pill spring-dashboard-status-pill--accepted';
     }
 
-    async function saveManualReview(row, message, stage) {
+    function updateRow(row, draftData, messageOverride) {
+        if (!row || !draftData) return;
+        row.dataset.state = draftData.pipeline_state || row.dataset.state;
+
+        const badge = row.querySelector('[data-ai-queue-badge]');
+        if (badge) {
+            badge.textContent = draftData.queue_label || row.dataset.state;
+            badge.className = badgeClassForState(draftData.pipeline_state);
+        }
+
+        const title = row.querySelector('[data-ai-queue-title]');
+        if (title && draftData.title) {
+            title.textContent = draftData.title;
+        }
+
+        const attempts = row.querySelector('[data-ai-queue-attempts]');
+        if (attempts && typeof draftData.attempt_count !== 'undefined') {
+            attempts.textContent = draftData.attempt_count;
+        }
+
+        const message = row.querySelector('[data-ai-queue-message]');
+        if (message) {
+            message.textContent = messageOverride || draftData.error_message || 'Queue state updated.';
+        }
+
+        if (draftData.pipeline_state === 'manual_review' || draftData.pipeline_state === 'ready') {
+            const manualButton = row.querySelector('[data-ai-manual-review]');
+            if (manualButton) {
+                manualButton.remove();
+            }
+        }
+    }
+
+    async function sendToManualReview(row, message) {
         const response = await fetch(row.getAttribute('data-manual-review-url'), {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({ error: message, stage: stage })
+            }
         });
         const body = await parseJsonResponse(response);
         if (body && body.draft) {
-            updateRow(row, body.draft, message);
+            updateRow(row, body.draft, message || 'Draft moved to manual review.');
         }
-    }
-
-    async function generateImagesForDraft(row, generatorPayload) {
-        if (!imageEndpoint) {
-            throw new Error('The hosted image generator endpoint is not configured.');
-        }
-        const allImages = [];
-        const shotBatches = chunkShots(generatorPayload.shots || [], shotsPerRequest);
-
-        for (let index = 0; index < shotBatches.length; index += 1) {
-            const batchPayload = Object.assign({}, generatorPayload, { shots: shotBatches[index] });
-            updateRow(row, { pipeline_state: 'generating_images', queue_label: 'Generating Images' }, 'Generating image shot ' + (index + 1) + ' of ' + shotBatches.length + '...');
-            const generatorResponse = await fetch(imageEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(batchPayload)
-            });
-            const generatorBody = await parseJsonResponse(generatorResponse);
-            if (!generatorResponse.ok) {
-                throw new Error(generatorBody.detail || generatorBody.error || 'The hosted image generator returned an error.');
-            }
-            if (Array.isArray(generatorBody.images)) {
-                allImages.push.apply(allImages, generatorBody.images);
-            }
-        }
-
-        if (!allImages.length) {
-            throw new Error('The hosted image generator returned no images.');
-        }
-
-        updateRow(row, { pipeline_state: 'generating_images', queue_label: 'Saving Images' }, 'Saving generated images to this draft...');
-        const saveResponse = await fetch(row.getAttribute('data-save-url'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({ images: allImages })
-        });
-        const saveBody = await parseJsonResponse(saveResponse);
-        if (!saveResponse.ok || !saveBody.ok) {
-            throw new Error(saveBody.error || 'The generated images could not be saved back to the draft.');
-        }
-        updateRow(row, saveBody.draft, 'Draft is ready for review and posting.');
     }
 
     async function processRow(row) {
@@ -273,13 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const body = await parseJsonResponse(response);
         if (body && body.draft) {
-            updateRow(row, body.draft, body.error || 'Queue state updated.');
-        }
-        if (!body.ok) {
-            return;
-        }
-        if (body.pipeline_state === 'generating_images' && body.generator_payload) {
-            await generateImagesForDraft(row, body.generator_payload);
+            updateRow(row, body.draft, body.error || 'Draft updated.');
         }
     }
 
@@ -288,18 +251,31 @@ document.addEventListener('DOMContentLoaded', function () {
         queueRunning = true;
         try {
             while (true) {
-                const nextRow = queueRoot.querySelector('[data-ai-queue-item][data-state="analyzing"], [data-ai-queue-item][data-state="generating_images"], [data-ai-queue-item][data-state="queued"]');
+                const nextRow = queueRoot.querySelector('[data-ai-queue-item][data-state="queued"], [data-ai-queue-item][data-state="analyzing"]');
                 if (!nextRow) break;
                 try {
                     await processRow(nextRow);
                 } catch (error) {
-                    await saveManualReview(nextRow, error.message || 'This draft needs manual review.', 'images');
+                    await sendToManualReview(nextRow, error.message || 'Draft moved to manual review.');
                 }
             }
         } finally {
             queueRunning = false;
         }
     }
+
+    queueRoot.addEventListener('click', async function (event) {
+        const manualButton = event.target.closest('[data-ai-manual-review]');
+        if (!manualButton) return;
+        const row = manualButton.closest('[data-ai-queue-item]');
+        if (!row) return;
+        manualButton.disabled = true;
+        try {
+            await sendToManualReview(row, 'Draft moved to manual review.');
+        } finally {
+            manualButton.disabled = false;
+        }
+    });
 
     runQueueLoop();
     window.setInterval(runQueueLoop, 12000);
