@@ -65,6 +65,8 @@
           {% endfor %}
       </section>
 
+      {% include 'store/_collection_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_query=page_query aria_label='Order history pages' %}
+
       <section class="spring-order-help">
           <div class="spring-section__head">
               <h2>Need help with an order?</h2>

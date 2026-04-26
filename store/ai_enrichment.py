@@ -241,7 +241,7 @@ def _default_shots_for_payload(payload):
 
     if any(term in combined for term in ["abaya", "dress", "modest", "gown"]):
         return [
-            {"name": "Studio White Hero", "aspect_ratio": "4:5", "priority": 1, "prompt": "Full-length catalog hero on a clean white background with true purple color fidelity and soft floor shadow."},
+            {"name": "Studio White Hero", "aspect_ratio": "4:5", "priority": 1, "prompt": "Full-length catalog hero on a clean white background with true color fidelity and soft floor shadow."},
             {"name": "Soft Editorial Portrait", "aspect_ratio": "4:5", "priority": 2, "prompt": "A premium neutral editorial backdrop that preserves the abaya silhouette and fabric drape."},
             {"name": "Fabric Detail Crop", "aspect_ratio": "1:1", "priority": 3, "prompt": "A closer crop emphasizing sleeve, texture, and drape detail without changing the garment."},
         ]

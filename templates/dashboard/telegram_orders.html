@@ -1,31 +1,31 @@
 {% extends "dashboard/base.html" %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-stats">
-    <article class="spring-dashboard-stat">
+<section class="spring-dashboard-stat-grid">
+    <article class="spring-dashboard-stat-card">
         <span>Visible Telegram orders</span>
         <strong>{{ telegram_summary.total }}</strong>
         <p>{{ telegram_summary.pending }} pending</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Active delivery flow</span>
         <strong>{{ telegram_summary.active }}</strong>
         <p>Accepted, packed, or on the way</p>
     </article>
-    <article class="spring-dashboard-stat">
+    <article class="spring-dashboard-stat-card">
         <span>Delivered</span>
         <strong>{{ telegram_summary.delivered }}</strong>
         <p>{{ telegram_summary.cancelled }} cancelled</p>
     </article>
-    <article class="spring-dashboard-stat">
-        <span>Customer ops</span>
+    <article class="spring-dashboard-stat-card">
+        <span>Customer updates</span>
         <strong>Live</strong>
-        <p>Status changes trigger Telegram delivery updates</p>
+        <p>Status changes trigger Telegram notifications</p>
     </article>
 </section>
 
 <section class="spring-dashboard-panel">
-    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--wide">
+    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--catalog">
         <label>
             <span>Search</span>
             <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="TG ref, product, phone, username">
@@ -50,37 +50,37 @@
     </form>
 </section>
 
-<section class="spring-dashboard-table-cards">
+<section class="spring-dashboard-card-grid">
     {% for order in telegram_orders %}
-    <article class="spring-dashboard-order-card">
-        <div class="spring-dashboard-order-card__top">
+    <article class="spring-dashboard-ops-card">
+        <div class="spring-dashboard-ops-card__top">
             <div>
-                <p class="spring-dashboard-order-card__eyebrow">TG-{{ order.id }}</p>
+                <p class="spring-dashboard-kicker">TG-{{ order.id }}</p>
                 <h3>{{ order.product_title }}</h3>
                 <p>{{ order.product_sku }}{% if order.size %} · {{ order.size }}{% endif %} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</p>
             </div>
-            <span class="spring-dashboard-badge spring-dashboard-badge--{{ order.status|slugify }}">{{ order.status }}</span>
+            <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
         </div>
 
-        <div class="spring-dashboard-order-card__grid">
+        <div class="spring-dashboard-ops-card__meta">
             <div>
+                <span>Customer</span>
                 <strong>{{ order.customer_full_name }}</strong>
                 <p>{{ order.customer_phone }}</p>
-                <p>{{ order.customer_city }}</p>
             </div>
             <div>
-                <strong>Delivery address</strong>
+                <span>Location</span>
+                <strong>{{ order.customer_city }}</strong>
                 <p>{{ order.customer_address }}</p>
-                <p>@{{ order.telegram_username|default:"unknown" }}</p>
             </div>
             <div>
-                <strong>Estimated total</strong>
-                <p>{{ order.estimated_total }}</p>
-                <p>{{ order.created_at|date:"M d, Y H:i" }}</p>
+                <span>Total</span>
+                <strong>{{ order.estimated_total }}</strong>
+                <p>@{{ order.telegram_username|default:"unknown" }}</p>
             </div>
         </div>
 
-        <form method="post" class="spring-dashboard-inline-form spring-dashboard-inline-form--card">
+        <form method="post" class="spring-dashboard-inline-form spring-dashboard-inline-form--stack">
             {% csrf_token %}
             <input type="hidden" name="order_id" value="{{ order.id }}">
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -99,15 +99,5 @@
     {% endfor %}
 </section>
 
-{% if telegram_orders.paginator.num_pages > 1 %}
-<section class="spring-dashboard-pagination">
-    {% if telegram_orders.has_previous %}
-    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ telegram_orders.previous_page_number }}">Previous</a>
-    {% endif %}
-    <span>Page {{ telegram_orders.number }} of {{ telegram_orders.paginator.num_pages }}</span>
-    {% if telegram_orders.has_next %}
-    <a href="{{ query_string_without_page }}{% if query_string_without_page %}&{% else %}?{% endif %}page={{ telegram_orders.next_page_number }}">Next</a>
-    {% endif %}
-</section>
-{% endif %}
+{% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Telegram order pages' %}
 {% endblock %}

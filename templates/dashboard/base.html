@@ -14,13 +14,13 @@
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-dashboard.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="spring-body spring-dashboard-body">
+<body class="spring-dashboard-body">
     <div class="spring-dashboard-shell">
         <aside class="spring-dashboard-sidebar" data-dashboard-sidebar>
             <div class="spring-dashboard-sidebar__top">
                 <a href="{% url 'store:dashboard-home' %}" class="spring-dashboard-brand">
                     <span class="spring-dashboard-brand__mark">Z</span>
-                    <span>
+                    <span class="spring-dashboard-brand__text">
                         <strong>Zentanee</strong>
                         <small>Control Room</small>
                     </span>
@@ -30,34 +30,35 @@
                 </button>
             </div>
 
+            <a href="{% url 'store:dashboard-product-create' %}" class="spring-dashboard-sidebar__cta">
+                <i class="fas fa-plus"></i>
+                <span>New product</span>
+            </a>
+
             <nav class="spring-dashboard-nav">
                 <a href="{% url 'store:dashboard-home' %}" class="{% if dashboard_section == 'overview' %}is-active{% endif %}">
-                    <i class="fas fa-chart-line"></i>
                     <span>Overview</span>
-                </a>
-                <a href="{% url 'store:dashboard-orders' %}" class="{% if dashboard_section == 'orders' %}is-active{% endif %}">
-                    <i class="fas fa-bag-shopping"></i>
-                    <span>Orders</span>
-                </a>
-                <a href="{% url 'store:dashboard-telegram-orders' %}" class="{% if dashboard_section == 'telegram' %}is-active{% endif %}">
-                    <i class="fab fa-telegram-plane"></i>
-                    <span>Telegram</span>
+                    <small>Snapshot</small>
                 </a>
                 <a href="{% url 'store:dashboard-products' %}" class="{% if dashboard_section == 'products' %}is-active{% endif %}">
-                    <i class="fas fa-tags"></i>
                     <span>Products</span>
+                    <small>Catalog</small>
                 </a>
-                <a href="{% url 'store:dashboard-ai-queue' %}" class="{% if dashboard_section == 'ai-queue' %}is-active{% endif %}">
-                    <i class="fas fa-wand-magic-sparkles"></i>
-                    <span>AI Queue</span>
+                <a href="{% url 'store:dashboard-orders' %}" class="{% if dashboard_section == 'orders' %}is-active{% endif %}">
+                    <span>Orders</span>
+                    <small>Storefront</small>
+                </a>
+                <a href="{% url 'store:dashboard-telegram-orders' %}" class="{% if dashboard_section == 'telegram' %}is-active{% endif %}">
+                    <span>Telegram</span>
+                    <small>Chat sales</small>
                 </a>
             </nav>
 
             <div class="spring-dashboard-sidebar__panel">
-                <p>Fast links</p>
-                <a href="{% url 'store:dashboard-product-create' %}">New product</a>
-                <a href="{{ legacy_admin_url }}">Legacy admin</a>
+                <p class="spring-dashboard-kicker">Fast links</p>
                 <a href="{{ storefront_url }}">Open storefront</a>
+                <a href="{{ legacy_admin_url }}">Legacy admin</a>
+                <a href="{% url 'store:dashboard-products' %}?state=low-stock">Low stock</a>
             </div>
         </aside>
 
@@ -70,7 +71,7 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <div>
-                        <p class="spring-dashboard-eyebrow">Staff workspace</p>
+                        <p class="spring-dashboard-kicker">Staff workspace</p>
                         <h1>{{ dashboard_page_title }}</h1>
                         <p>{{ dashboard_page_intro }}</p>
                     </div>
@@ -78,7 +79,7 @@
 
                 <div class="spring-dashboard-header__actions">
                     <a href="{{ storefront_url }}" class="btn btn-outline-dark">Storefront</a>
-                    <a href="{{ legacy_admin_url }}" class="btn btn-dark">Legacy admin</a>
+                    <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post product</a>
                     <div class="spring-dashboard-user">
                         <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
                         <span>{{ dashboard_today|date:"M d, Y" }}</span>
@@ -105,7 +106,6 @@
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const body = document.body;
-        const sidebar = document.querySelector('[data-dashboard-sidebar]');
         const overlay = document.querySelector('[data-dashboard-overlay]');
         const openButton = document.querySelector('[data-dashboard-open]');
         const closeButton = document.querySelector('[data-dashboard-close]');
@@ -133,8 +133,7 @@
                 if (!totalForms || !template || !rows) return;
 
                 const formIndex = Number(totalForms.value);
-                const html = template.innerHTML.replace(/__prefix__/g, formIndex);
-                rows.insertAdjacentHTML('beforeend', html);
+                rows.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__prefix__/g, formIndex));
                 totalForms.value = formIndex + 1;
             });
         });

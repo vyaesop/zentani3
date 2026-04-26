@@ -1,25 +1,25 @@
-{% if products.has_other_pages %}
+{% if page_obj.has_other_pages %}
 <nav class="spring-pagination" aria-label="{{ aria_label|default:'Browse pages' }}">
-    <small>Page {{ products.number }} of {{ products.paginator.num_pages }}</small>
+    <small>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small>
     <ul>
-        {% if products.has_previous %}
-        <li><a href="?{{ page_query }}page={{ products.previous_page_number }}" aria-label="Previous">Prev</a></li>
+        {% if page_obj.has_previous %}
+        <li><a href="?{{ page_query }}page={{ page_obj.previous_page_number }}" aria-label="Previous">Prev</a></li>
         {% else %}
         <li><span class="is-disabled">Prev</span></li>
         {% endif %}
 
         {% for p in page_numbers %}
-            {% if p == '…' or p == '...' or p == 'â€¦' %}
+            {% if p == '…' or p == '...' or p == 'â€¦' or p == 'Ã¢â‚¬Â¦' %}
             <li><span class="is-disabled">&hellip;</span></li>
-            {% elif p == products.number %}
+            {% elif p == page_obj.number %}
             <li><span class="is-active">{{ p }}</span></li>
             {% else %}
             <li><a href="?{{ page_query }}page={{ p }}">{{ p }}</a></li>
             {% endif %}
         {% endfor %}
 
-        {% if products.has_next %}
-        <li><a href="?{{ page_query }}page={{ products.next_page_number }}" aria-label="Next">Next</a></li>
+        {% if page_obj.has_next %}
+        <li><a href="?{{ page_query }}page={{ page_obj.next_page_number }}" aria-label="Next">Next</a></li>
         {% else %}
         <li><span class="is-disabled">Next</span></li>
         {% endif %}

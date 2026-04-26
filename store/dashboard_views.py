@@ -1,4 +1,4 @@
-import json
+import re
 from datetime import timedelta
 from decimal import Decimal
 from functools import wraps
@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Case, Count, IntegerField, Q, Sum, When
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -18,19 +18,15 @@ from django.views.decorators.http import require_POST
 
 from .ai_enrichment import (
     apply_ai_draft_result,
-    build_generator_payload,
     ProductAIError,
     draft_to_product_initial,
-    generate_reference_image_candidates,
     generate_product_ai_payload_for_draft,
     gemini_is_configured,
-    store_generated_candidate_images,
 )
 from .dashboard_forms import (
     DashboardProductForm,
     ProductAIDraftForm,
     ProductImageFormSet,
-    ProductSizeStockFormSet,
     decorate_dashboard_formset,
 )
 from .models import (
@@ -41,7 +37,6 @@ from .models import (
     Order,
     Product,
     ProductAIDraft,
-    ProductImages,
     ProductReview,
     RestockRequest,
     TelegramBotOrder,
@@ -55,7 +50,8 @@ from .telegram_notify import (
 
 STATUS_VALUES = {value for value, _ in STATUS_CHOICES}
 AI_DRAFT_SESSION_KEY = "dashboard_product_ai_draft_id"
-AI_QUEUE_LIMIT = 20
+DEFAULT_STOCK_PER_SIZE = 10
+LOW_STOCK_THRESHOLD = 3
 
 
 def staff_required(view_func):
@@ -104,6 +100,25 @@ def _absolute_affiliate_pattern(product):
     return {"relative": relative, "absolute": ""}
 
 
+def _parse_dashboard_size_list(value):
+    normalized_sizes = []
+    seen = set()
+    for chunk in re.split(r"[\n,]+", value or ""):
+        size = " ".join(chunk.split()).strip()
+        if not size:
+            continue
+        lookup = size.casefold()
+        if lookup in seen:
+            continue
+        seen.add(lookup)
+        normalized_sizes.append(size)
+    return normalized_sizes
+
+
+def _sync_product_size_inventory(product):
+    product._sync_size_inventory()
+
+
 def _ai_draft_redirect_url(product, draft):
     if product:
         base_url = reverse("store:dashboard-product-edit", args=[product.id])
@@ -135,10 +150,7 @@ def _build_dashboard_product_form(product, ai_draft):
         categories = list(Category.objects.filter(is_active=True).order_by("title"))
         brands = list(Brand.objects.filter(is_active=True).order_by("title"))
         initial = draft_to_product_initial(ai_draft, categories=categories, brands=brands)
-    form = DashboardProductForm(instance=product, initial=initial)
-    if ai_draft and ai_draft.generated_images.exists() and not product:
-        form.fields["product_image"].required = False
-    return form
+    return DashboardProductForm(instance=product, initial=initial)
 
 
 def _build_ai_draft_form(product=None, ai_draft=None):
@@ -155,111 +167,6 @@ def _build_ai_draft_form(product=None, ai_draft=None):
             "price": product.price,
         }
     return ProductAIDraftForm(initial=initial)
-
-
-def _active_ai_queue_queryset(user):
-    return ProductAIDraft.objects.filter(
-        created_by=user,
-        pipeline_state__in=ProductAIDraft.ACTIVE_QUEUE_STATES,
-    )
-
-
-def _queueable_drafts_queryset(user):
-    return ProductAIDraft.objects.filter(created_by=user).order_by(
-        Case(
-            When(pipeline_state=ProductAIDraft.PIPELINE_ANALYZING, then=0),
-            When(pipeline_state=ProductAIDraft.PIPELINE_GENERATING_IMAGES, then=1),
-            When(pipeline_state=ProductAIDraft.PIPELINE_QUEUED, then=2),
-            When(pipeline_state=ProductAIDraft.PIPELINE_MANUAL_REVIEW, then=3),
-            When(pipeline_state=ProductAIDraft.PIPELINE_READY, then=4),
-            default=5,
-            output_field=IntegerField(),
-        ),
-        "-updated_at",
-        "-created_at",
-    )
-
-
-def _mark_draft_manual_review(draft, *, error_message, stage):
-    draft.status = ProductAIDraft.STATUS_FAILED
-    draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
-    draft.error_message = str(error_message)[:250]
-    draft.last_error_stage = stage
-    draft.processing_finished_at = timezone.now()
-    draft.save(
-        update_fields=[
-            "status",
-            "pipeline_state",
-            "error_message",
-            "last_error_stage",
-            "processing_finished_at",
-            "updated_at",
-        ]
-    )
-    return draft
-
-
-def _queue_draft_json(request, draft):
-    return {
-        "id": draft.id,
-        "sku": draft.sku,
-        "vendor_hint": draft.vendor_hint,
-        "price": str(draft.price) if draft.price is not None else "",
-        "status": draft.status,
-        "pipeline_state": draft.pipeline_state,
-        "queue_label": draft.queue_label,
-        "title": draft.extracted_fields.get("title") or draft.sku,
-        "error_message": draft.error_message,
-        "generated_images_count": draft.generated_images.count(),
-        "edit_url": _ai_draft_redirect_url(draft.product, draft),
-        "process_url": reverse("store:dashboard-ai-draft-process", args=[draft.id]),
-        "manual_review_url": reverse("store:dashboard-ai-draft-manual-review", args=[draft.id]),
-        "save_images_url": reverse("store:dashboard-ai-draft-generated-images", args=[draft.id]),
-    }
-
-
-def _absolute_base_url(request):
-    site_url = getattr(settings, "SITE_URL", "").rstrip("/")
-    if site_url:
-        return site_url
-    return request.build_absolute_uri("/").rstrip("/")
-
-
-def _apply_generated_images_to_product(*, draft, product, uploaded_primary):
-    candidates = list(draft.generated_images.order_by("sort_order", "id"))
-    if not candidates:
-        return False
-
-    if not uploaded_primary and not product.product_image:
-        primary_candidate = candidates[0]
-        primary_candidate.image.open("rb")
-        try:
-            product.product_image.save(
-                primary_candidate.image.name.rsplit("/", 1)[-1],
-                primary_candidate.image.file,
-                save=True,
-            )
-        finally:
-            primary_candidate.image.close()
-        gallery_candidates = candidates[1:]
-    else:
-        gallery_candidates = candidates
-
-    existing_names = set(product.p_images.values_list("image", flat=True))
-    for candidate in gallery_candidates:
-        if candidate.image.name in existing_names:
-            continue
-        candidate.image.open("rb")
-        try:
-            gallery_image = ProductImages(product=product)
-            gallery_image.image.save(
-                candidate.image.name.rsplit("/", 1)[-1],
-                candidate.image.file,
-                save=True,
-            )
-        finally:
-            candidate.image.close()
-    return True
 
 
 @staff_required
@@ -300,7 +207,7 @@ def dashboard_home(request):
     low_stock_products = (
         Product.objects.filter(is_active=True)
         .select_related("category", "brand")
-        .filter(Q(stock_quantity__lte=3) | Q(is_sold_out=True))
+        .filter(Q(stock_quantity__lte=LOW_STOCK_THRESHOLD) | Q(is_sold_out=True))
         .order_by("is_sold_out", "stock_quantity", "title")[:6]
     )
     recent_orders = (
@@ -393,6 +300,8 @@ def dashboard_orders(request):
         title="Orders",
         intro="Filter, search, and move every storefront order through fulfillment without wading through generic admin rows.",
         orders=page_obj,
+        page_obj=page_obj,
+        page_numbers=paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
         order_summary=summary,
         filters={"q": query, "status": status},
         query_string_without_page=_query_string_without(request, "page"),
@@ -468,6 +377,8 @@ def dashboard_telegram_orders(request):
         title="Telegram Orders",
         intro="Handle chat-originated leads with customer details, delivery status changes, and queue visibility in one place.",
         telegram_orders=page_obj,
+        page_obj=page_obj,
+        page_numbers=paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
         telegram_summary=summary,
         filters={"q": query, "status": status, "city": city},
         query_string_without_page=_query_string_without(request, "page"),
@@ -511,7 +422,7 @@ def dashboard_products(request):
     elif state == "sold-out":
         products = products.filter(is_sold_out=True)
     elif state == "low-stock":
-        products = products.filter(stock_quantity__lte=3)
+        products = products.filter(stock_quantity__lte=LOW_STOCK_THRESHOLD)
 
     if query:
         products = products.filter(
@@ -527,7 +438,7 @@ def dashboard_products(request):
         active=Count("id", filter=Q(is_active=True)),
         featured=Count("id", filter=Q(is_featured=True)),
         sold_out=Count("id", filter=Q(is_sold_out=True)),
-        low_stock=Count("id", filter=Q(stock_quantity__lte=3)),
+        low_stock=Count("id", filter=Q(stock_quantity__lte=LOW_STOCK_THRESHOLD)),
     )
 
     paginator = Paginator(products, 16)
@@ -539,6 +450,8 @@ def dashboard_products(request):
         title="Products",
         intro="Search, filter, and publish merchandise quickly, then open the full editor only when deeper merchandising work is needed.",
         products=page_obj,
+        page_obj=page_obj,
+        page_numbers=paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
         product_summary=summary,
         category_options=Category.objects.filter(is_active=True).order_by("title"),
         filters={"q": query, "category": category_slug, "state": state},
@@ -549,50 +462,8 @@ def dashboard_products(request):
 
 @staff_required
 def dashboard_ai_queue(request):
-    queue_count = _active_ai_queue_queryset(request.user).count()
-
-    if request.method == "POST":
-        ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
-        if not gemini_is_configured():
-            messages.error(request, "Set GEMINI_API_KEY in your environment before queueing AI drafts.")
-        elif queue_count >= AI_QUEUE_LIMIT:
-            messages.error(request, f"You can only keep {AI_QUEUE_LIMIT} active AI drafts in the queue at a time.")
-        elif ai_draft_form.is_valid():
-            draft = ai_draft_form.save(commit=False)
-            draft.created_by = request.user
-            draft.status = ProductAIDraft.STATUS_PENDING
-            draft.pipeline_state = ProductAIDraft.PIPELINE_QUEUED
-            draft.queued_at = timezone.now()
-            draft.error_message = ""
-            draft.last_error_stage = ""
-            draft.save()
-            messages.success(
-                request,
-                f"{draft.sku} was added to the AI queue. It will process in the background while you keep adding more.",
-            )
-            return redirect("store:dashboard-ai-queue")
-        else:
-            messages.error(request, "Add a reference image, SKU, and price before queueing a draft.")
-    else:
-        ai_draft_form = ProductAIDraftForm()
-
-    queue_items = list(_queueable_drafts_queryset(request.user)[:40])
-    context = _dashboard_context(
-        request,
-        section="ai-queue",
-        title="AI Queue",
-        intro="Queue up to twenty products, let AI process them in the background, and come back to ready-to-finish drafts instead of babysitting each one.",
-        ai_draft_form=ai_draft_form,
-        queue_items=queue_items,
-        queue_items_json=[_queue_draft_json(request, draft) for draft in queue_items],
-        queue_limit=AI_QUEUE_LIMIT,
-        queue_count=queue_count,
-        queue_remaining=max(0, AI_QUEUE_LIMIT - queue_count),
-        ai_image_generator_endpoint=getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip(),
-        ai_image_shots_per_request=max(1, int(getattr(settings, "AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST", 1))),
-        gemini_is_configured=gemini_is_configured(),
-    )
-    return render(request, "dashboard/ai_queue.html", context)
+    messages.info(request, "The AI image queue has been retired. Use the product editor for the fastest posting flow.")
+    return redirect("store:dashboard-product-create")
 
 
 @staff_required
@@ -611,7 +482,6 @@ def dashboard_product_edit(request, product_id=None):
             ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
             form = _build_dashboard_product_form(product, ai_draft)
             image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
-            size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
 
             if not gemini_is_configured():
                 messages.error(
@@ -648,98 +518,30 @@ def dashboard_product_edit(request, product_id=None):
                     )
                     if product is None:
                         request.session[AI_DRAFT_SESSION_KEY] = draft.id
-                    messages.success(request, "AI draft generated. Review the copy and image brief below before saving.")
+                    messages.success(request, "AI draft generated. Review the copy suggestions, then save the product when it looks right.")
                     return redirect(_ai_draft_redirect_url(product, draft))
             else:
                 messages.error(request, "Add a reference image, SKU, and price to generate an AI draft.")
-        elif "generate_ai_images" in request.POST:
-            form = _build_dashboard_product_form(product, ai_draft)
-            image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
-            size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
-            ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
-
-            if ai_draft is None:
-                messages.error(request, "Generate an AI draft first so image candidates have the right shot plan.")
-            else:
-                ai_draft.pipeline_state = ProductAIDraft.PIPELINE_GENERATING_IMAGES
-                ai_draft.processing_started_at = ai_draft.processing_started_at or timezone.now()
-                ai_draft.save(update_fields=["pipeline_state", "processing_started_at", "updated_at"])
-                try:
-                    generate_reference_image_candidates(ai_draft, base_url=_absolute_base_url(request))
-                except ProductAIError as exc:
-                    ai_draft.status = ProductAIDraft.STATUS_FAILED
-                    ai_draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
-                    ai_draft.error_message = str(exc)
-                    ai_draft.last_error_stage = "images"
-                    ai_draft.processing_finished_at = timezone.now()
-                    ai_draft.save(
-                        update_fields=[
-                            "status",
-                            "pipeline_state",
-                            "error_message",
-                            "last_error_stage",
-                            "processing_finished_at",
-                            "updated_at",
-                        ]
-                    )
-                    messages.error(request, str(exc))
-                else:
-                    ai_draft.status = ProductAIDraft.STATUS_SUCCEEDED
-                    ai_draft.pipeline_state = ProductAIDraft.PIPELINE_READY
-                    ai_draft.processing_finished_at = timezone.now()
-                    ai_draft.error_message = ""
-                    ai_draft.last_error_stage = ""
-                    ai_draft.save(
-                        update_fields=[
-                            "status",
-                            "pipeline_state",
-                            "processing_finished_at",
-                            "error_message",
-                            "last_error_stage",
-                            "updated_at",
-                        ]
-                    )
-                    messages.success(request, "AI image candidates generated. Review them below before saving.")
-                    return redirect(_ai_draft_redirect_url(product, ai_draft))
         else:
             ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
 
             form = DashboardProductForm(request.POST, request.FILES, instance=product)
-            if ai_draft and ai_draft.generated_images.exists() and not product:
-                form.fields["product_image"].required = False
             image_formset = decorate_dashboard_formset(
                 ProductImageFormSet(request.POST, request.FILES, instance=product, prefix="images")
             )
-            size_formset = decorate_dashboard_formset(
-                ProductSizeStockFormSet(request.POST, instance=product, prefix="sizes")
-            )
 
-            if form.is_valid() and image_formset.is_valid() and size_formset.is_valid():
+            if form.is_valid() and image_formset.is_valid():
                 with transaction.atomic():
                     with suspend_telegram_autopublish():
-                        uploaded_primary = bool(request.FILES.get("product_image"))
                         saved_product = form.save()
                         image_formset.instance = saved_product
                         image_formset.save()
-                        size_formset.instance = saved_product
-                        size_formset.save()
+                        _sync_product_size_inventory(saved_product)
 
                         if ai_draft and ai_draft.product_id != saved_product.id:
                             ai_draft.product = saved_product
                             ai_draft.save(update_fields=["product", "updated_at"])
                             request.session.pop(AI_DRAFT_SESSION_KEY, None)
-
-                        if ai_draft and ai_draft.generated_images.exists():
-                            attached = _apply_generated_images_to_product(
-                                draft=ai_draft,
-                                product=saved_product,
-                                uploaded_primary=uploaded_primary,
-                            )
-                            if attached:
-                                messages.success(
-                                    request,
-                                    "AI-generated candidate images were attached to the product media gallery.",
-                                )
 
                 should_publish = "save_and_publish" in request.POST
                 if should_publish and saved_product.is_active and not saved_product.is_sold_out:
@@ -757,34 +559,39 @@ def dashboard_product_edit(request, product_id=None):
                         f"{saved_product.title} was saved, but it must be active and in stock before Telegram publishing.",
                     )
                 else:
-                    messages.success(request, f"{saved_product.title} was saved.")
+                    size_count = len(_parse_dashboard_size_list(saved_product.available_sizes))
+                    if size_count:
+                        messages.success(
+                            request,
+                            f"{saved_product.title} was saved. {size_count} size option(s) are now stocked automatically at 10 units for new sizes.",
+                        )
+                    else:
+                        messages.success(request, f"{saved_product.title} was saved.")
 
                 return redirect("store:dashboard-product-edit", product_id=saved_product.id)
     else:
         form = _build_dashboard_product_form(product, ai_draft)
         image_formset = decorate_dashboard_formset(ProductImageFormSet(instance=product, prefix="images"))
-        size_formset = decorate_dashboard_formset(ProductSizeStockFormSet(instance=product, prefix="sizes"))
         ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
+
+    size_source = form["available_sizes"].value() if "available_sizes" in form.fields else ""
+    size_tokens = _parse_dashboard_size_list(size_source or (product.available_sizes if product else ""))
 
     context = _dashboard_context(
         request,
         section="products",
         title="Edit Product" if product else "New Product",
-        intro="A merchandising-focused editor with gallery, inventory rows, and launch controls in one responsive workspace.",
+        intro="A faster merchandising workspace built for quick product posting, cleaner desktop scanning, and lower-fatigue inventory setup.",
         form=form,
         image_formset=image_formset,
-        size_formset=size_formset,
         product=product,
         ai_draft=ai_draft,
-        generated_ai_images=list(ai_draft.generated_images.all()) if ai_draft else [],
-        generator_payload=build_generator_payload(ai_draft, base_url=_absolute_base_url(request)) if ai_draft else {},
-        ai_image_generator_endpoint=getattr(settings, "AI_IMAGE_GENERATOR_ENDPOINT", "").strip(),
-        ai_image_shots_per_request=max(1, int(getattr(settings, "AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST", 1))),
-        ai_generated_images_save_url=reverse("store:dashboard-ai-draft-generated-images", args=[ai_draft.id]) if ai_draft else "",
         ai_draft_form=ai_draft_form,
         gemini_is_configured=gemini_is_configured(),
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
+        size_tokens=size_tokens,
+        stock_per_size=DEFAULT_STOCK_PER_SIZE,
     )
     return render(request, "dashboard/product_form.html", context)
 
@@ -792,152 +599,34 @@ def dashboard_product_edit(request, product_id=None):
 @staff_required
 @require_POST
 def dashboard_ai_draft_process(request, draft_id):
-    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
-
-    if draft.generated_images.exists():
-        if draft.pipeline_state != ProductAIDraft.PIPELINE_READY:
-            draft.pipeline_state = ProductAIDraft.PIPELINE_READY
-            draft.status = ProductAIDraft.STATUS_SUCCEEDED
-            draft.processing_finished_at = timezone.now()
-            draft.save(update_fields=["pipeline_state", "status", "processing_finished_at", "updated_at"])
-        return JsonResponse(
-            {
-                "ok": True,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "draft": _queue_draft_json(request, draft),
-            }
-        )
-
-    if draft.response_payload:
-        draft.pipeline_state = ProductAIDraft.PIPELINE_GENERATING_IMAGES
-        draft.error_message = ""
-        draft.last_error_stage = ""
-        draft.processing_started_at = draft.processing_started_at or timezone.now()
-        draft.save(
-            update_fields=[
-                "pipeline_state",
-                "error_message",
-                "last_error_stage",
-                "processing_started_at",
-                "updated_at",
-            ]
-        )
-        return JsonResponse(
-            {
-                "ok": True,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "generator_payload": build_generator_payload(draft, base_url=_absolute_base_url(request)),
-                "draft": _queue_draft_json(request, draft),
-            }
-        )
-
-    draft.pipeline_state = ProductAIDraft.PIPELINE_ANALYZING
-    draft.processing_started_at = timezone.now()
-    draft.attempt_count += 1
-    draft.error_message = ""
-    draft.last_error_stage = ""
-    draft.save(
-        update_fields=[
-            "pipeline_state",
-            "processing_started_at",
-            "attempt_count",
-            "error_message",
-            "last_error_stage",
-            "updated_at",
-        ]
-    )
-
-    try:
-        result = generate_product_ai_payload_for_draft(draft)
-    except ProductAIError as exc:
-        _mark_draft_manual_review(draft, error_message=exc, stage="content")
-        return JsonResponse(
-            {
-                "ok": False,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "error": str(exc),
-                "draft": _queue_draft_json(request, draft),
-            },
-            status=200,
-        )
-
-    apply_ai_draft_result(
-        draft,
-        result,
-        status=ProductAIDraft.STATUS_SUCCEEDED,
-        pipeline_state=ProductAIDraft.PIPELINE_GENERATING_IMAGES,
-        error_message="",
-        last_error_stage="",
-    )
     return JsonResponse(
         {
-            "ok": True,
-            "pipeline_state": draft.pipeline_state,
-            "queue_label": draft.queue_label,
-            "generator_payload": build_generator_payload(draft, base_url=_absolute_base_url(request)),
-            "draft": _queue_draft_json(request, draft),
-        }
+            "ok": False,
+            "error": "The AI image queue has been retired.",
+        },
+        status=410,
     )
 
 
 @staff_required
 @require_POST
 def dashboard_ai_draft_manual_review(request, draft_id):
-    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
-
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
-        payload = {}
-
-    error_message = payload.get("error") or "This draft needs manual review."
-    error_stage = payload.get("stage") or "pipeline"
-    _mark_draft_manual_review(draft, error_message=error_message, stage=error_stage)
     return JsonResponse(
         {
-            "ok": True,
-            "pipeline_state": draft.pipeline_state,
-            "queue_label": draft.queue_label,
-            "draft": _queue_draft_json(request, draft),
-        }
+            "ok": False,
+            "error": "The AI image queue has been retired.",
+        },
+        status=410,
     )
 
 
 @staff_required
 @require_POST
 def dashboard_ai_draft_generated_images(request, draft_id):
-    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
-
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": "Invalid JSON payload."}, status=400)
-
-    images = payload.get("images") or []
-    if not isinstance(images, list) or not images:
-        return JsonResponse({"ok": False, "error": "No generated images were provided."}, status=400)
-
-    try:
-        created = store_generated_candidate_images(draft, images)
-    except Exception as exc:
-        return JsonResponse({"ok": False, "error": f"Could not save generated images: {exc}"}, status=400)
-
-    draft.error_message = ""
-    draft.last_error_stage = ""
-    draft.pipeline_state = ProductAIDraft.PIPELINE_READY
-    draft.status = ProductAIDraft.STATUS_SUCCEEDED
-    draft.processing_finished_at = timezone.now()
-    draft.save(
-        update_fields=[
-            "error_message",
-            "last_error_stage",
-            "pipeline_state",
-            "status",
-            "processing_finished_at",
-            "updated_at",
-        ]
+    return JsonResponse(
+        {
+            "ok": False,
+            "error": "AI image generation has been removed from the dashboard.",
+        },
+        status=410,
     )
-    return JsonResponse({"ok": True, "saved_count": len(created), "draft": _queue_draft_json(request, draft)})

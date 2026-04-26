@@ -75,6 +75,8 @@ GUEST_SESSION_USER_ID_KEY = "guest_session_user_id"
 TELEGRAM_ORDER_STATE_PREFIX = "telegram_order_state"
 TELEGRAM_ORDER_STATE_TTL_SECONDS = 60 * 30
 COLLECTION_PAGE_SIZE = 24
+DIRECTORY_PAGE_SIZE = 24
+ACCOUNT_ORDERS_PAGE_SIZE = 12
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_product_ids"
 COLLECTION_SORT_OPTIONS = (
     ("newest", "Newest first", "-created_at"),
@@ -1152,6 +1154,7 @@ def _build_collection_state(
 
     return {
         "products": paged_products,
+        "page_obj": paged_products,
         "product_count": paginator.count,
         "page_numbers": page_numbers,
         "saved_product_ids": _saved_product_ids_for_user(request.user),
@@ -1451,12 +1454,36 @@ def filter_product(request):
 
 def all_categories(request):
     categories = Category.objects.filter(is_active=True).only("id", "title", "slug", "category_image")
-    return render(request, "store/categories.html", {"categories": categories})
+    paginator = Paginator(categories, DIRECTORY_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(
+        request,
+        "store/categories.html",
+        {
+            "categories": page_obj,
+            "page_obj": page_obj,
+            "page_numbers": paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
+            "page_query": _querystring_without(request, "page"),
+            "directory_count": paginator.count,
+        },
+    )
 
 
 def all_brands(request):
     brands = Brand.objects.filter(is_active=True).only("id", "title", "slug", "brand_image")
-    return render(request, "store/brands.html", {"brands": brands})
+    paginator = Paginator(brands, DIRECTORY_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(
+        request,
+        "store/brands.html",
+        {
+            "brands": page_obj,
+            "page_obj": page_obj,
+            "page_numbers": paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
+            "page_query": _querystring_without(request, "page"),
+            "directory_count": paginator.count,
+        },
+    )
 
 
 def category_products(request, slug):
@@ -2046,11 +2073,16 @@ def orders(request):
         order.status_copy = ORDER_STATUS_COPY.get(order.status, "")
         order.can_cancel = _can_cancel_order(order)
         orders_for_display.append(order)
+    paginator = Paginator(orders_for_display, ACCOUNT_ORDERS_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
     return render(
         request,
         "store/orders.html",
         {
-            "orders": orders_for_display,
+            "orders": page_obj,
+            "page_obj": page_obj,
+            "page_numbers": paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
+            "page_query": _querystring_without(request, "page"),
             "flow_status": _build_order_flow_status(all_orders),
             "order_status_summary": _order_status_summary(all_orders),
         },

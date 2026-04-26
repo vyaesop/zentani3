@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Product, ProductAIDraft, ProductImages, ProductSizeStock
+from .models import Product, ProductAIDraft, ProductImages
 
 
 def _decorate_dashboard_fields(fields):
@@ -42,7 +42,6 @@ class DashboardProductForm(forms.ModelForm):
             "delivery_note",
             "return_note",
             "available_sizes",
-            "stock_quantity",
             "price",
             "product_image",
             "category",
@@ -59,8 +58,12 @@ class DashboardProductForm(forms.ModelForm):
             "care_notes": forms.Textarea(attrs={"rows": 3}),
             "delivery_note": forms.TextInput(attrs={"placeholder": "Delivery promise shown on PDP"}),
             "return_note": forms.TextInput(attrs={"placeholder": "Return/support note shown on PDP"}),
-            "available_sizes": forms.TextInput(attrs={"placeholder": "Comma-separated, e.g. XS,S,M,L"}),
-            "stock_quantity": forms.NumberInput(attrs={"min": 0}),
+            "available_sizes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Comma-separated, e.g. XS, S, M, L",
+                }
+            ),
             "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
         }
 
@@ -69,6 +72,21 @@ class DashboardProductForm(forms.ModelForm):
         self.fields["category"].queryset = self.fields["category"].queryset.order_by("title")
         self.fields["brand"].queryset = self.fields["brand"].queryset.order_by("title")
         _decorate_dashboard_fields(self.fields)
+
+    def clean_available_sizes(self):
+        raw_value = self.cleaned_data.get("available_sizes") or ""
+        seen = set()
+        normalized_sizes = []
+        for chunk in raw_value.replace("\r", "\n").replace(",", "\n").split("\n"):
+            value = " ".join(chunk.split()).strip()
+            if not value:
+                continue
+            lookup = value.casefold()
+            if lookup in seen:
+                continue
+            seen.add(lookup)
+            normalized_sizes.append(value)
+        return ", ".join(normalized_sizes)
 
 
 class ProductAIDraftForm(forms.ModelForm):
@@ -103,20 +121,6 @@ ProductImageFormSet = inlineformset_factory(
         "image": forms.ClearableFileInput(),
     },
 )
-
-
-ProductSizeStockFormSet = inlineformset_factory(
-    Product,
-    ProductSizeStock,
-    fields=("size", "quantity"),
-    extra=0,
-    can_delete=True,
-    widgets={
-        "size": forms.TextInput(attrs={"placeholder": "Size"}),
-        "quantity": forms.NumberInput(attrs={"min": 0}),
-    },
-)
-
 
 def decorate_dashboard_formset(formset):
     for form in formset.forms:
