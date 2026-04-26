@@ -44,6 +44,10 @@
                     <span>Products</span>
                     <small>Catalog</small>
                 </a>
+                <a href="{% url 'store:dashboard-ai-queue' %}" class="{% if dashboard_section == 'ai-queue' %}is-active{% endif %}">
+                    <span>Gemini Queue</span>
+                    <small>Draft intake</small>
+                </a>
                 <a href="{% url 'store:dashboard-orders' %}" class="{% if dashboard_section == 'orders' %}is-active{% endif %}">
                     <span>Orders</span>
                     <small>Storefront</small>
@@ -58,6 +62,7 @@
                 <p class="spring-dashboard-kicker">Fast links</p>
                 <a href="{{ storefront_url }}">Open storefront</a>
                 <a href="{{ legacy_admin_url }}">Legacy admin</a>
+                <a href="{% url 'store:dashboard-ai-queue' %}">Gemini queue</a>
                 <a href="{% url 'store:dashboard-products' %}?state=low-stock">Low stock</a>
             </div>
         </aside>
