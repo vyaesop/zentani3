@@ -1,103 +1,117 @@
 {% extends "dashboard/base.html" %}
+{% load image_optim %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-stat-grid">
-    <article class="spring-dashboard-stat-card">
-        <span>Visible Telegram orders</span>
-        <strong>{{ telegram_summary.total }}</strong>
-        <p>{{ telegram_summary.pending }} pending</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Active delivery flow</span>
-        <strong>{{ telegram_summary.active }}</strong>
-        <p>Accepted, packed, or on the way</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Delivered</span>
-        <strong>{{ telegram_summary.delivered }}</strong>
-        <p>{{ telegram_summary.cancelled }} cancelled</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Customer updates</span>
-        <strong>Live</strong>
-        <p>Status changes trigger Telegram notifications</p>
-    </article>
-</section>
 
-<section class="spring-dashboard-panel">
-    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--catalog">
-        <label>
-            <span>Search</span>
-            <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="TG ref, product, phone, username">
-        </label>
-        <label>
-            <span>Status</span>
-            <select name="status" class="spring-dashboard-control">
-                <option value="">All statuses</option>
-                {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            <span>City</span>
-            <input type="text" name="city" value="{{ filters.city }}" class="spring-dashboard-control" placeholder="Filter by city">
-        </label>
-        <div class="spring-dashboard-filters__actions">
-            <button type="submit" class="btn btn-dark">Apply</button>
-            <a href="{% url 'store:dashboard-telegram-orders' %}" class="btn btn-outline-dark">Reset</a>
-        </div>
-    </form>
-</section>
+<!-- Stats -->
+<div class="zd-stat-grid">
+  <div class="zd-stat">
+    <span class="zd-stat-label">Total orders</span>
+    <div class="zd-stat-value">{{ telegram_summary.total }}</div>
+    <p class="zd-stat-sub">{{ telegram_summary.pending }} pending</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">In delivery</span>
+    <div class="zd-stat-value">{{ telegram_summary.active }}</div>
+    <p class="zd-stat-sub">Accepted → On The Way</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Delivered</span>
+    <div class="zd-stat-value">{{ telegram_summary.delivered }}</div>
+    <p class="zd-stat-sub">{{ telegram_summary.cancelled }} cancelled</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Auto-notify</span>
+    <div class="zd-stat-value" style="font-size:18px;padding-top:6px">
+      <span class="zd-pill zd-pill--active">Live</span>
+    </div>
+    <p class="zd-stat-sub">Status changes → customer message</p>
+  </div>
+</div>
 
-<section class="spring-dashboard-card-grid">
+<!-- Panel -->
+<div class="zd-panel">
+
+  <!-- Filters -->
+  <form method="get" class="zd-filters">
+    <div class="zd-filters-field">
+      <label>Search</label>
+      <input type="text" name="q" value="{{ filters.q }}" class="zd-input zd-input--wide"
+        placeholder="TG ref, product, phone, username">
+    </div>
+    <div class="zd-filters-field">
+      <label>Status</label>
+      <select name="status" class="zd-select" style="width:150px">
+        <option value="">All statuses</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="zd-filters-field">
+      <label>City</label>
+      <input type="text" name="city" value="{{ filters.city }}" class="zd-input" style="width:130px"
+        placeholder="Filter by city">
+    </div>
+    <div class="zd-filters-actions">
+      <button type="submit" class="zd-btn zd-btn--primary zd-btn--sm">Apply</button>
+      <a href="{% url 'store:dashboard-telegram-orders' %}" class="zd-btn zd-btn--ghost zd-btn--sm">Reset</a>
+    </div>
+  </form>
+
+  <!-- Cards -->
+  <div class="zd-card-grid" style="padding:16px 18px">
     {% for order in telegram_orders %}
-    <article class="spring-dashboard-ops-card">
-        <div class="spring-dashboard-ops-card__top">
-            <div>
-                <p class="spring-dashboard-kicker">TG-{{ order.id }}</p>
-                <h3>{{ order.product_title }}</h3>
-                <p>{{ order.product_sku }}{% if order.size %} · {{ order.size }}{% endif %} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</p>
-            </div>
-            <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
+    <article class="zd-order-card">
+      <div class="zd-order-card-head">
+        <div>
+          <p class="zd-kicker">TG-{{ order.id }} · {{ order.created_at|date:"M d, H:i" }}</p>
+          <h3>{{ order.product_title }}</h3>
+          <p>{{ order.product_sku }}{% if order.size %} · {{ order.size }}{% endif %} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</p>
         </div>
+        <span class="zd-pill zd-pill--{{ order.status|slugify }}">{{ order.status }}</span>
+      </div>
 
-        <div class="spring-dashboard-ops-card__meta">
-            <div>
-                <span>Customer</span>
-                <strong>{{ order.customer_full_name }}</strong>
-                <p>{{ order.customer_phone }}</p>
-            </div>
-            <div>
-                <span>Location</span>
-                <strong>{{ order.customer_city }}</strong>
-                <p>{{ order.customer_address }}</p>
-            </div>
-            <div>
-                <span>Total</span>
-                <strong>{{ order.estimated_total }}</strong>
-                <p>@{{ order.telegram_username|default:"unknown" }}</p>
-            </div>
+      <div class="zd-order-card-meta">
+        <div class="zd-order-card-meta-cell">
+          <span>Customer</span>
+          <strong>{{ order.customer_full_name }}</strong>
+          <p>{{ order.customer_phone }}</p>
         </div>
+        <div class="zd-order-card-meta-cell">
+          <span>Location</span>
+          <strong>{{ order.customer_city }}</strong>
+          <p>{{ order.customer_address|truncatechars:40 }}</p>
+        </div>
+        <div class="zd-order-card-meta-cell">
+          <span>Total</span>
+          <strong>{{ order.estimated_total|etb }}</strong>
+          <p>@{{ order.telegram_username|default:"unknown" }}</p>
+        </div>
+      </div>
 
-        <form method="post" class="spring-dashboard-inline-form spring-dashboard-inline-form--stack">
-            {% csrf_token %}
-            <input type="hidden" name="order_id" value="{{ order.id }}">
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <select name="status" class="spring-dashboard-control">
-                {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn btn-dark">Save & notify</button>
-        </form>
+      <form method="post" class="zd-order-card-foot">
+        {% csrf_token %}
+        <input type="hidden" name="order_id" value="{{ order.id }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <select name="status" class="zd-select zd-select--sm" style="flex:1">
+          {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="zd-btn zd-btn--primary zd-btn--sm">Save &amp; notify</button>
+      </form>
     </article>
     {% empty %}
-    <section class="spring-dashboard-panel">
-        <div class="spring-dashboard-empty">No Telegram orders matched the current filter.</div>
-    </section>
+    <div class="zd-empty" style="grid-column:1/-1">
+      <div class="zd-empty-icon">💬</div>
+      <div class="zd-empty-title">No Telegram orders</div>
+      <p class="zd-empty-sub">Orders placed through the Telegram bot will appear here.</p>
+    </div>
     {% endfor %}
-</section>
+  </div>
 
-{% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Telegram order pages' %}
+  {% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Telegram order pages' %}
+</div>
+
 {% endblock %}

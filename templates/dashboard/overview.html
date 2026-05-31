@@ -2,167 +2,156 @@
 {% load image_optim %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-overview-hero">
-    <article class="spring-dashboard-panel spring-dashboard-panel--hero">
-        <p class="spring-dashboard-kicker">Operational snapshot</p>
-        <div class="spring-dashboard-mini-stats">
-            <div>
-                <span>Pending storefront</span>
-                <strong>{{ order_stats.pending }}</strong>
-            </div>
-            <div>
-                <span>Pending Telegram</span>
-                <strong>{{ telegram_stats.pending }}</strong>
-            </div>
-            <div>
-                <span>Sold out</span>
-                <strong>{{ product_stats.sold_out }}</strong>
-            </div>
-            <div>
-                <span>Pending payouts</span>
-                <strong>{{ affiliate_stats.pending|etb }}</strong>
-                <a href="{{ legacy_admin_url }}store/affiliatecommission/?status=Pending" class="spring-dashboard-mini-link">Review →</a>
-            </div>
-        </div>
-        <div class="spring-dashboard-hero-actions">
-            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post a product</a>
-            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-outline-dark">Open orders</a>
-        </div>
-    </article>
-</section>
 
-<section class="spring-dashboard-stat-grid">
-    <article class="spring-dashboard-stat-card">
-        <span>Products</span>
-        <strong>{{ product_stats.total }}</strong>
-        <p>{{ product_stats.active }} active, {{ product_stats.featured }} featured</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Storefront orders</span>
-        <strong>{{ order_stats.total }}</strong>
-        <p>{{ order_stats.weekly }} in the last 7 days</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Revenue booked</span>
-        <strong>{{ order_stats.revenue|etb }}</strong>
-        <p>Across all storefront order lines</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Telegram orders</span>
-        <strong>{{ telegram_stats.total }}</strong>
-        <p>{{ telegram_stats.active }} currently active</p>
-    </article>
-</section>
+<!-- Stat row -->
+<div class="zd-stat-grid">
+  <div class="zd-stat">
+    <span class="zd-stat-label">Storefront orders</span>
+    <div class="zd-stat-value">{{ order_stats.total }}</div>
+    <p class="zd-stat-sub">{{ order_stats.pending }} pending · {{ order_stats.weekly }} this week</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Revenue booked</span>
+    <div class="zd-stat-value">{{ order_stats.revenue|etb }}</div>
+    <p class="zd-stat-sub">Across all order lines</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Products</span>
+    <div class="zd-stat-value">{{ product_stats.total }}</div>
+    <p class="zd-stat-sub">{{ product_stats.active }} active · {{ product_stats.sold_out }} sold out</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Pending payouts</span>
+    <div class="zd-stat-value">{{ affiliate_stats.pending|etb }}</div>
+    <p class="zd-stat-sub">
+      Affiliate commissions ·
+      <a href="{{ legacy_admin_url }}store/affiliatecommission/?status=Pending" class="zd-stat-link">Review →</a>
+    </p>
+  </div>
+</div>
 
-<section class="spring-dashboard-grid spring-dashboard-grid--two">
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-kicker">Recent storefront orders</p>
-                <h3>Latest activity</h3>
-            </div>
-            <a href="{% url 'store:dashboard-orders' %}">View all</a>
-        </div>
-        <div class="spring-dashboard-list">
-            {% for order in recent_orders %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>#{{ order.id }} · {{ order.product.title }}</strong>
-                    <p>{{ order.user.get_full_name|default:order.user.username }} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
-                    <small>{{ order.ordered_date|date:"M d, H:i" }}</small>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">No storefront orders have been placed yet.</p>
-            {% endfor %}
-        </div>
-    </article>
+<!-- Two-column grid -->
+<div class="zd-grid-2">
 
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-kicker">Merchandising watchlist</p>
-                <h3>Low stock and sold out</h3>
-            </div>
-            <a href="{% url 'store:dashboard-products' %}?state=low-stock">Open catalog</a>
+  <!-- Recent storefront orders -->
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Recent orders</p>
+        <p class="zd-panel-head-sub">Storefront · latest 7</p>
+      </div>
+      <div class="zd-panel-head-right">
+        <a href="{% url 'store:dashboard-orders' %}" class="zd-btn zd-btn--ghost zd-btn--sm">View all</a>
+      </div>
+    </div>
+    <div class="zd-activity-list">
+      {% for order in recent_orders %}
+      <div class="zd-activity-row">
+        <div class="zd-activity-info">
+          <div class="zd-activity-title">#{{ order.id }} · {{ order.product.title }}</div>
+          <div class="zd-activity-sub">{{ order.user.get_full_name|default:order.user.username }} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</div>
         </div>
-        <div class="spring-dashboard-list">
-            {% for product in low_stock_products %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>{{ product.title }}</strong>
-                    <p>{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    {% if product.is_sold_out %}
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--cancelled">Sold out</span>
-                    {% else %}
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--packed">{{ product.stock_quantity }} left</span>
-                    {% endif %}
-                    <a href="{% url 'store:dashboard-product-edit' product.id %}">Edit</a>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">No low-stock products right now.</p>
-            {% endfor %}
+        <div class="zd-activity-meta">
+          <span class="zd-pill zd-pill--{{ order.status|slugify }}">{{ order.status }}</span>
+          <span class="zd-activity-time">{{ order.ordered_date|date:"M d, H:i" }}</span>
         </div>
-    </article>
-</section>
+      </div>
+      {% empty %}
+      <div class="zd-activity-empty">No storefront orders yet.</div>
+      {% endfor %}
+    </div>
+  </div>
 
-<section class="spring-dashboard-grid spring-dashboard-grid--two">
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-kicker">Recent Telegram orders</p>
-                <h3>Chat sales</h3>
-            </div>
-            <a href="{% url 'store:dashboard-telegram-orders' %}">View all</a>
+  <!-- Low stock watchlist -->
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Stock watchlist</p>
+        <p class="zd-panel-head-sub">Low stock &amp; sold out</p>
+      </div>
+      <div class="zd-panel-head-right">
+        <a href="{% url 'store:dashboard-products' %}?state=low-stock" class="zd-btn zd-btn--ghost zd-btn--sm">View all</a>
+      </div>
+    </div>
+    <div class="zd-activity-list">
+      {% for product in low_stock_products %}
+      <div class="zd-activity-row">
+        <div class="zd-activity-info">
+          <div class="zd-activity-title">{{ product.title }}</div>
+          <div class="zd-activity-sub">{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</div>
         </div>
-        <div class="spring-dashboard-list">
-            {% for order in recent_telegram_orders %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>TG-{{ order.id }} · {{ order.product_title }}</strong>
-                    <p>{{ order.customer_full_name }} · {{ order.customer_city }}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
-                    <small>{{ order.created_at|date:"M d, H:i" }}</small>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">No Telegram orders have been captured yet.</p>
-            {% endfor %}
+        <div class="zd-activity-meta">
+          {% if product.is_sold_out %}
+          <span class="zd-pill zd-pill--cancelled">Sold out</span>
+          {% else %}
+          <span class="zd-pill zd-pill--pending">{{ product.stock_quantity }} left</span>
+          {% endif %}
+          <a href="{% url 'store:dashboard-product-edit' product.id %}" class="zd-btn zd-btn--ghost zd-btn--sm">Edit</a>
         </div>
-    </article>
+      </div>
+      {% empty %}
+      <div class="zd-activity-empty">All products are well-stocked.</div>
+      {% endfor %}
+    </div>
+  </div>
 
-    <article class="spring-dashboard-panel">
-        <div class="spring-dashboard-section-head">
-            <div>
-                <p class="spring-dashboard-kicker">Top sellers</p>
-                <h3>Most ordered products</h3>
-            </div>
-            <a href="{% url 'store:dashboard-products' %}">Open products</a>
+  <!-- Recent Telegram orders -->
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Telegram orders</p>
+        <p class="zd-panel-head-sub">Chat channel · latest 7</p>
+      </div>
+      <div class="zd-panel-head-right">
+        <a href="{% url 'store:dashboard-telegram-orders' %}" class="zd-btn zd-btn--ghost zd-btn--sm">View all</a>
+      </div>
+    </div>
+    <div class="zd-activity-list">
+      {% for order in recent_telegram_orders %}
+      <div class="zd-activity-row">
+        <div class="zd-activity-info">
+          <div class="zd-activity-title">TG-{{ order.id }} · {{ order.product_title }}</div>
+          <div class="zd-activity-sub">{{ order.customer_full_name }} · {{ order.customer_city }}</div>
         </div>
-        <div class="spring-dashboard-list">
-            {% for product in top_products %}
-            <div class="spring-dashboard-list-row">
-                <div>
-                    <strong>{{ product.title }}</strong>
-                    <p>{{ product.sku }} · {{ product.category.title }}</p>
-                </div>
-                <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--accepted">{{ product.order_volume }} orders</span>
-                    <a href="{% url 'store:dashboard-product-edit' product.id %}">Edit</a>
-                </div>
-            </div>
-            {% empty %}
-            <p class="spring-dashboard-empty">Top-selling products will appear here once orders accumulate.</p>
-            {% endfor %}
+        <div class="zd-activity-meta">
+          <span class="zd-pill zd-pill--{{ order.status|slugify }}">{{ order.status }}</span>
+          <span class="zd-activity-time">{{ order.created_at|date:"M d, H:i" }}</span>
         </div>
-    </article>
-</section>
+      </div>
+      {% empty %}
+      <div class="zd-activity-empty">No Telegram orders yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Top sellers -->
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Top sellers</p>
+        <p class="zd-panel-head-sub">By storefront order volume</p>
+      </div>
+      <div class="zd-panel-head-right">
+        <a href="{% url 'store:dashboard-products' %}" class="zd-btn zd-btn--ghost zd-btn--sm">Products</a>
+      </div>
+    </div>
+    <div class="zd-activity-list">
+      {% for product in top_products %}
+      <div class="zd-activity-row">
+        <div class="zd-activity-info">
+          <div class="zd-activity-title">{{ product.title }}</div>
+          <div class="zd-activity-sub">{{ product.sku }} · {{ product.category.title }}</div>
+        </div>
+        <div class="zd-activity-meta">
+          <span class="zd-pill zd-pill--active">{{ product.order_volume }} orders</span>
+          <a href="{% url 'store:dashboard-product-edit' product.id %}" class="zd-btn zd-btn--ghost zd-btn--sm">Edit</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="zd-activity-empty">Order data will populate this once orders come in.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
 {% endblock %}

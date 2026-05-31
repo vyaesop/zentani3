@@ -2,165 +2,217 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#111111">
-    <title>{% block title %}{{ dashboard_page_title }} | Zentanee Control Room{% endblock %}</title>
-    <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
-
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/style.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-storefront.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-dashboard.css' %}">
-    {% block extra_head %}{% endblock %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111110">
+  <title>{% block title %}{{ dashboard_page_title }} · Zentanee{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
+  <link rel="stylesheet" href="{% static 'asset/css/zent-dashboard.css' %}">
+  {% block extra_head %}{% endblock %}
 </head>
-<body class="spring-dashboard-body">
-    <div class="spring-dashboard-shell">
-        <aside class="spring-dashboard-sidebar" data-dashboard-sidebar>
-            <div class="spring-dashboard-sidebar__top">
-                <a href="{% url 'store:dashboard-home' %}" class="spring-dashboard-brand">
-                    <span class="spring-dashboard-brand__mark">Z</span>
-                    <span class="spring-dashboard-brand__text">
-                        <strong>Zentanee</strong>
-                        <small>Control Room</small>
-                    </span>
-                </a>
-                <button type="button" class="spring-dashboard-sidebar__close" data-dashboard-close aria-label="Close navigation">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+<body class="zd-body">
+<div class="zd-shell">
 
-            <a href="{% url 'store:dashboard-product-create' %}" class="spring-dashboard-sidebar__cta">
-                <i class="fas fa-plus"></i>
-                <span>New product</span>
-            </a>
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <aside class="zd-sidebar" data-zd-sidebar>
+    <div class="zd-sidebar-inner">
 
-            <nav class="spring-dashboard-nav">
-                <a href="{% url 'store:dashboard-home' %}" class="{% if dashboard_section == 'overview' %}is-active{% endif %}">
-                    <span>Overview</span>
-                    <small>Snapshot</small>
-                </a>
-                <a href="{% url 'store:dashboard-products' %}" class="{% if dashboard_section == 'products' %}is-active{% endif %}">
-                    <span>Products</span>
-                    <small>Catalog</small>
-                </a>
-                <a href="{% url 'store:dashboard-ai-queue' %}" class="{% if dashboard_section == 'ai-queue' %}is-active{% endif %}">
-                    <span>Gemini Queue</span>
-                    <small>Draft intake</small>
-                </a>
-                <a href="{% url 'store:dashboard-orders' %}" class="{% if dashboard_section == 'orders' %}is-active{% endif %}">
-                    <span>Orders</span>
-                    <small>Storefront</small>
-                </a>
-                <a href="{% url 'store:dashboard-telegram-orders' %}" class="{% if dashboard_section == 'telegram' %}is-active{% endif %}">
-                    <span>Telegram</span>
-                    <small>Chat sales</small>
-                </a>
-            </nav>
+      <a href="{% url 'store:dashboard-home' %}" class="zd-brand">
+        <span class="zd-brand-mark">Z</span>
+        <span class="zd-brand-text">
+          <strong>Zentanee</strong>
+          <small>Control Room</small>
+        </span>
+      </a>
 
-            <div class="spring-dashboard-sidebar__panel">
-                <p class="spring-dashboard-kicker">Fast links</p>
-                <a href="{{ storefront_url }}">Open storefront</a>
-                <a href="{{ legacy_admin_url }}">Legacy admin</a>
-                <a href="{% url 'store:dashboard-ai-queue' %}">Gemini queue</a>
-                <a href="{% url 'store:dashboard-products' %}?state=low-stock">Low stock</a>
-            </div>
-        </aside>
+      <a href="{% url 'store:dashboard-product-create' %}" class="zd-sidebar-cta">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3v10M3 8h10"/>
+        </svg>
+        New product
+      </a>
 
-        <div class="spring-dashboard-overlay" data-dashboard-overlay></div>
+      <p class="zd-nav-label">Navigation</p>
 
-        <div class="spring-dashboard-main">
-            <header class="spring-dashboard-header">
-                <div class="spring-dashboard-header__meta">
-                    <button type="button" class="spring-dashboard-menu" data-dashboard-open aria-label="Open navigation">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div>
-                        <p class="spring-dashboard-kicker">Staff workspace</p>
-                        <h1>{{ dashboard_page_title }}</h1>
-                        <p>{{ dashboard_page_intro }}</p>
-                    </div>
-                </div>
+      <a href="{% url 'store:dashboard-home' %}"
+         class="zd-nav-item {% if dashboard_section == 'overview' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="9" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5"/>
+          <rect x="9" y="9" width="6" height="6" rx="1.5"/>
+        </svg>
+        Overview
+      </a>
 
-                <div class="spring-dashboard-header__actions">
-                    <a href="{{ storefront_url }}" class="btn btn-outline-dark">Storefront</a>
-                    <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post product</a>
-                    <div class="spring-dashboard-user">
-                        <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
-                        <span>{{ dashboard_today|date:"M d, Y" }}</span>
-                    </div>
-                </div>
-            </header>
+      <a href="{% url 'store:dashboard-products' %}"
+         class="zd-nav-item {% if dashboard_section == 'products' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2" y="2" width="5" height="6" rx="1"/>
+          <rect x="9" y="2" width="5" height="6" rx="1"/>
+          <rect x="2" y="10" width="5" height="4" rx="1"/>
+          <rect x="9" y="10" width="5" height="4" rx="1"/>
+        </svg>
+        Products
+      </a>
 
-            {% if messages %}
-            <section class="spring-dashboard-flash-stack">
-                {% for message in messages %}
-                <div class="spring-dashboard-flash {% if message.tags %}spring-dashboard-flash--{{ message.tags }}{% endif %}">
-                    <span>{{ message }}</span>
-                </div>
-                {% endfor %}
-            </section>
-            {% endif %}
+      <a href="{% url 'store:dashboard-orders' %}"
+         class="zd-nav-item {% if dashboard_section == 'orders' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M2 4h12M2 8h8M2 12h5"/>
+        </svg>
+        Orders
+      </a>
 
-            <main class="spring-dashboard-content">
-                {% block dashboard_content %}{% endblock %}
-            </main>
-        </div>
+      <a href="{% url 'store:dashboard-telegram-orders' %}"
+         class="zd-nav-item {% if dashboard_section == 'telegram' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm3.38 4.75-1.6 7.54c-.12.56-.44.7-.9.43l-2.48-1.83-1.19 1.15c-.13.13-.25.25-.51.25l.18-2.58 4.66-4.21c.2-.18-.04-.28-.31-.1L4.35 10.2l-2.4-.75c-.52-.16-.53-.52.11-.77l9.37-3.61c.43-.16.81.1.66.68z"/>
+        </svg>
+        Telegram
+      </a>
+
+      <a href="{% url 'store:dashboard-ai-queue' %}"
+         class="zd-nav-item {% if dashboard_section == 'ai-queue' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M8 2l1.5 3 3.5.5-2.5 2.4.6 3.5L8 10l-3.1 1.4.6-3.5L3 5.5 6.5 5z"/>
+        </svg>
+        Gemini Queue
+      </a>
+
+      <div class="zd-sidebar-footer">
+        <p class="zd-nav-label" style="padding-bottom:6px">Quick links</p>
+        <a href="{{ storefront_url }}" target="_blank">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+          Open storefront
+        </a>
+        <a href="{{ legacy_admin_url }}">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+            <rect x="2" y="2" width="12" height="12" rx="2"/>
+            <path d="M5 8h6M8 5v6"/>
+          </svg>
+          Legacy admin
+        </a>
+        <a href="{% url 'store:dashboard-products' %}?state=low-stock">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+            <path d="M8 3v6M8 11v2"/>
+          </svg>
+          Low stock
+        </a>
+      </div>
+
     </div>
+  </aside>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const body = document.body;
-        const overlay = document.querySelector('[data-dashboard-overlay]');
-        const openButton = document.querySelector('[data-dashboard-open]');
-        const closeButton = document.querySelector('[data-dashboard-close]');
+  <div class="zd-overlay" data-zd-overlay></div>
 
-        function openSidebar() {
-            body.classList.add('spring-dashboard-sidebar-open');
-        }
+  <!-- ── Main ─────────────────────────────────────────────────── -->
+  <div class="zd-main">
 
-        function closeSidebar() {
-            body.classList.remove('spring-dashboard-sidebar-open');
-        }
+    <!-- Header -->
+    <header class="zd-header">
+      <div class="zd-header-left">
+        <button type="button" class="zd-menu-btn" data-zd-open aria-label="Open menu">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M2 4h12M2 8h12M2 12h12"/>
+          </svg>
+        </button>
+        <div class="zd-header-title">
+          <h1>{{ dashboard_page_title }}</h1>
+          {% if dashboard_page_intro %}<p>{{ dashboard_page_intro }}</p>{% endif %}
+        </div>
+      </div>
 
-        if (openButton) openButton.addEventListener('click', openSidebar);
-        if (closeButton) closeButton.addEventListener('click', closeSidebar);
-        if (overlay) overlay.addEventListener('click', closeSidebar);
+      <div class="zd-header-actions">
+        <a href="{{ storefront_url }}" class="zd-btn zd-btn--ghost zd-btn--sm" target="_blank">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+          Storefront
+        </a>
+        <a href="{% url 'store:dashboard-product-create' %}" class="zd-btn zd-btn--primary zd-btn--sm">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M8 3v10M3 8h10"/>
+          </svg>
+          New product
+        </a>
+        <div class="zd-header-user">
+          <div class="zd-header-user-avatar">
+            {{ request.user.get_full_name|default:request.user.username|slice:":1"|upper }}
+          </div>
+          <div>
+            <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+            <span>{{ dashboard_today|date:"M d" }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
 
-        document.querySelectorAll('[data-formset-add]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const target = document.getElementById(button.getAttribute('data-formset-add'));
-                if (!target) return;
+    <!-- Flash messages -->
+    {% if messages %}
+    <div class="zd-flash-stack" style="padding: 0 20px;">
+      {% for message in messages %}
+      <div class="zd-flash {% if message.tags %}zd-flash--{{ message.tags }}{% endif %}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
-                const totalForms = target.querySelector('input[name$="-TOTAL_FORMS"]');
-                const template = target.querySelector('template');
-                const rows = target.querySelector('[data-formset-rows]');
-                if (!totalForms || !template || !rows) return;
+    <!-- Page content -->
+    <main class="zd-content">
+      {% block dashboard_content %}{% endblock %}
+    </main>
 
-                const formIndex = Number(totalForms.value);
-                rows.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__prefix__/g, formIndex));
-                totalForms.value = formIndex + 1;
-            });
-        });
+  </div>
+</div>
 
-        document.addEventListener('click', function (event) {
-            const deleteButton = event.target.closest('[data-formset-delete]');
-            if (!deleteButton) return;
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const sidebar = document.querySelector('[data-zd-sidebar]');
+  const overlay = document.querySelector('[data-zd-overlay]');
+  const openBtn = document.querySelector('[data-zd-open]');
+  const body    = document.body;
 
-            const row = deleteButton.closest('[data-formset-row]');
-            if (!row) return;
+  function openSidebar()  { body.classList.add('zd-sidebar-open'); }
+  function closeSidebar() { body.classList.remove('zd-sidebar-open'); }
 
-            const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (deleteInput) {
-                deleteInput.checked = true;
-                row.classList.add('is-hidden');
-                return;
-            }
+  if (openBtn)  openBtn.addEventListener('click', openSidebar);
+  if (overlay)  overlay.addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
 
-            row.remove();
-        });
+  /* Formset add row */
+  document.querySelectorAll('[data-formset-add]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const target = document.getElementById(btn.dataset.formsetAdd);
+      if (!target) return;
+      const totalForms = target.querySelector('input[name$="-TOTAL_FORMS"]');
+      const template   = target.querySelector('template');
+      const rows       = target.querySelector('[data-formset-rows]');
+      if (!totalForms || !template || !rows) return;
+      const idx = Number(totalForms.value);
+      rows.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__prefix__/g, idx));
+      totalForms.value = idx + 1;
     });
-    </script>
-    {% block extra_scripts %}{% endblock %}
+  });
+
+  /* Formset delete row */
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-formset-delete]');
+    if (!btn) return;
+    const row = btn.closest('[data-formset-row]');
+    if (!row) return;
+    const delInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    if (delInput) { delInput.checked = true; row.classList.add('is-hidden'); }
+    else row.remove();
+  });
+});
+</script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>
