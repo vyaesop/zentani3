@@ -60,7 +60,12 @@
                     <a href="{% url 'store:dashboard-home' %}" class="spring-link">Control Room</a>
                     {% endif %}
                     {% if request.user.is_authenticated %}
-                    <a href="{% url 'store:profile' %}" class="spring-link">Account</a>
+                    <a href="{% url 'store:profile' %}" class="spring-link">
+                        Account
+                        {% if wishlist_count %}
+                        <span class="spring-wishlist-count" title="{{ wishlist_count }} saved item{{ wishlist_count|pluralize }}">{{ wishlist_count }}</span>
+                        {% endif %}
+                    </a>
                     {% else %}
                     <a href="{% url 'store:login' %}" class="spring-link">Log in</a>
                     {% endif %}

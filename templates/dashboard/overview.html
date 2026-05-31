@@ -1,19 +1,10 @@
 {% extends "dashboard/base.html" %}
+{% load image_optim %}
 
 {% block dashboard_content %}
 <section class="spring-dashboard-overview-hero">
     <article class="spring-dashboard-panel spring-dashboard-panel--hero">
         <p class="spring-dashboard-kicker">Operational snapshot</p>
-        <h2>Clearer routing for product posting, fulfillment, and Telegram follow-up.</h2>
-        <p>This dashboard is trimmed down for the daily actions that matter: add products fast, scan stock quickly, and move orders without admin clutter.</p>
-        <div class="spring-dashboard-hero-actions">
-            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post a product</a>
-            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-outline-dark">Open orders</a>
-        </div>
-    </article>
-
-    <article class="spring-dashboard-panel">
-        <p class="spring-dashboard-kicker">Pressure points</p>
         <div class="spring-dashboard-mini-stats">
             <div>
                 <span>Pending storefront</span>
@@ -29,8 +20,13 @@
             </div>
             <div>
                 <span>Pending payouts</span>
-                <strong>{{ affiliate_stats.pending }}</strong>
+                <strong>{{ affiliate_stats.pending|etb }}</strong>
+                <a href="{{ legacy_admin_url }}store/affiliatecommission/?status=Pending" class="spring-dashboard-mini-link">Review →</a>
             </div>
+        </div>
+        <div class="spring-dashboard-hero-actions">
+            <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Post a product</a>
+            <a href="{% url 'store:dashboard-orders' %}" class="btn btn-outline-dark">Open orders</a>
         </div>
     </article>
 </section>
@@ -44,12 +40,12 @@
     <article class="spring-dashboard-stat-card">
         <span>Storefront orders</span>
         <strong>{{ order_stats.total }}</strong>
-        <p>{{ order_stats.weekly }} created in the last 7 days</p>
+        <p>{{ order_stats.weekly }} in the last 7 days</p>
     </article>
     <article class="spring-dashboard-stat-card">
         <span>Revenue booked</span>
-        <strong>{{ order_stats.revenue }}</strong>
-        <p>Across saved order lines</p>
+        <strong>{{ order_stats.revenue|etb }}</strong>
+        <p>Across all storefront order lines</p>
     </article>
     <article class="spring-dashboard-stat-card">
         <span>Telegram orders</span>
@@ -159,7 +155,7 @@
                     <p>{{ product.sku }} · {{ product.category.title }}</p>
                 </div>
                 <div class="spring-dashboard-list-row__meta">
-                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--delivered">{{ product.order_volume }} orders</span>
+                    <span class="spring-dashboard-status-pill spring-dashboard-status-pill--accepted">{{ product.order_volume }} orders</span>
                     <a href="{% url 'store:dashboard-product-edit' product.id %}">Edit</a>
                 </div>
             </div>

@@ -4619,3 +4619,122 @@ body.spring-body {
         width: 100%;
     }
 }
+
+/* ─── Wishlist count badge ─────────────────────────────────────────── */
+.spring-wishlist-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    margin-left: 4px;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+/* ─── Storefront order status pills ───────────────────────────────── */
+.spring-order-status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    background: #eee;
+    color: #444;
+}
+.spring-order-status-pill--pending      { background: #fff3cd; color: #7a5c00; }
+.spring-order-status-pill--accepted     { background: #d1ecf1; color: #0c5460; }
+.spring-order-status-pill--packed       { background: #d4edda; color: #155724; }
+.spring-order-status-pill--on-the-way  { background: #cce5ff; color: #004085; }
+.spring-order-status-pill--delivered    { background: #d4edda; color: #155724; }
+.spring-order-status-pill--cancelled    { background: #f8d7da; color: #721c24; }
+
+/* ─── Staff notes on order timeline ───────────────────────────────── */
+.spring-order-item__notes {
+    font-size: .85rem;
+    color: #555;
+    margin-top: .5rem;
+    padding: .4rem .65rem;
+    background: #f8f9fa;
+    border-left: 3px solid #ccc;
+    border-radius: 0 4px 4px 0;
+}
+
+/* ─── Cart AJAX qty buttons ───────────────────────────────────────── */
+.spring-cart-qty-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.spring-cart-qty-btn:hover { background: #f5f5f5; }
+.spring-cart-qty-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.spring-cart-qty-display {
+    display: inline-block;
+    min-width: 28px;
+    text-align: center;
+    font-weight: 600;
+}
+.spring-cart-continue {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: .85rem;
+}
+
+/* ─── Homepage trust bar ───────────────────────────────────────────── */
+.spring-trust-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    padding: 2rem 0;
+    border-top: 1px solid #eee;
+    margin-top: 1rem;
+}
+.spring-trust-item strong { display: block; margin-bottom: .25rem; font-size: .95rem; }
+.spring-trust-item p { font-size: .85rem; color: #666; margin: 0; }
+
+/* ─── Size chips on product cards ────────────────────────────────── */
+.spring-product-card__sizes { display: flex; flex-wrap: wrap; gap: .2rem; margin-top: .3rem; }
+.spring-size-chip {
+    display: inline-block;
+    padding: .15rem .4rem;
+    font-size: .7rem;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-weight: 500;
+    color: #444;
+}
+.spring-product-card__badge {
+    position: absolute;
+    top: .6rem;
+    left: .6rem;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .2rem .5rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.spring-product-card__badge--soldout { background: #111; color: #fff; }
+.spring-product-card__notify { font-size: .75rem; margin-left: .4rem; text-decoration: underline; }
+
+/* ─── Star ratings ────────────────────────────────────────────────── */
+.spring-stars .spring-star { color: #ddd; font-style: normal; }
+.spring-stars .spring-star.is-filled { color: #f5a623; }
+.spring-stars { font-size: 1rem; letter-spacing: .05em; }
+

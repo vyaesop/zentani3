@@ -34,12 +34,15 @@
 
       <div class="spring-product-layout">
           <section class="spring-product-gallery">
-              <figure class="spring-product-gallery__main">
+              <figure class="spring-product-gallery__main" id="gallery-main-wrap">
                   {% if product.product_image %}
-                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
+                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}" data-zoom="{{ product.product_image.url|cdn_optimize }}">
                   {% else %}
                   <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                   {% endif %}
+                  <button type="button" class="spring-gallery-zoom-btn" id="gallery-zoom-btn" aria-label="Zoom image">
+                      <i class="fas fa-search-plus"></i>
+                  </button>
               </figure>
 
               <div class="spring-product-gallery__thumbs">
@@ -65,9 +68,15 @@
               <h1>{{ product.title }}</h1>
               <div class="spring-product-info__topline">
                   {% if review_summary.review_count %}
-                  <p class="spring-product-info__rating">{{ review_summary.average_rating|floatformat:1 }}/5 from {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}</p>
+                  <p class="spring-product-info__rating">
+                      <span class="spring-stars" aria-label="{{ review_summary.average_rating|floatformat:1 }} out of 5 stars">{% star_icons review_summary.average_rating %}</span>
+                      {{ review_summary.average_rating|floatformat:1 }}/5 · {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
+                  </p>
                   {% else %}
-                  <p class="spring-product-info__rating">Be the first to review this piece</p>
+                  <p class="spring-product-info__rating">
+                      <span class="spring-stars spring-stars--empty" aria-hidden="true">☆☆☆☆☆</span>
+                      Be the first to review
+                  </p>
                   {% endif %}
 
                   {% if request.user.is_authenticated %}
@@ -75,11 +84,17 @@
                       {% csrf_token %}
                       <input type="hidden" name="next" value="{{ request.get_full_path }}">
                       <button type="submit" class="spring-inline-action {% if is_saved_product %}is-saved{% endif %}">
-                          {% if is_saved_product %}Saved{% else %}Save item{% endif %}
+                          {% if is_saved_product %}
+                          <i class="fas fa-heart"></i> Saved
+                          {% else %}
+                          <i class="far fa-heart"></i> Save item
+                          {% endif %}
                       </button>
                   </form>
                   {% else %}
-                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">Save item</a>
+                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">
+                      <i class="far fa-heart"></i> Save item
+                  </a>
                   {% endif %}
               </div>
               <p class="spring-product-info__price">
@@ -90,7 +105,9 @@
                   {% endif %}
               </p>
               {% if product_stock_message %}
-              <p class="spring-product-info__stock">{{ product_stock_message }}</p>
+              <p class="spring-product-info__stock" id="stock-message">{{ product_stock_message }}</p>
+              {% else %}
+              <p class="spring-product-info__stock" id="stock-message" style="display:none"></p>
               {% endif %}
 
               {% if product.short_description %}
@@ -115,14 +132,10 @@
                                   name="size"
                                   value="{{ size_option.size }}"
                                   data-stock-label="{% if size_option.quantity != None %}{% if size_option.quantity > 0 %}{{ size_option.quantity }} in stock{% else %}Currently sold out{% endif %}{% endif %}"
+                                  data-available="{{ size_option.available|yesno:'true,false' }}"
                                   {% if not size_option.available %}disabled{% endif %}
                                   {% if size_option.size == default_selected_size %}checked{% endif %}>
-                              <span>
-                                  {{ size_option.size }}
-                                  {% if size_option.quantity != None %}
-                                  <small>{{ size_option.quantity }}</small>
-                                  {% endif %}
-                              </span>
+                              <span>{{ size_option.size }}</span>
                           </label>
                           {% endfor %}
                       </div>
@@ -130,19 +143,19 @@
                   {% endif %}
 
                   <div class="spring-product-form__actions">
-                      <button type="submit" class="btn btn-dark w-100" {% if product.is_sold_out %}disabled{% endif %}>
+                      <button type="submit" class="btn btn-dark w-100" id="add-to-cart-btn" {% if product.is_sold_out %}disabled{% endif %}>
                           {% if product.is_sold_out %}Sold Out{% else %}Add to cart{% endif %}
                       </button>
                   </div>
-                  <div id="add-to-cart-feedback" class="mt-3 small"></div>
+                  <div id="add-to-cart-feedback" class="mt-3 small" role="alert" aria-live="polite"></div>
               </form>
 
               {% if product.is_sold_out %}
               <section id="restock" class="spring-product-restock">
                   <h2>Join the restock list</h2>
-                  <p>Leave your email and we’ll know this item still has demand.</p>
+                  <p>Leave your email and we'll let you know when this item is available again.</p>
                   {% if existing_restock_request %}
-                  <p class="spring-product-restock__status">You are already on the list for this product.</p>
+                  <p class="spring-product-restock__status">You're already on the list for this product.</p>
                   {% else %}
                   <form action="{% url 'store:request-restock' product.slug %}" method="POST" class="spring-product-restock__form">
                       {% csrf_token %}
@@ -153,10 +166,29 @@
                           <small class="text-danger">{{ fm.errors|striptags }}</small>
                       </div>
                       {% endfor %}
-                      <button type="submit" class="btn btn-outline-dark">Request restock</button>
+                      <button type="submit" class="btn btn-outline-dark">Notify me when back in stock</button>
                   </form>
                   {% endif %}
               </section>
+              {% else %}
+              {# Per-size restock: show form for individual sold-out sizes when the product is still active #}
+              {% for size_option in size_options %}
+              {% if not size_option.available %}
+              <section class="spring-product-restock spring-product-restock--size" id="restock-{{ size_option.size }}">
+                  <p class="spring-product-restock__label">Size {{ size_option.size }} is sold out.</p>
+                  {% if not existing_restock_request %}
+                  <form action="{% url 'store:request-restock' product.slug %}" method="POST" class="spring-product-restock__form spring-product-restock__form--inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="size" value="{{ size_option.size }}">
+                      <input type="email" name="email" class="form-control" placeholder="Your email" required>
+                      <button type="submit" class="btn btn-outline-dark btn-sm">Notify me for {{ size_option.size }}</button>
+                  </form>
+                  {% else %}
+                  <p class="spring-product-restock__status">You're on the list for restocks on this product.</p>
+                  {% endif %}
+              </section>
+              {% endif %}
+              {% endfor %}
               {% endif %}
 
               <div class="spring-product-info__details">
@@ -179,10 +211,6 @@
                   <div>
                       <strong>Product code</strong>
                       <span>{{ product.sku }}</span>
-                  </div>
-                  <div>
-                      <strong>Sizes</strong>
-                      <span>{% if available_sizes %}{{ available_sizes|join:", " }}{% else %}One option{% endif %}</span>
                   </div>
               </div>
 
@@ -245,7 +273,8 @@
               <h2>Reviews</h2>
               <span class="spring-section__meta">
                   {% if review_summary.review_count %}
-                  {{ review_summary.average_rating|floatformat:1 }}/5 average from {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
+                  <span class="spring-stars" aria-hidden="true">{% star_icons review_summary.average_rating %}</span>
+                  {{ review_summary.average_rating|floatformat:1 }}/5 average · {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
                   {% else %}
                   No reviews yet
                   {% endif %}
@@ -258,7 +287,7 @@
                   <article class="spring-review-card">
                       <div class="spring-review-card__head">
                           <strong>{{ review.title|default:"Customer review" }}</strong>
-                          <span>{{ review.rating }}/5</span>
+                          <span class="spring-stars" aria-label="{{ review.rating }} out of 5 stars">{% star_icons review.rating %}</span>
                       </div>
                       <p class="spring-review-card__byline">
                           {% firstof review.user.first_name review.user.username %}
@@ -298,7 +327,6 @@
               <h2>You may also like</h2>
               <a href="{% url 'store:category-products' product.category.slug %}">View collection</a>
           </div>
-
           <div class="spring-product-grid">
               {% for rp in related_products %}
               <div class="spring-grid-item">
@@ -316,7 +344,6 @@
               <h2>Recently viewed</h2>
               <a href="{% url 'store:all-products' %}">Keep browsing</a>
           </div>
-
           <div class="spring-product-grid">
               {% for viewed_product in recently_viewed_products %}
               <div class="spring-grid-item">
@@ -328,6 +355,14 @@
       {% endif %}
   </div>
 </main>
+
+{# Lightbox overlay for image zoom #}
+<div id="gallery-lightbox" class="spring-gallery-lightbox" role="dialog" aria-modal="true" aria-label="Product image zoom" hidden>
+    <button type="button" class="spring-gallery-lightbox__close" id="gallery-lightbox-close" aria-label="Close zoom">
+        <i class="fas fa-times"></i>
+    </button>
+    <img src="" alt="" id="gallery-lightbox-img">
+</div>
 {% endblock content %}
 
 {% block extra_scripts %}
@@ -335,20 +370,25 @@
 document.addEventListener('DOMContentLoaded', function () {
     const mainImage = document.getElementById('main-product-image');
     const thumbButtons = document.querySelectorAll('.spring-thumb');
-    const stockMessage = document.querySelector('.spring-product-info__stock');
+    const stockMessage = document.getElementById('stock-message');
+    const lightbox = document.getElementById('gallery-lightbox');
+    const lightboxImg = document.getElementById('gallery-lightbox-img');
+    const lightboxClose = document.getElementById('gallery-lightbox-close');
+    const zoomBtn = document.getElementById('gallery-zoom-btn');
 
+    // Thumbnail switcher
     thumbButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             const newImage = button.getAttribute('data-image');
             if (!newImage || !mainImage) return;
             mainImage.setAttribute('src', newImage);
-            thumbButtons.forEach(function (item) {
-                item.classList.remove('is-active');
-            });
+            mainImage.setAttribute('data-zoom', newImage);
+            thumbButtons.forEach(function (item) { item.classList.remove('is-active'); });
             button.classList.add('is-active');
         });
     });
 
+    // Per-size stock message update
     const sizeInputs = document.querySelectorAll('input[name="size"]');
     sizeInputs.forEach(function (input) {
         input.addEventListener('change', function () {
@@ -356,26 +396,60 @@ document.addEventListener('DOMContentLoaded', function () {
             const stockLabel = input.getAttribute('data-stock-label');
             if (stockLabel) {
                 stockMessage.textContent = stockLabel;
+                stockMessage.style.display = '';
             }
         });
     });
 
+    // Image zoom / lightbox
+    function openLightbox(src) {
+        if (!lightbox || !lightboxImg) return;
+        lightboxImg.setAttribute('src', src);
+        lightbox.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+        lightboxClose.focus();
+    }
+
+    function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+        if (zoomBtn) zoomBtn.focus();
+    }
+
+    if (zoomBtn) {
+        zoomBtn.addEventListener('click', function () {
+            const src = mainImage ? mainImage.getAttribute('data-zoom') || mainImage.getAttribute('src') : '';
+            openLightbox(src);
+        });
+    }
+    if (mainImage) {
+        mainImage.style.cursor = 'zoom-in';
+        mainImage.addEventListener('click', function () {
+            openLightbox(mainImage.getAttribute('data-zoom') || mainImage.getAttribute('src'));
+        });
+    }
+    if (lightboxClose) { lightboxClose.addEventListener('click', closeLightbox); }
+    if (lightbox) {
+        lightbox.addEventListener('click', function (e) {
+            if (e.target === lightbox) closeLightbox();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !lightbox.hasAttribute('hidden')) closeLightbox();
+        });
+    }
+
+    // Add-to-cart AJAX
     const form = document.getElementById('product-add-to-cart-form');
     const feedback = document.getElementById('add-to-cart-feedback');
+    const addBtn = document.getElementById('add-to-cart-btn');
     if (!form || !feedback) return;
 
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
-
-        const submitButton = form.querySelector('button[type="submit"]');
-        const originalLabel = submitButton ? submitButton.textContent : '';
-
+        const originalLabel = addBtn ? addBtn.textContent : '';
         try {
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Adding...';
-            }
-
+            if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Adding…'; }
             const response = await fetch(form.action, {
                 method: 'POST',
                 headers: {
@@ -384,11 +458,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: new FormData(form),
             });
-
             const payload = await response.json();
             feedback.className = 'mt-3 small ' + (payload.ok ? 'text-success' : 'text-danger');
             feedback.textContent = payload.message || 'Something went wrong. Please try again.';
-
             if (payload.ok && typeof payload.cart_items_count !== 'undefined') {
                 document.querySelectorAll('.spring-cart-count, .cart-count').forEach(function (node) {
                     node.textContent = payload.cart_items_count;
@@ -398,12 +470,115 @@ document.addEventListener('DOMContentLoaded', function () {
             feedback.className = 'mt-3 small text-danger';
             feedback.textContent = 'Unable to add this item right now. Please try again.';
         } finally {
-            if (submitButton) {
-                submitButton.disabled = {{ product.is_sold_out|yesno:"true,false" }};
-                submitButton.textContent = originalLabel;
+            if (addBtn) {
+                addBtn.disabled = {{ product.is_sold_out|yesno:"true,false" }};
+                addBtn.textContent = originalLabel;
             }
         }
     });
 });
 </script>
+
+<style>
+.spring-gallery-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.spring-gallery-lightbox[hidden] { display: none; }
+.spring-gallery-lightbox__close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    font-size: 1.4rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.spring-gallery-lightbox__close:hover { background: rgba(255,255,255,0.2); }
+#gallery-lightbox-img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+}
+.spring-gallery-zoom-btn {
+    position: absolute;
+    bottom: .75rem;
+    right: .75rem;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: none;
+    padding: .4rem .55rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: .85rem;
+}
+.spring-gallery-zoom-btn:hover { background: rgba(0,0,0,0.75); }
+#gallery-main-wrap { position: relative; }
+.spring-stars .spring-star { color: #ccc; }
+.spring-stars .spring-star.is-filled { color: #f5a623; }
+.spring-product-restock--size { margin-top: .75rem; }
+.spring-product-restock__form--inline { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+.spring-product-card__badge {
+    position: absolute;
+    top: .6rem;
+    left: .6rem;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .2rem .5rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.spring-product-card__badge--soldout { background: #111; color: #fff; }
+.spring-product-card__notify { font-size: .75rem; margin-left: .5rem; text-decoration: underline; }
+.spring-size-chip {
+    display: inline-block;
+    padding: .15rem .4rem;
+    font-size: .72rem;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    margin: .15rem .1rem 0 0;
+    font-weight: 500;
+}
+.spring-dashboard-control--notes {
+    display: block;
+    width: 100%;
+    min-height: 3rem;
+    margin-top: .35rem;
+    font-size: .8rem;
+    padding: .35rem .5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+.spring-dashboard-mini-link {
+    display: block;
+    font-size: .75rem;
+    margin-top: .25rem;
+    text-decoration: underline;
+}
+.spring-trust-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid #eee;
+}
+.spring-trust-item strong { display: block; margin-bottom: .3rem; }
+.spring-trust-item p { font-size: .9rem; color: #555; margin: 0; }
+</style>
 {% endblock %}

@@ -60,6 +60,9 @@
                       <span class="spring-order-timeline__step is-{{ step.state }}">{{ step.label }}</span>
                       {% endfor %}
                   </div>
+                  {% if order.staff_notes %}
+                  <p class="spring-order-item__notes"><strong>Note:</strong> {{ order.staff_notes }}</p>
+                  {% endif %}
               </div>
           </article>
           {% endfor %}

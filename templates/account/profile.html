@@ -65,7 +65,7 @@
                           <strong>{{ order.product.title }}</strong>
                           <p>Order #{{ order.id }}</p>
                       </div>
-                      <span>{{ order.status }}</span>
+                      <span class="spring-order-status-pill spring-order-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
                   </article>
                   {% endfor %}
               </div>

@@ -995,3 +995,44 @@
         justify-content: flex-end;
     }
 }
+
+/* ─── Dashboard mini link (inline affiliate payout link) ──────────── */
+.spring-dashboard-mini-link {
+    display: inline-block;
+    font-size: .72rem;
+    margin-top: .2rem;
+    text-decoration: underline;
+    color: inherit;
+    opacity: .7;
+}
+.spring-dashboard-mini-link:hover { opacity: 1; }
+
+/* ─── Bulk order bar ──────────────────────────────────────────────── */
+.spring-dashboard-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+/* ─── Order notes textarea in table ──────────────────────────────── */
+.spring-dashboard-control--notes {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    margin-top: .35rem;
+    font-size: .78rem;
+    padding: .3rem .45rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+/* ─── Dashboard table select-all checkbox ────────────────────────── */
+.spring-dashboard-table th:first-child,
+.spring-dashboard-table td:first-child {
+    width: 2.5rem;
+    text-align: center;
+}
+

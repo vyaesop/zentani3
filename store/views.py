@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.core.cache import cache
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Avg, Case, Count, IntegerField, Max, Min, Q, Sum, Value, When
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
@@ -49,7 +49,7 @@ from store.telegram_notify import (
     send_customer_bot_message,
 )
 
-from .forms import AddressForm, ProductReviewForm, RegistrationForm, RestockRequestForm
+from .forms import AddressForm, GuestCheckoutForm, ProductReviewForm, RegistrationForm, RestockRequestForm
 
 
 PRODUCT_LIST_FIELDS = (
@@ -67,36 +67,26 @@ PRODUCT_LIST_FIELDS = (
 )
 
 
-AFFILIATE_SESSION_KEY = "affiliate_profile_id"
-AFFILIATE_CLICK_SESSION_KEY = "affiliate_click_id"
-AFFILIATE_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
-AFFILIATE_RATE_PERCENT = Decimal("5.00")
-GUEST_SESSION_USER_ID_KEY = "guest_session_user_id"
-TELEGRAM_ORDER_STATE_PREFIX = "telegram_order_state"
-TELEGRAM_ORDER_STATE_TTL_SECONDS = 60 * 30
-COLLECTION_PAGE_SIZE = 24
-DIRECTORY_PAGE_SIZE = 24
-ACCOUNT_ORDERS_PAGE_SIZE = 12
-RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_product_ids"
-COLLECTION_SORT_OPTIONS = (
-    ("newest", "Newest first", "-created_at"),
-    ("price-asc", "Price: Low to High", "price"),
-    ("price-desc", "Price: High to Low", "-price"),
-    ("name-asc", "Name: A-Z", "title"),
+from .constants import (
+    ACCOUNT_ORDERS_PAGE_SIZE,
+    ADDIS_FREE_SHIPPING_THRESHOLD,
+    ADDIS_SHIPPING_FEE,
+    AFFILIATE_CLICK_SESSION_KEY,
+    AFFILIATE_RATE_PERCENT,
+    AFFILIATE_SESSION_KEY,
+    AFFILIATE_SESSION_MAX_AGE_SECONDS,
+    COLLECTION_PAGE_SIZE,
+    COLLECTION_SORT_OPTIONS,
+    DIRECTORY_PAGE_SIZE,
+    GUEST_SESSION_USER_ID_KEY,
+    ORDER_STATUS_COPY,
+    ORDER_STATUS_SEQUENCE,
+    OUTSIDE_ADDIS_SHIPPING_FEE,
+    RECENTLY_VIEWED_SESSION_KEY,
+    SIZE_DISPLAY_ORDER,
+    TELEGRAM_ORDER_STATE_PREFIX,
+    TELEGRAM_ORDER_STATE_TTL_SECONDS,
 )
-SIZE_DISPLAY_ORDER = ("XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL")
-ADDIS_FREE_SHIPPING_THRESHOLD = Decimal("3500.00")
-ADDIS_SHIPPING_FEE = Decimal("80.00")
-OUTSIDE_ADDIS_SHIPPING_FEE = Decimal("180.00")
-ORDER_STATUS_SEQUENCE = ["Pending", "Accepted", "Packed", "On The Way", "Delivered"]
-ORDER_STATUS_COPY = {
-    "Pending": "We received your order and it is waiting for confirmation.",
-    "Accepted": "Your order has been confirmed by the store.",
-    "Packed": "Your items are being prepared for dispatch.",
-    "On The Way": "Your order is currently out for delivery.",
-    "Delivered": "The order was delivered successfully.",
-    "Cancelled": "This order was cancelled before delivery.",
-}
 
 
 def _telegram_state_key(chat_id):
@@ -307,12 +297,18 @@ def _accepted_webhook_secrets(*env_var_names):
 
 def _validate_telegram_webhook_secret(request, *env_var_names):
     accepted_secrets = _accepted_webhook_secrets(*env_var_names)
+
+    # If no secrets are configured in production, deny all requests.
+    # In DEBUG mode we allow through so local dev works without a tunnel.
     if not accepted_secrets:
-        return True
+        from django.conf import settings as _settings
+        return bool(_settings.DEBUG)
 
     incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
+    # Always require the header when secrets are configured — Telegram will
+    # send it if you set secret_token when calling setWebhook.
     if not incoming_secret:
-        return True
+        return False
     return incoming_secret in accepted_secrets
 
 
@@ -795,10 +791,11 @@ def _build_order_flow_status(orders_queryset):
 
 
 def _order_status_summary(orders_queryset):
-    return [
-        {"label": label, "count": orders_queryset.filter(status=value).count()}
-        for value, label in STATUS_CHOICES
-    ]
+    from django.db.models import Count as _Count
+    counts = dict(
+        orders_queryset.values("status").annotate(n=_Count("id")).values_list("status", "n")
+    )
+    return [{"label": label, "count": counts.get(value, 0)} for value, label in STATUS_CHOICES]
 
 
 def _parse_available_sizes(product):
@@ -1821,77 +1818,125 @@ def cart(request):
 
 class AddCoupon(View):
     def post(self, request, *args, **kwargs):
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         code = (request.POST.get("coupon") or "").strip()
-        if not code:
-            messages.warning(request, "Please enter a coupon code.")
+
+        def _fail(msg):
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": msg})
+            messages.warning(request, msg)
             return redirect("store:cart")
+
+        if not code:
+            return _fail("Please enter a coupon code.")
 
         coupon = Coupon.objects.filter(code__iexact=code).first()
         if coupon is None:
-            messages.warning(request, "Invalid coupon code.")
-            return redirect("store:cart")
+            return _fail("That coupon code doesn't exist.")
 
         issue = _coupon_issue(coupon)
         if issue:
-            messages.warning(request, issue)
-            return redirect("store:cart")
+            return _fail(issue)
 
         cart_products = Cart.objects.filter(user=_cart_owner_user(request))
         if not cart_products.exists():
-            messages.warning(request, "Your cart is empty.")
-            return redirect("store:cart")
+            return _fail("Your cart is empty.")
 
         cart_products.update(coupon=coupon)
+        if is_ajax:
+            return JsonResponse({"ok": True, "message": f"Coupon '{coupon.code}' applied — {coupon.discount}% off."})
         messages.success(request, "Coupon applied successfully.")
-
         return redirect("store:cart")
+
+
+def _cart_ajax_response(request, user, *, ok=True, message="", item=None):
+    """Build a JSON payload for cart AJAX calls with updated totals."""
+    cart_qs = Cart.objects.filter(user=user).select_related("product", "coupon")
+    cart_items_count = cart_qs.count()
+    subtotal = sum(c.total_price for c in cart_qs)
+    payload = {
+        "ok": ok,
+        "message": message,
+        "cart_items_count": cart_items_count,
+        "subtotal": str(subtotal),
+        "total": str(subtotal),
+    }
+    if item is not None:
+        payload["quantity"] = item.quantity if item.pk else 0
+        payload["item_total"] = str(item.total_price) if item.pk else "0"
+    return JsonResponse(payload)
 
 
 def remove_cart(request, cart_id):
     if request.method != "POST":
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    c = get_object_or_404(Cart, id=cart_id, user=_cart_owner_user(request))
+    user = _cart_owner_user(request)
+    c = get_object_or_404(Cart, id=cart_id, user=user)
     c.delete()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return _cart_ajax_response(request, user, ok=True, message="Item removed.")
     messages.success(request, "Product removed from cart.")
     return redirect("store:cart")
 
 
 def plus_cart(request, cart_id):
     if request.method != "POST":
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    cp = get_object_or_404(Cart.objects.select_related("product"), id=cart_id, user=_cart_owner_user(request))
+    user = _cart_owner_user(request)
+    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
     if not cp.product.is_active or cp.product.is_sold_out:
-        messages.warning(request, f"{cp.product.title} is no longer available.")
+        msg = f"{cp.product.title} is no longer available."
+        if is_ajax:
+            return JsonResponse({"ok": False, "message": msg})
+        messages.warning(request, msg)
         return redirect("store:cart")
 
     requested_quantity = cp.quantity + 1
     if not _product_can_fulfill_quantity(cp.product, requested_quantity, size_value=cp.size):
-        messages.warning(
-            request,
-            f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available for {cp.product.title} ({cp.size or 'default size'}).",
-        )
+        msg = f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available."
+        if is_ajax:
+            return JsonResponse({"ok": False, "message": msg})
+        messages.warning(request, msg)
         return redirect("store:cart")
 
     cp.quantity += 1
     cp.save(update_fields=["quantity", "updated_at"])
+    if is_ajax:
+        return _cart_ajax_response(request, user, ok=True, item=cp)
     return redirect("store:cart")
 
 
 def minus_cart(request, cart_id):
     if request.method != "POST":
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    cp = get_object_or_404(Cart, id=cart_id, user=_cart_owner_user(request))
+    user = _cart_owner_user(request)
+    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
     if cp.quantity == 1:
         cp.delete()
+        if is_ajax:
+            return _cart_ajax_response(request, user, ok=True, message="Item removed.")
     else:
         cp.quantity -= 1
         cp.save(update_fields=["quantity", "updated_at"])
+        if is_ajax:
+            return _cart_ajax_response(request, user, ok=True, item=cp)
     return redirect("store:cart")
 
 
@@ -1930,14 +1975,16 @@ def checkout(request):
     shipping_amount = Decimal("0.00")
 
     if not request.user.is_authenticated:
-        full_name = (request.POST.get("full_name") or "").strip()
-        phone = (request.POST.get("phone") or "").strip()
-        city = (request.POST.get("city") or "").strip()
-        address = (request.POST.get("address") or "").strip()
-
-        if not all([full_name, phone, city, address]):
-            messages.error(request, "Please fill name, phone, city, and address to complete guest checkout.")
+        guest_form = GuestCheckoutForm(request.POST)
+        if not guest_form.is_valid():
+            for field_errors in guest_form.errors.values():
+                for error in field_errors:
+                    messages.error(request, error)
             return redirect("store:cart")
+        full_name = guest_form.cleaned_data["full_name"]
+        phone = guest_form.cleaned_data["phone"]
+        city = guest_form.cleaned_data["city"]
+        address = guest_form.cleaned_data["address"]
 
         guest_checkout_address = _apply_guest_checkout_profile(
             guest_user=user,
@@ -2019,6 +2066,11 @@ def checkout(request):
 
             if commissions_to_create:
                 AffiliateCommission.objects.bulk_create(commissions_to_create)
+
+            # Record coupon usage atomically for each unique coupon applied.
+            used_coupon_ids = {c.coupon_id for c in cart_items if c.coupon_id}
+            for coupon_id in used_coupon_ids:
+                Coupon.objects.filter(pk=coupon_id).update(used_count=models.F("used_count") + 1)
 
             Cart.objects.filter(id__in=[c.id for c in cart_items]).delete()
 
