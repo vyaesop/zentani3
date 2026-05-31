@@ -2,49 +2,49 @@
 {% load static %}
 {% load image_optim %}
 
-{% block title %}Zentanee | Home{% endblock %}
+{% block title %}Zentanee | Shop fashion & jewelry in Addis Ababa{% endblock %}
+{% block meta_description %}Zentanee — curated fashion and jewelry with free delivery in Addis Ababa. Pay on delivery. Browse new arrivals, collections, and brands.{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
   <section class="spring-hero spring-hero--denim spring-container">
-      <h1>Curated, statement layers, and everyday pieces worth repeating.</h1>
-      <p class="spring-hero__copy">Shop the latest drop from Zentanee with a cleaner, simpler storefront.</p>
+      <p class="spring-hero__eyebrow">Free delivery in Addis Ababa · Pay on delivery</p>
+      <h1>Fashion and jewelry, delivered to your door.</h1>
+      <p class="spring-hero__copy">Browse curated drops from the best local and international brands. No online payment required — pay when your order arrives.</p>
       <div class="spring-hero__actions">
-          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
-          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Shop collections</a>
+          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all products</a>
+          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Browse collections</a>
       </div>
   </section>
 
+  {% if recently_viewed_products %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Featured Products</h2>
-          <a href="{% url 'store:all-products' %}">View all</a>
+          <h2>Pick Up Where You Left Off</h2>
+          <a href="{% url 'store:all-products' %}">Browse more</a>
       </div>
-
       <div class="spring-product-grid">
-          {% for product in products %}
+          {% for product in recently_viewed_products %}
           <div class="spring-grid-item">
               {% include 'store/_product_card_content.html' with product=product %}
           </div>
-          {% empty %}
-          <p class="text-muted mb-0">Featured products will appear here once they are marked in admin.</p>
           {% endfor %}
       </div>
   </section>
+  {% endif %}
 
   <section class="spring-section spring-container">
       <div class="spring-section__head">
           <h2>Latest Drops</h2>
-          <a href="{% url 'store:all-products' %}?sort=newest">Newest first</a>
+          <a href="{% url 'store:all-products' %}?sort=newest">See all new arrivals</a>
       </div>
-
       <div class="spring-product-grid">
           {% for product in latest_products %}
           <div class="spring-grid-item">
               {% include 'store/_product_card_content.html' with product=product %}
           </div>
           {% empty %}
-          <p class="text-muted mb-0">Latest drops will appear here as soon as products go live.</p>
+          <p class="text-muted mb-0">New arrivals will appear here as soon as products go live.</p>
           {% endfor %}
       </div>
   </section>
@@ -52,9 +52,8 @@
   <section class="spring-section spring-container">
       <div class="spring-section__head">
           <h2>Shop Collections</h2>
-          <a href="{% url 'store:all-categories' %}">View all</a>
+          <a href="{% url 'store:all-categories' %}">View all collections</a>
       </div>
-
       <div class="spring-collection-grid">
           {% for category in categories %}
           <article class="spring-collection-card">
@@ -81,9 +80,8 @@
   <section class="spring-section spring-container">
       <div class="spring-section__head">
           <h2>Most Wanted</h2>
-          <span class="spring-section__meta">The products shoppers are ordering most</span>
+          <span class="spring-section__meta">The products Zentanee shoppers order most</span>
       </div>
-
       <div class="spring-product-grid">
           {% for product in top_selling_products %}
           <div class="spring-grid-item">
@@ -96,10 +94,25 @@
 
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Featured Brands</h2>
-          <a href="{% url 'store:all-brands' %}">View all</a>
+          <h2>Featured Products</h2>
+          <a href="{% url 'store:all-products' %}">View all</a>
       </div>
+      <div class="spring-product-grid">
+          {% for product in products %}
+          <div class="spring-grid-item">
+              {% include 'store/_product_card_content.html' with product=product %}
+          </div>
+          {% empty %}
+          <p class="text-muted mb-0">Featured products will appear here once they are marked in admin.</p>
+          {% endfor %}
+      </div>
+  </section>
 
+  <section class="spring-section spring-container">
+      <div class="spring-section__head">
+          <h2>Featured Brands</h2>
+          <a href="{% url 'store:all-brands' %}">View all brands</a>
+      </div>
       <div class="spring-brand-grid">
           {% for brand in brands %}
           <a href="{% url 'store:brand-products' brand.slug %}" class="spring-brand-card">
@@ -116,21 +129,19 @@
       </div>
   </section>
 
-  {% if recently_viewed_products %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Pick Up Where You Left Off</h2>
-          <a href="{% url 'store:all-products' %}">Browse more</a>
+  <section class="spring-section spring-container spring-trust-bar">
+      <div class="spring-trust-item">
+          <strong>Free delivery</strong>
+          <p>On orders over 3,500 ETB in Addis Ababa</p>
       </div>
-
-      <div class="spring-product-grid">
-          {% for product in recently_viewed_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
-          {% endfor %}
+      <div class="spring-trust-item">
+          <strong>Pay on delivery</strong>
+          <p>No online payment required. You pay when the order arrives.</p>
+      </div>
+      <div class="spring-trust-item">
+          <strong>Order on Telegram</strong>
+          <p>Place orders directly via <a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener">our Telegram bot</a></p>
       </div>
   </section>
-  {% endif %}
 </main>
 {% endblock content %}

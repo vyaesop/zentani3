@@ -123,6 +123,51 @@ class RestockRequestForm(forms.ModelForm):
         return self.cleaned_data["size"].strip()
 
 
+class GuestCheckoutForm(forms.Form):
+    full_name = forms.CharField(
+        max_length=150,
+        label="Full name",
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Full name"}),
+    )
+    phone = forms.CharField(
+        max_length=20,
+        label="Phone number",
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Phone number"}),
+    )
+    city = forms.CharField(
+        max_length=150,
+        label="City",
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "City"}),
+    )
+    address = forms.CharField(
+        max_length=255,
+        label="Delivery address",
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Delivery address"}),
+    )
+
+    def clean_full_name(self):
+        value = self.cleaned_data["full_name"].strip()
+        if len(value) < 2:
+            raise forms.ValidationError("Please enter your full name.")
+        return value
+
+    def clean_phone(self):
+        value = self.cleaned_data["phone"].strip()
+        digits = "".join(c for c in value if c.isdigit())
+        if len(digits) < 7:
+            raise forms.ValidationError("Please enter a valid phone number.")
+        return value
+
+    def clean_city(self):
+        return self.cleaned_data["city"].strip()
+
+    def clean_address(self):
+        value = self.cleaned_data["address"].strip()
+        if len(value) < 5:
+            raise forms.ValidationError("Please enter a more complete delivery address.")
+        return value
+
+
 class PasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(label=_("Old Password"), strip=False, widget=forms.PasswordInput(attrs={'autocomplete':'current-password', 'auto-focus':True, 'class':'form-control', 'placeholder':'Current Password'}))
     new_password1 = forms.CharField(label=_("New Password"), strip=False, widget=forms.PasswordInput(attrs={'autocomplete':'new-password', 'class':'form-control', 'placeholder':'New Password'}), help_text=password_validation.password_validators_help_text_html())

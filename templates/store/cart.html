@@ -18,9 +18,9 @@
 
       {% if cart_products %}
       <div class="spring-cart-layout">
-          <section class="spring-cart-list">
+          <section class="spring-cart-list" id="cart-list">
               {% for item in cart_products %}
-              <article class="spring-cart-item">
+              <article class="spring-cart-item" data-cart-item-id="{{ item.id }}">
                   <a href="{% url 'store:product-detail' item.product.slug %}" class="spring-cart-item__media">
                       {% if item.product.product_image %}
                       <img loading="lazy" src="{{ item.product.product_image.url|cdn_optimize }}" alt="{{ item.product.title }}">
@@ -31,30 +31,29 @@
 
                   <div class="spring-cart-item__info">
                       <h2><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h2>
-                      <p>{{ item.product.price|floatformat:2 }} ETB</p>
+                      <p>{{ item.product.price|floatformat:2 }} ETB each</p>
                       {% if item.size %}
                       <p>Size: {{ item.size }}</p>
                       {% endif %}
 
                       <div class="spring-cart-item__qty">
-                          <form action="{% url 'store:minus-cart' item.id %}" method="POST">
-                              {% csrf_token %}
-                              <button type="submit" aria-label="Decrease quantity">-</button>
-                          </form>
-                          <input type="text" value="{{ item.quantity }}" readonly>
-                          <form action="{% url 'store:plus-cart' item.id %}" method="POST">
-                              {% csrf_token %}
-                              <button type="submit" aria-label="Increase quantity">+</button>
-                          </form>
+                          <button type="button" class="spring-cart-qty-btn"
+                              data-action="{% url 'store:minus-cart' item.id %}"
+                              data-item-id="{{ item.id }}"
+                              aria-label="Decrease quantity">−</button>
+                          <span class="spring-cart-qty-display" id="qty-{{ item.id }}">{{ item.quantity }}</span>
+                          <button type="button" class="spring-cart-qty-btn"
+                              data-action="{% url 'store:plus-cart' item.id %}"
+                              data-item-id="{{ item.id }}"
+                              aria-label="Increase quantity">+</button>
                       </div>
                   </div>
 
                   <div class="spring-cart-item__aside">
-                      <strong>{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</strong>
-                      <form action="{% url 'store:remove-cart' item.id %}" method="POST">
-                          {% csrf_token %}
-                          <button type="submit" class="spring-text-link">Remove</button>
-                      </form>
+                      <strong id="item-total-{{ item.id }}">{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</strong>
+                      <button type="button" class="spring-text-link spring-cart-remove-btn"
+                          data-action="{% url 'store:remove-cart' item.id %}"
+                          data-item-id="{{ item.id }}">Remove</button>
                   </div>
               </article>
               {% endfor %}
@@ -78,37 +77,46 @@
               </div>
               {% endif %}
 
-              <div class="spring-cart-summary__rows">
-                  <div><span>Subtotal</span><strong>{{ amount|floatformat:2 }} ETB</strong></div>
+              <div class="spring-cart-summary__rows" id="cart-totals">
+                  <div><span>Subtotal</span><strong id="cart-subtotal">{{ amount|floatformat:2 }} ETB</strong></div>
                   <div><span>Delivery</span><strong>{% if shipping_amount == 0 %}Free{% else %}{{ shipping_amount|floatformat:2 }} ETB{% endif %}</strong></div>
                   <div><span>Payment</span><strong>Pay on delivery</strong></div>
                   {% if coupon %}
-                  <div><span>Coupon {{ coupon.code }}</span><strong>-{{ coupon.discount }}%</strong></div>
+                  <div><span>Coupon {{ coupon.code }}</span><strong>−{{ coupon.discount }}%</strong></div>
                   {% endif %}
-                  <div class="spring-cart-summary__total"><span>Total</span><strong>{{ total_amount|floatformat:2 }} ETB</strong></div>
+                  <div class="spring-cart-summary__total"><span>Total</span><strong id="cart-total">{{ total_amount|floatformat:2 }} ETB</strong></div>
               </div>
               <p class="spring-cart-summary__shipping-note">{{ shipping_note }}</p>
 
-              <form action="{% url 'store:add-coupon' %}" method="POST" class="spring-cart-summary__coupon">
-                  {% csrf_token %}
-                  <input type="text" name="coupon" class="form-control" placeholder="Coupon code">
-                  <button class="btn btn-outline-dark" type="submit">Apply</button>
-              </form>
+              <div class="spring-cart-summary__coupon-wrap">
+                  <form action="{% url 'store:add-coupon' %}" method="POST" class="spring-cart-summary__coupon" id="coupon-form">
+                      {% csrf_token %}
+                      <input type="text" name="coupon" id="coupon-input" class="form-control" placeholder="Coupon code" value="{{ coupon.code|default:'' }}">
+                      <button class="btn btn-outline-dark" type="submit">Apply</button>
+                  </form>
+                  <p id="coupon-feedback" class="small mt-1" role="alert" aria-live="polite"></p>
+              </div>
+
+              <a href="{% url 'store:all-products' %}" class="spring-text-link spring-cart-continue">← Continue shopping</a>
 
               <form action="{% url 'store:checkout' %}" method="POST" class="spring-cart-summary__checkout">
                   {% csrf_token %}
                   {% if guest_checkout %}
                   <div class="spring-auth__field">
-                      <input type="text" name="full_name" class="form-control" placeholder="Full name" required>
+                      <label for="guest-full-name">Full name</label>
+                      <input type="text" id="guest-full-name" name="full_name" class="form-control" placeholder="Full name" required minlength="2">
                   </div>
                   <div class="spring-auth__field">
-                      <input type="text" name="phone" class="form-control" placeholder="Phone number" required>
+                      <label for="guest-phone">Phone number</label>
+                      <input type="tel" id="guest-phone" name="phone" class="form-control" placeholder="Phone number" required>
                   </div>
                   <div class="spring-auth__field">
-                      <input type="text" name="city" class="form-control" placeholder="City" required>
+                      <label for="guest-city">City</label>
+                      <input type="text" id="guest-city" name="city" class="form-control" placeholder="City" required>
                   </div>
                   <div class="spring-auth__field">
-                      <input type="text" name="address" class="form-control" placeholder="Delivery address" required>
+                      <label for="guest-address">Delivery address</label>
+                      <input type="text" id="guest-address" name="address" class="form-control" placeholder="Delivery address (landmark or street)" required minlength="5">
                   </div>
                   {% endif %}
 
@@ -128,3 +136,110 @@
   </div>
 </main>
 {% endblock content %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const getCsrf = () => document.querySelector('[name=csrfmiddlewaretoken]')
+        ? document.querySelector('[name=csrfmiddlewaretoken]').value
+        : '';
+
+    function updateCartCount(count) {
+        if (typeof count === 'undefined') return;
+        document.querySelectorAll('.spring-cart-count, .cart-count').forEach(function (el) {
+            el.textContent = count;
+        });
+    }
+
+    async function postCartAction(url) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCsrf(),
+            },
+        });
+        if (!res.ok) throw new Error('Request failed');
+        return res.json();
+    }
+
+    document.querySelectorAll('.spring-cart-qty-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const url = btn.getAttribute('data-action');
+            const itemId = btn.getAttribute('data-item-id');
+            btn.disabled = true;
+            try {
+                const data = await postCartAction(url);
+                if (data && typeof data.quantity !== 'undefined') {
+                    const qtyEl = document.getElementById('qty-' + itemId);
+                    const totalEl = document.getElementById('item-total-' + itemId);
+                    if (data.quantity <= 0) {
+                        const row = document.querySelector('[data-cart-item-id="' + itemId + '"]');
+                        if (row) row.remove();
+                    } else {
+                        if (qtyEl) qtyEl.textContent = data.quantity;
+                        if (totalEl && data.item_total) totalEl.textContent = parseFloat(data.item_total).toFixed(2) + ' ETB';
+                    }
+                    const subtotalEl = document.getElementById('cart-subtotal');
+                    const totalEl2 = document.getElementById('cart-total');
+                    if (subtotalEl && data.subtotal) subtotalEl.textContent = parseFloat(data.subtotal).toFixed(2) + ' ETB';
+                    if (totalEl2 && data.total) totalEl2.textContent = parseFloat(data.total).toFixed(2) + ' ETB';
+                    updateCartCount(data.cart_items_count);
+                } else {
+                    window.location.reload();
+                }
+            } catch (e) {
+                window.location.reload();
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('.spring-cart-remove-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const url = btn.getAttribute('data-action');
+            const itemId = btn.getAttribute('data-item-id');
+            btn.disabled = true;
+            try {
+                await postCartAction(url);
+                const row = document.querySelector('[data-cart-item-id="' + itemId + '"]');
+                if (row) row.remove();
+                window.location.reload();
+            } catch (e) {
+                window.location.reload();
+            }
+        });
+    });
+
+    // Inline coupon feedback
+    const couponForm = document.getElementById('coupon-form');
+    const couponFeedback = document.getElementById('coupon-feedback');
+    if (couponForm && couponFeedback) {
+        couponForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const input = document.getElementById('coupon-input');
+            couponFeedback.textContent = '';
+            try {
+                const body = new FormData(couponForm);
+                const res = await fetch(couponForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCsrf(),
+                    },
+                    body: body,
+                });
+                const data = await res.json();
+                couponFeedback.className = 'small mt-1 ' + (data.ok ? 'text-success' : 'text-danger');
+                couponFeedback.textContent = data.message || (data.ok ? 'Coupon applied.' : 'Invalid coupon code.');
+                if (data.ok) window.location.reload();
+            } catch (err) {
+                couponFeedback.className = 'small mt-1 text-danger';
+                couponFeedback.textContent = 'Could not apply coupon. Please try again.';
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

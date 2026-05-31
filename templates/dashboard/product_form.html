@@ -113,12 +113,36 @@
         <div class="spring-dashboard-editor__header-actions">
             <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Back to products</a>
             <button type="submit" class="btn btn-dark">Save product</button>
-            <button type="submit" name="save_and_publish" value="1" class="btn btn-outline-dark">Save & post to Telegram</button>
+            <button type="submit" name="save_and_publish" value="1" class="btn btn-outline-dark"
+                onclick="return confirm('This will post the product to the Telegram channel immediately. Continue?')">
+                Save &amp; post to Telegram
+            </button>
         </div>
     </section>
 
     <section class="spring-dashboard-editor__layout">
         <div class="spring-dashboard-editor__main">
+            <article class="spring-dashboard-panel">
+                <div class="spring-dashboard-section-head">
+                    <div>
+                        <p class="spring-dashboard-kicker">Primary media</p>
+                        <h3>Cover image</h3>
+                    </div>
+                </div>
+                <div class="spring-dashboard-form-grid">
+                    <label class="spring-dashboard-field spring-dashboard-field--wide">
+                        <span>Main product image</span>
+                        {{ form.product_image }}
+                        {% for error in form.product_image.errors %}<small>{{ error }}</small>{% endfor %}
+                    </label>
+                    {% if product and product.product_image %}
+                    <div class="spring-dashboard-cover-preview">
+                        <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+
             <article class="spring-dashboard-panel">
                 <div class="spring-dashboard-section-head">
                     <div>
@@ -314,25 +338,6 @@
                     <label>{{ form.is_featured }} <span>Featured placement</span></label>
                     <label>{{ form.is_sold_out }} <span>Mark as sold out</span></label>
                 </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Primary media</p>
-                        <h3>Cover image</h3>
-                    </div>
-                </div>
-                <label class="spring-dashboard-field spring-dashboard-field--wide">
-                    <span>Main product image</span>
-                    {{ form.product_image }}
-                    {% for error in form.product_image.errors %}<small>{{ error }}</small>{% endfor %}
-                </label>
-                {% if product and product.product_image %}
-                <div class="spring-dashboard-cover-preview">
-                    <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
-                </div>
-                {% endif %}
             </article>
 
             <article class="spring-dashboard-panel">

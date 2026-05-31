@@ -15,14 +15,29 @@
         <form action="{% url 'store:toggle-wishlist' product.id %}" method="POST" class="spring-product-card__save-form">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <button type="submit" class="spring-product-card__save {% if product.id in saved_product_ids %}is-saved{% endif %}" aria-label="Save {{ product.title }}">
-                <span>{% if product.id in saved_product_ids %}Saved{% else %}Save{% endif %}</span>
+            <button type="submit"
+                class="spring-product-card__save {% if product.id in saved_product_ids %}is-saved{% endif %}"
+                aria-label="{% if product.id in saved_product_ids %}Remove {{ product.title }} from saved items{% else %}Save {{ product.title }}{% endif %}">
+                {% if product.id in saved_product_ids %}
+                <i class="fas fa-heart" aria-hidden="true"></i>
+                <span>Saved</span>
+                {% else %}
+                <i class="far fa-heart" aria-hidden="true"></i>
+                <span>Save</span>
+                {% endif %}
             </button>
         </form>
         {% else %}
-        <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-product-card__save" aria-label="Log in to save {{ product.title }}">
+        <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}"
+            class="spring-product-card__save"
+            aria-label="Log in to save {{ product.title }}">
+            <i class="far fa-heart" aria-hidden="true"></i>
             <span>Save</span>
         </a>
+        {% endif %}
+
+        {% if product.is_sold_out %}
+        <span class="spring-product-card__badge spring-product-card__badge--soldout">Sold out</span>
         {% endif %}
     </div>
 
@@ -33,13 +48,20 @@
         {% endif %}
 
         {% if product.is_sold_out %}
-        <p class="spring-product-card__price spring-product-card__price--soldout">Sold out</p>
+        <p class="spring-product-card__price spring-product-card__price--soldout">
+            Sold out
+            <a href="{% url 'store:product-detail' product.slug %}#restock" class="spring-product-card__notify">Notify me</a>
+        </p>
         {% else %}
         <p class="spring-product-card__price">{{ product.price }} ETB</p>
         {% endif %}
 
         {% if product.available_sizes and not product.is_sold_out %}
-        <p class="spring-product-card__sizes">Available sizes: {{ product.available_sizes }}</p>
+        <div class="spring-product-card__sizes">
+            {% for size in product.available_sizes|split:"," %}
+            <span class="spring-size-chip">{{ size|strip }}</span>
+            {% endfor %}
+        </div>
         {% endif %}
     </div>
 </article>

@@ -238,15 +238,31 @@ class Product(models.Model):
             Product.objects.filter(pk=self.pk).update(stock_quantity=0)
             self.stock_quantity = 0
 
+    def _reconcile_sold_out_flag(self):
+        """Keep is_sold_out consistent with stock_quantity when sizes are tracked."""
+        if self.pk and ProductSizeStock.objects.filter(product_id=self.pk).exists():
+            # Sizes are managed — derive sold-out from actual stock, never trust the flag alone.
+            total = (
+                ProductSizeStock.objects.filter(product_id=self.pk)
+                .aggregate(total=models.Sum("quantity"))["total"]
+                or 0
+            )
+            return total <= 0
+        # No per-size inventory: fall back to stock_quantity.
+        return self.stock_quantity <= 0
+
     def save(self, *args, **kwargs):
         if self.product_image and getattr(self.product_image, "name", ""):
             self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
         converted = _convert_uploaded_image_to_webp(self.product_image)
         if converted is not None:
             self.product_image = converted
+        # Reconcile before save so the written value is always consistent.
+        if self.pk:
+            self.is_sold_out = self._reconcile_sold_out_flag()
         super().save(*args, **kwargs)
         self._sync_size_inventory()
-    
+
 class ProductImages(models.Model):
     image = models.ImageField(upload_to="product-images", default="product.jpg")
     product = models.ForeignKey(Product, related_name="p_images",on_delete=models.SET_NULL, null=True)
@@ -480,16 +496,26 @@ class RestockRequest(models.Model):
         return f"{self.product.title} restock request ({size_label})"
 
 class Coupon(models.Model):
-    code = models.CharField(max_length=30, unique=True,default=None)
+    code = models.CharField(max_length=30, unique=True, default=None)
     active = models.BooleanField(default=True)
-    discount = models.PositiveBigIntegerField(help_text='discount in percentage',default=None)
+    discount = models.PositiveBigIntegerField(help_text='discount in percentage', default=None)
     active_date = models.DateField(default=None)
     expiry_date = models.DateField(default=None)
     created_date = models.DateTimeField(default=None)
+    used_count = models.PositiveIntegerField(default=0, verbose_name="Times Used", editable=False)
+    max_uses = models.PositiveIntegerField(null=True, blank=True, verbose_name="Max Uses", help_text="Leave blank for unlimited.")
 
-    
     def __str__(self) -> str:
         return self.code
+
+    def record_use(self):
+        """Increment used_count atomically. Call once per order that applies this coupon."""
+        Coupon.objects.filter(pk=self.pk).update(used_count=models.F("used_count") + 1)
+        self.used_count += 1
+
+    @property
+    def is_exhausted(self):
+        return self.max_uses is not None and self.used_count >= self.max_uses
     
 class Cart(models.Model):
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
@@ -546,6 +572,7 @@ class Order(models.Model):
         max_length=50,
         default="Pending"
         )
+    staff_notes = models.TextField(blank=True, verbose_name="Staff Notes", help_text="Internal notes visible only to staff (address changes, delivery instructions, etc.)")
 
     class Meta:
         indexes = [

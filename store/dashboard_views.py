@@ -302,24 +302,51 @@ def dashboard_home(request):
 @staff_required
 def dashboard_orders(request):
     if request.method == "POST":
+        action = (request.POST.get("action") or "single").strip()
+        next_url = request.POST.get("next") or reverse("store:dashboard-orders")
+
+        if action == "bulk":
+            order_ids = request.POST.getlist("order_ids")
+            new_status = (request.POST.get("bulk_status") or "").strip()
+            if not order_ids:
+                messages.warning(request, "No orders selected.")
+                return redirect(next_url)
+            if new_status not in STATUS_VALUES:
+                messages.error(request, "Invalid status selected for bulk update.")
+                return redirect(next_url)
+            updated = Order.objects.filter(pk__in=order_ids).exclude(status=new_status).update(status=new_status)
+            messages.success(request, f"{updated} order{'s' if updated != 1 else ''} moved to {new_status}.")
+            return redirect(next_url)
+
+        # Single order update (status + optional staff notes).
         order = get_object_or_404(Order, pk=request.POST.get("order_id"))
         new_status = (request.POST.get("status") or "").strip()
+        staff_notes = (request.POST.get("staff_notes") or "").strip()
+
         if new_status not in STATUS_VALUES:
             messages.error(request, "That order status is not valid.")
-            return redirect(request.POST.get("next") or reverse("store:dashboard-orders"))
+            return redirect(next_url)
 
+        update_fields = []
         if order.status != new_status:
             order.status = new_status
-            order.save(update_fields=["status"])
-            messages.success(request, f"Order #{order.id} moved to {new_status}.")
+            update_fields.append("status")
+        if staff_notes != order.staff_notes:
+            order.staff_notes = staff_notes
+            update_fields.append("staff_notes")
+        if update_fields:
+            order.save(update_fields=update_fields)
+            messages.success(request, f"Order #{order.id} updated.")
         else:
-            messages.info(request, f"Order #{order.id} is already marked as {new_status}.")
-        return redirect(request.POST.get("next") or reverse("store:dashboard-orders"))
+            messages.info(request, f"Order #{order.id} — no changes detected.")
+        return redirect(next_url)
 
     query = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "").strip()
 
-    orders = Order.objects.select_related("user", "product").order_by("-ordered_date")
+    from .models import Address as _Address
+
+    orders = Order.objects.select_related("user", "product", "product__category").order_by("-ordered_date")
     if status in STATUS_VALUES:
         orders = orders.filter(status=status)
     if query:
