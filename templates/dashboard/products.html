@@ -1,118 +1,145 @@
 {% extends "dashboard/base.html" %}
+{% load image_optim %}
 
 {% block dashboard_content %}
-<section class="spring-dashboard-stat-grid">
-    <article class="spring-dashboard-stat-card">
-        <span>Catalog products</span>
-        <strong>{{ product_summary.total }}</strong>
-        <p>{{ product_summary.active }} active</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Featured</span>
-        <strong>{{ product_summary.featured }}</strong>
-        <p>Live in highlighted slots</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Sold out</span>
-        <strong>{{ product_summary.sold_out }}</strong>
-        <p>Need replenishment or hiding</p>
-    </article>
-    <article class="spring-dashboard-stat-card">
-        <span>Low stock</span>
-        <strong>{{ product_summary.low_stock }}</strong>
-        <p>Three units or fewer left</p>
-    </article>
-</section>
 
-<section class="spring-dashboard-panel">
-    <form method="get" class="spring-dashboard-filters spring-dashboard-filters--catalog">
-        <label>
-            <span>Search</span>
-            <input type="text" name="q" value="{{ filters.q }}" class="spring-dashboard-control" placeholder="Title, SKU, slug, collection, brand">
-        </label>
-        <label>
-            <span>Collection</span>
-            <select name="category" class="spring-dashboard-control">
-                <option value="">All collections</option>
-                {% for category in category_options %}
-                <option value="{{ category.slug }}" {% if filters.category == category.slug %}selected{% endif %}>{{ category.title }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            <span>State</span>
-            <select name="state" class="spring-dashboard-control">
-                <option value="">All states</option>
-                <option value="active" {% if filters.state == "active" %}selected{% endif %}>Active</option>
-                <option value="inactive" {% if filters.state == "inactive" %}selected{% endif %}>Hidden</option>
-                <option value="featured" {% if filters.state == "featured" %}selected{% endif %}>Featured</option>
-                <option value="sold-out" {% if filters.state == "sold-out" %}selected{% endif %}>Sold out</option>
-                <option value="low-stock" {% if filters.state == "low-stock" %}selected{% endif %}>Low stock</option>
-            </select>
-        </label>
-        <div class="spring-dashboard-filters__actions">
-            <button type="submit" class="btn btn-dark">Apply</button>
-            <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Reset</a>
-        </div>
-    </form>
-</section>
+<!-- Stats -->
+<div class="zd-stat-grid">
+  <div class="zd-stat">
+    <span class="zd-stat-label">Total products</span>
+    <div class="zd-stat-value">{{ product_summary.total }}</div>
+    <p class="zd-stat-sub">{{ product_summary.active }} active</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Featured</span>
+    <div class="zd-stat-value">{{ product_summary.featured }}</div>
+    <p class="zd-stat-sub">In highlighted slots</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Sold out</span>
+    <div class="zd-stat-value">{{ product_summary.sold_out }}</div>
+    <p class="zd-stat-sub">Need replenishment</p>
+  </div>
+  <div class="zd-stat">
+    <span class="zd-stat-label">Low stock</span>
+    <div class="zd-stat-value">{{ product_summary.low_stock }}</div>
+    <p class="zd-stat-sub">3 units or fewer</p>
+  </div>
+</div>
 
-<section class="spring-dashboard-panel">
-    <div class="spring-dashboard-section-head">
-        <div>
-            <p class="spring-dashboard-kicker">Catalog list</p>
-            <h3>Products ready for quick editing</h3>
-        </div>
-        <a href="{% url 'store:dashboard-product-create' %}" class="btn btn-dark">Add product</a>
+<!-- Catalog panel -->
+<div class="zd-panel">
+
+  <!-- Filters -->
+  <form method="get" class="zd-filters">
+    <div class="zd-filters-field">
+      <label>Search</label>
+      <input type="text" name="q" value="{{ filters.q }}" class="zd-input zd-input--wide"
+        placeholder="Title, SKU, slug, brand">
     </div>
-
-    <div class="spring-dashboard-catalog-list">
-        {% for product in products %}
-        <article class="spring-dashboard-catalog-row">
-            <div class="spring-dashboard-catalog-row__main">
-                <div>
-                    <p class="spring-dashboard-kicker">{{ product.category.title }}{% if product.brand %} · {{ product.brand.title }}{% endif %}</p>
-                    <h3>{{ product.title }}</h3>
-                    <p>{{ product.sku }}</p>
-                </div>
-                <div class="spring-dashboard-token-list">
-                    {% if product.is_featured %}<span>Featured</span>{% endif %}
-                    {% if not product.is_active %}<span>Hidden</span>{% endif %}
-                    {% if product.is_sold_out %}<span>Sold out</span>{% endif %}
-                </div>
-            </div>
-
-            <div class="spring-dashboard-catalog-row__meta">
-                <div>
-                    <span>Price</span>
-                    <strong>{{ product.price }}</strong>
-                </div>
-                <div>
-                    <span>Stock</span>
-                    <strong>{{ product.stock_quantity }}</strong>
-                </div>
-                <div>
-                    <span>Sizes</span>
-                    <strong>{{ product.available_sizes|default:"-" }}</strong>
-                </div>
-            </div>
-
-            <div class="spring-dashboard-catalog-row__actions">
-                <a href="{% url 'store:dashboard-product-edit' product.id %}" class="btn btn-dark">Edit</a>
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="product_id" value="{{ product.id }}">
-                    <input type="hidden" name="action" value="publish_telegram">
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <button type="submit" class="btn btn-outline-dark">Post to Telegram</button>
-                </form>
-            </div>
-        </article>
-        {% empty %}
-        <div class="spring-dashboard-empty">No products matched the current filter.</div>
+    <div class="zd-filters-field">
+      <label>Collection</label>
+      <select name="category" class="zd-select" style="width:160px">
+        <option value="">All collections</option>
+        {% for cat in category_options %}
+        <option value="{{ cat.slug }}" {% if filters.category == cat.slug %}selected{% endif %}>{{ cat.title }}</option>
         {% endfor %}
+      </select>
     </div>
-</section>
+    <div class="zd-filters-field">
+      <label>State</label>
+      <select name="state" class="zd-select" style="width:140px">
+        <option value="">All states</option>
+        <option value="active"    {% if filters.state == "active"    %}selected{% endif %}>Active</option>
+        <option value="inactive"  {% if filters.state == "inactive"  %}selected{% endif %}>Hidden</option>
+        <option value="featured"  {% if filters.state == "featured"  %}selected{% endif %}>Featured</option>
+        <option value="sold-out"  {% if filters.state == "sold-out"  %}selected{% endif %}>Sold out</option>
+        <option value="low-stock" {% if filters.state == "low-stock" %}selected{% endif %}>Low stock</option>
+      </select>
+    </div>
+    <div class="zd-filters-actions">
+      <button type="submit" class="zd-btn zd-btn--primary zd-btn--sm">Apply</button>
+      <a href="{% url 'store:dashboard-products' %}" class="zd-btn zd-btn--ghost zd-btn--sm">Reset</a>
+    </div>
+  </form>
 
-{% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Product pages' %}
+  <!-- Catalog list header -->
+  <div class="zd-panel-head" style="border-top: 1px solid var(--z-border);">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Product catalog</p>
+      <p class="zd-panel-head-sub">Click Edit to open the product editor</p>
+    </div>
+    <div class="zd-panel-head-right">
+      <a href="{% url 'store:dashboard-product-create' %}" class="zd-btn zd-btn--primary zd-btn--sm">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M8 3v10M3 8h10"/>
+        </svg>
+        Add product
+      </a>
+    </div>
+  </div>
+
+  <!-- Rows -->
+  <div class="zd-catalog-list">
+    {% for product in products %}
+    <div class="zd-catalog-row">
+      <div class="zd-catalog-thumb">
+        {% if product.product_image %}
+        <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+        {% endif %}
+      </div>
+
+      <div class="zd-catalog-info">
+        <div class="zd-catalog-info-name">{{ product.title }}</div>
+        <div class="zd-catalog-info-sub">
+          {{ product.sku }}
+          {% if product.category %} · {{ product.category.title }}{% endif %}
+          {% if product.brand %} · {{ product.brand.title }}{% endif %}
+        </div>
+        <div class="zd-catalog-badges">
+          {% if not product.is_active %}<span class="zd-pill zd-pill--draft">Hidden</span>{% endif %}
+          {% if product.is_featured %}<span class="zd-pill zd-pill--active">Featured</span>{% endif %}
+          {% if product.is_sold_out %}<span class="zd-pill zd-pill--cancelled">Sold out</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="zd-catalog-meta">
+        <div class="zd-catalog-meta-item">
+          <span>Price</span>
+          <strong>{{ product.price }} ETB</strong>
+        </div>
+        <div class="zd-catalog-meta-item">
+          <span>Stock</span>
+          <strong>{{ product.stock_quantity }}</strong>
+        </div>
+        <div class="zd-catalog-meta-item">
+          <span>Sizes</span>
+          <strong>{{ product.available_sizes|default:"—" }}</strong>
+        </div>
+      </div>
+
+      <div class="zd-catalog-actions">
+        <a href="{% url 'store:dashboard-product-edit' product.id %}" class="zd-btn zd-btn--primary zd-btn--sm">Edit</a>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="product_id" value="{{ product.id }}">
+          <input type="hidden" name="action" value="publish_telegram">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm"
+            onclick="return confirm('Post this product to the Telegram channel?')">Post</button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="zd-empty">
+      <div class="zd-empty-icon">📦</div>
+      <div class="zd-empty-title">No products found</div>
+      <p class="zd-empty-sub">Try a different filter, or add a new product.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% include "dashboard/_pagination.html" with page_obj=page_obj page_numbers=page_numbers query_string_without_page=query_string_without_page aria_label='Product pages' %}
+</div>
+
 {% endblock %}

@@ -2,401 +2,459 @@
 {% load image_optim %}
 
 {% block dashboard_content %}
+
+<!-- Non-field errors -->
 {% if form.non_field_errors or image_formset.non_form_errors %}
-<section class="spring-dashboard-panel spring-dashboard-panel--danger">
-    {% for error in form.non_field_errors %}
-    <p>{{ error }}</p>
-    {% endfor %}
-    {% for error in image_formset.non_form_errors %}
-    <p>{{ error }}</p>
-    {% endfor %}
-</section>
+<div class="zd-panel" style="border-color:rgba(181,42,42,.3);background:var(--z-red-bg)">
+  <div class="zd-panel-body" style="color:var(--z-red-text)">
+    {% for e in form.non_field_errors %}<p style="margin:0">{{ e }}</p>{% endfor %}
+    {% for e in image_formset.non_form_errors %}<p style="margin:0">{{ e }}</p>{% endfor %}
+  </div>
+</div>
 {% endif %}
 
-<section class="spring-dashboard-editor-hero">
-    <div>
-        <p class="spring-dashboard-kicker">Fast posting flow</p>
-        <h2>{% if product %}Edit {{ product.title }}{% else %}Post a new product{% endif %}</h2>
-        <p>Desktop is tuned for quick scanning and fewer clicks. Enter sizes once, and each new size is stocked at {{ stock_per_size }} units automatically.</p>
-    </div>
-    <div class="spring-dashboard-editor-hero__meta">
-        <div>
-            <span>Stock policy</span>
-            <strong>{{ stock_per_size }} per size</strong>
-        </div>
-        <div>
-            <span>Current total stock</span>
-            <strong>{% if product %}{{ product.stock_quantity }}{% else %}Auto after save{% endif %}</strong>
-        </div>
-        <div>
-            <span>Status</span>
-            <strong>{% if product and product.is_sold_out %}Sold out{% elif product and product.is_active %}Live{% else %}Draft{% endif %}</strong>
-        </div>
-    </div>
-</section>
-
+<!-- AI intake (optional) -->
 {% if gemini_is_configured %}
-<section class="spring-dashboard-panel spring-dashboard-panel--subtle">
-    <div class="spring-dashboard-section-head">
-        <div>
-            <p class="spring-dashboard-kicker">Optional AI assist</p>
-            <h3>Generate copy from a reference image</h3>
-        </div>
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">AI copy assist</p>
+      <p class="zd-panel-head-sub">Generate title, description and SEO from a reference image</p>
     </div>
-    <form method="post" enctype="multipart/form-data" class="spring-dashboard-form-grid spring-dashboard-form-grid--assist">
-        {% csrf_token %}
-        <label class="spring-dashboard-field">
-            <span>Source SKU</span>
-            {{ ai_draft_form.sku }}
-            {% for error in ai_draft_form.sku.errors %}<small>{{ error }}</small>{% endfor %}
-        </label>
-        <label class="spring-dashboard-field">
-            <span>Price</span>
-            {{ ai_draft_form.price }}
-            {% for error in ai_draft_form.price.errors %}<small>{{ error }}</small>{% endfor %}
-        </label>
-        <label class="spring-dashboard-field">
-            <span>Vendor</span>
-            {{ ai_draft_form.vendor_hint }}
-            {% for error in ai_draft_form.vendor_hint.errors %}<small>{{ error }}</small>{% endfor %}
-        </label>
-        <label class="spring-dashboard-field spring-dashboard-field--wide">
-            <span>Reference image</span>
-            {{ ai_draft_form.reference_image }}
-            {% for error in ai_draft_form.reference_image.errors %}<small>{{ error }}</small>{% endfor %}
-        </label>
-        <div class="spring-dashboard-assist-actions">
-            <button type="submit" name="generate_ai_draft" value="1" class="btn btn-outline-dark">Generate product copy</button>
-            <p>Optional only. No AI image generation is used anywhere in this flow.</p>
+    <span class="zd-pill zd-pill--gemini-ready">Gemini ready</span>
+  </div>
+  <div class="zd-panel-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="zd-form-grid zd-form-grid-col2">
+        <div class="zd-field">
+          <span class="zd-field-label">Source SKU</span>
+          {{ ai_draft_form.sku }}
+          {% for e in ai_draft_form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
+        <div class="zd-field">
+          <span class="zd-field-label">Price</span>
+          {{ ai_draft_form.price }}
+          {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="zd-field">
+          <span class="zd-field-label">Vendor hint</span>
+          {{ ai_draft_form.vendor_hint }}
+          {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="zd-field zd-field-wide">
+          <span class="zd-field-label">Reference image</span>
+          {{ ai_draft_form.reference_image }}
+          {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--ghost">
+          Generate copy from image
+        </button>
+      </div>
     </form>
-</section>
+  </div>
+</div>
 {% endif %}
 
+<!-- AI draft result -->
 {% if ai_draft and ai_draft.status == "succeeded" %}
-<section class="spring-dashboard-ai-summary">
-    <article class="spring-dashboard-panel">
-        <p class="spring-dashboard-kicker">AI draft</p>
-        <h3>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</h3>
-        <p class="spring-dashboard-muted">Review these suggestions, then keep only what helps the listing read clearly.</p>
-    </article>
-    <article class="spring-dashboard-panel">
-        <span class="spring-dashboard-label">Suggested category</span>
-        <strong>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"-" }}</strong>
-        <span class="spring-dashboard-label">Suggested brand</span>
-        <strong>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"-" }}</strong>
-    </article>
-    <article class="spring-dashboard-panel">
-        <span class="spring-dashboard-label">Material</span>
-        <strong>{{ ai_draft.response_payload.catalog_fields.material|default:"-" }}</strong>
-        <span class="spring-dashboard-label">Color</span>
-        <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"-" }}</strong>
-    </article>
-    <article class="spring-dashboard-panel">
-        <span class="spring-dashboard-label">SEO title</span>
-        <strong>{{ ai_draft.seo_payload.seo_title|default:"-" }}</strong>
-        <span class="spring-dashboard-label">Meta description</span>
-        <strong>{{ ai_draft.seo_payload.meta_description|default:"-" }}</strong>
-    </article>
-</section>
+<div class="zd-ai-summary">
+  <div class="zd-ai-summary-field" style="grid-column:1/-1">
+    <span>AI draft ready</span>
+    <strong>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</strong>
+  </div>
+  <div class="zd-ai-summary-field">
+    <span>Suggested category</span>
+    <strong>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"—" }}</strong>
+  </div>
+  <div class="zd-ai-summary-field">
+    <span>Suggested brand</span>
+    <strong>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"—" }}</strong>
+  </div>
+  <div class="zd-ai-summary-field">
+    <span>Material</span>
+    <strong>{{ ai_draft.response_payload.catalog_fields.material|default:"—" }}</strong>
+  </div>
+  <div class="zd-ai-summary-field">
+    <span>Color</span>
+    <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"—" }}</strong>
+  </div>
+</div>
 {% endif %}
 
-<form method="post" enctype="multipart/form-data" class="spring-dashboard-editor">
-    {% csrf_token %}
+<!-- Main editor form -->
+<form method="post" enctype="multipart/form-data" class="zd-editor">
+  {% csrf_token %}
 
-    <section class="spring-dashboard-editor__header">
-        <div>
-            <p class="spring-dashboard-kicker">Product workspace</p>
-            <h2>{% if product %}{{ product.title }}{% else %}Ready to publish{% endif %}</h2>
-            <p>Everything important stays above the fold on desktop: identity, pricing, sizes, media, status, and the publish action.</p>
+  <!-- Header bar -->
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">
+          {% if product %}Editing: {{ product.title }}{% else %}New product{% endif %}
+        </p>
+        <p class="zd-panel-head-sub">
+          {% if product %}
+          Status:
+          {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Draft{% endif %}
+          · {{ product.stock_quantity }} units in stock
+          {% else %}
+          Fill in the details below and save to publish
+          {% endif %}
+        </p>
+      </div>
+      <div class="zd-panel-head-right" style="gap:8px">
+        <a href="{% url 'store:dashboard-products' %}" class="zd-btn zd-btn--ghost zd-btn--sm">← Back</a>
+        <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm">Save draft</button>
+        <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary zd-btn--sm"
+          onclick="return confirm('Post this product to the Telegram channel immediately?')">
+          Save &amp; post to Telegram
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="zd-editor-layout">
+
+    <!-- Main column -->
+    <div class="zd-editor-main">
+
+      <!-- Cover image — FIRST, most important -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Cover image</p>
+            <p class="zd-panel-head-sub">Primary product photo shown on all listings</p>
+          </div>
         </div>
-        <div class="spring-dashboard-editor__header-actions">
-            <a href="{% url 'store:dashboard-products' %}" class="btn btn-outline-dark">Back to products</a>
-            <button type="submit" class="btn btn-dark">Save product</button>
-            <button type="submit" name="save_and_publish" value="1" class="btn btn-outline-dark"
-                onclick="return confirm('This will post the product to the Telegram channel immediately. Continue?')">
-                Save &amp; post to Telegram
+        <div class="zd-panel-body">
+          <div class="zd-field">
+            <span class="zd-field-label">Main product image</span>
+            {{ form.product_image }}
+            {% for e in form.product_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+          </div>
+          {% if product and product.product_image %}
+          <div class="zd-cover-preview" style="margin-top:12px;max-width:260px">
+            <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Identity -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Identity</p>
+            <p class="zd-panel-head-sub">Title, slug, SKU and descriptions</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-form-grid zd-form-grid-col2">
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Title</span>
+              {{ form.title }}
+              {% for e in form.title.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Slug</span>
+              {{ form.slug }}
+              {% for e in form.slug.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">SKU</span>
+              {{ form.sku }}
+              {% for e in form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Short description</span>
+              {{ form.short_description }}
+              {% for e in form.short_description.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Detail description</span>
+              {{ form.detail_description }}
+              {% for e in form.detail_description.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Merchandising -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Merchandising</p>
+            <p class="zd-panel-head-sub">Collection, brand, material, sizes and fit notes</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-form-grid zd-form-grid-col2">
+            <div class="zd-field">
+              <span class="zd-field-label">Collection</span>
+              {{ form.category }}
+              {% for e in form.category.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Brand</span>
+              {{ form.brand }}
+              {% for e in form.brand.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Material</span>
+              {{ form.material }}
+              {% for e in form.material.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Color</span>
+              {{ form.color }}
+              {% for e in form.color.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Sizes</span>
+              {{ form.available_sizes }}
+              {% for e in form.available_sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+              <span class="zd-field-hint">Comma-separated. Each new size is stocked at {{ stock_per_size }} units automatically.</span>
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Fit notes</span>
+              {{ form.fit_notes }}
+              {% for e in form.fit_notes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Care notes</span>
+              {{ form.care_notes }}
+              {% for e in form.care_notes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commerce -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Commerce</p>
+            <p class="zd-panel-head-sub">Price, alt text, delivery and return notes</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-form-grid zd-form-grid-col2">
+            <div class="zd-field">
+              <span class="zd-field-label">Price (ETB)</span>
+              {{ form.price }}
+              {% for e in form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Image alt text</span>
+              {{ form.image_alt_text }}
+              {% for e in form.image_alt_text.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Delivery note</span>
+              {{ form.delivery_note }}
+              {% for e in form.delivery_note.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Return note</span>
+              {{ form.return_note }}
+              {% for e in form.return_note.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">SEO</p>
+            <p class="zd-panel-head-sub">Title tag and meta description for search engines</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-form-grid">
+            <div class="zd-field">
+              <span class="zd-field-label">SEO title</span>
+              {{ form.seo_title }}
+              {% for e in form.seo_title.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">SEO description</span>
+              {{ form.seo_description }}
+              {% for e in form.seo_description.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gallery formset -->
+      <div class="zd-panel" id="image-formset">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Gallery</p>
+            <p class="zd-panel-head-sub">Additional product images</p>
+          </div>
+          <div class="zd-panel-head-right">
+            <button type="button" class="zd-btn zd-btn--ghost zd-btn--sm" data-formset-add="image-formset">
+              + Add image
             </button>
+          </div>
         </div>
-    </section>
-
-    <section class="spring-dashboard-editor__layout">
-        <div class="spring-dashboard-editor__main">
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Primary media</p>
-                        <h3>Cover image</h3>
-                    </div>
+        <div class="zd-panel-body">
+          <div class="zd-formset" data-formset-rows>
+            {{ image_formset.management_form }}
+            {% for image_form in image_formset %}
+            <div class="zd-formset-row" data-formset-row>
+              {% for hf in image_form.hidden_fields %}{{ hf }}{% endfor %}
+              <div class="zd-form-grid zd-form-grid-col2">
+                <div class="zd-field zd-field-wide">
+                  <span class="zd-field-label">Image file</span>
+                  {{ image_form.image }}
+                  {% for e in image_form.image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
                 </div>
-                <div class="spring-dashboard-form-grid">
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Main product image</span>
-                        {{ form.product_image }}
-                        {% for error in form.product_image.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    {% if product and product.product_image %}
-                    <div class="spring-dashboard-cover-preview">
-                        <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
-                    </div>
-                    {% endif %}
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Identity</p>
-                        <h3>Core product details</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-form-grid">
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Title</span>
-                        {{ form.title }}
-                        {% for error in form.title.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>Slug</span>
-                        {{ form.slug }}
-                        {% for error in form.slug.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>SKU</span>
-                        {{ form.sku }}
-                        {% for error in form.sku.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Short description</span>
-                        {{ form.short_description }}
-                        {% for error in form.short_description.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Detail description</span>
-                        {{ form.detail_description }}
-                        {% for error in form.detail_description.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Merchandising</p>
-                        <h3>Catalog placement and product info</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-form-grid">
-                    <label class="spring-dashboard-field">
-                        <span>Collection</span>
-                        {{ form.category }}
-                        {% for error in form.category.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>Brand</span>
-                        {{ form.brand }}
-                        {% for error in form.brand.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>Material</span>
-                        {{ form.material }}
-                        {% for error in form.material.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>Color</span>
-                        {{ form.color }}
-                        {% for error in form.color.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Sizes</span>
-                        {{ form.available_sizes }}
-                        {% for error in form.available_sizes.errors %}<small>{{ error }}</small>{% endfor %}
-                        <em>Use commas or new lines. Each new size is created with {{ stock_per_size }} units automatically.</em>
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Fit notes</span>
-                        {{ form.fit_notes }}
-                        {% for error in form.fit_notes.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Care notes</span>
-                        {{ form.care_notes }}
-                        {% for error in form.care_notes.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Commerce</p>
-                        <h3>Pricing and customer-facing copy</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-form-grid">
-                    <label class="spring-dashboard-field">
-                        <span>Price</span>
-                        {{ form.price }}
-                        {% for error in form.price.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field">
-                        <span>Image alt text</span>
-                        {{ form.image_alt_text }}
-                        {% for error in form.image_alt_text.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Delivery note</span>
-                        {{ form.delivery_note }}
-                        {% for error in form.delivery_note.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>Return note</span>
-                        {{ form.return_note }}
-                        {% for error in form.return_note.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Search</p>
-                        <h3>SEO details</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-form-grid">
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>SEO title</span>
-                        {{ form.seo_title }}
-                        {% for error in form.seo_title.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                    <label class="spring-dashboard-field spring-dashboard-field--wide">
-                        <span>SEO description</span>
-                        {{ form.seo_description }}
-                        {% for error in form.seo_description.errors %}<small>{{ error }}</small>{% endfor %}
-                    </label>
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel" id="image-formset">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Gallery</p>
-                        <h3>Additional images</h3>
-                    </div>
-                    <button type="button" class="btn btn-outline-dark" data-formset-add="image-formset">Add image</button>
-                </div>
-
-                <div class="spring-dashboard-formset" data-formset-rows>
-                    {{ image_formset.management_form }}
-                    {% for image_form in image_formset %}
-                    <div class="spring-dashboard-formset-row spring-dashboard-formset-row--image" data-formset-row>
-                        {% for hidden_field in image_form.hidden_fields %}{{ hidden_field }}{% endfor %}
-                        <div class="spring-dashboard-formset-row__grid">
-                            <label class="spring-dashboard-field spring-dashboard-field--wide">
-                                <span>Gallery image</span>
-                                {{ image_form.image }}
-                                {% for error in image_form.image.errors %}<small>{{ error }}</small>{% endfor %}
-                            </label>
-                            {% if image_form.instance.pk and image_form.instance.image %}
-                            <div class="spring-dashboard-gallery-thumb">
-                                <img src="{{ image_form.instance.image.url|cdn_optimize }}" alt="">
-                            </div>
-                            {% endif %}
-                        </div>
-                        {{ image_form.DELETE }}
-                        <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
-                    </div>
-                    {% endfor %}
-                    <template>
-                        <div class="spring-dashboard-formset-row spring-dashboard-formset-row--image" data-formset-row>
-                            {% for hidden_field in image_formset.empty_form.hidden_fields %}{{ hidden_field }}{% endfor %}
-                            <div class="spring-dashboard-formset-row__grid">
-                                <label class="spring-dashboard-field spring-dashboard-field--wide">
-                                    <span>Gallery image</span>
-                                    {{ image_formset.empty_form.image }}
-                                </label>
-                            </div>
-                            {{ image_formset.empty_form.DELETE }}
-                            <button type="button" class="spring-dashboard-remove" data-formset-delete>Remove</button>
-                        </div>
-                    </template>
-                </div>
-            </article>
-        </div>
-
-        <aside class="spring-dashboard-editor__aside">
-            <article class="spring-dashboard-panel spring-dashboard-panel--sticky">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Launch</p>
-                        <h3>Status controls</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-switches">
-                    <label>{{ form.is_active }} <span>Visible on storefront</span></label>
-                    <label>{{ form.is_featured }} <span>Featured placement</span></label>
-                    <label>{{ form.is_sold_out }} <span>Mark as sold out</span></label>
-                </div>
-            </article>
-
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Inventory rule</p>
-                        <h3>Size setup preview</h3>
-                    </div>
-                </div>
-                {% if size_tokens %}
-                <div class="spring-dashboard-token-list">
-                    {% for size in size_tokens %}
-                    <span>{{ size }} · {{ stock_per_size }}</span>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="spring-dashboard-muted">No sizes entered yet. Add sizes to auto-create inventory rows on save.</p>
-                {% endif %}
-            </article>
-
-            {% if product and product_affiliate_pattern %}
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Affiliate path</p>
-                        <h3>Shareable link format</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-code">
-                    <strong>Relative</strong>
-                    <code>{{ product_affiliate_pattern.relative }}</code>
-                </div>
-                {% if product_affiliate_pattern.absolute %}
-                <div class="spring-dashboard-code">
-                    <strong>Absolute</strong>
-                    <code>{{ product_affiliate_pattern.absolute }}</code>
+                {% if image_form.instance.pk and image_form.instance.image %}
+                <div class="zd-gallery-thumb zd-gallery-thumb--lg">
+                  <img src="{{ image_form.instance.image.url|cdn_optimize }}" alt="">
                 </div>
                 {% endif %}
-            </article>
-            {% endif %}
+              </div>
+              {{ image_form.DELETE }}
+              <button type="button" class="zd-remove-btn" data-formset-delete>Remove</button>
+            </div>
+            {% endfor %}
+          </div>
+          <template>
+            <div class="zd-formset-row" data-formset-row>
+              {% for hf in image_formset.empty_form.hidden_fields %}{{ hf }}{% endfor %}
+              <div class="zd-field">
+                <span class="zd-field-label">Image file</span>
+                {{ image_formset.empty_form.image }}
+              </div>
+              {{ image_formset.empty_form.DELETE }}
+              <button type="button" class="zd-remove-btn" data-formset-delete>Remove</button>
+            </div>
+          </template>
+        </div>
+      </div>
 
-            {% if gallery_images %}
-            <article class="spring-dashboard-panel">
-                <div class="spring-dashboard-section-head">
-                    <div>
-                        <p class="spring-dashboard-kicker">Current gallery</p>
-                        <h3>Existing media</h3>
-                    </div>
-                </div>
-                <div class="spring-dashboard-gallery-grid">
-                    {% for image in gallery_images %}
-                    <div class="spring-dashboard-gallery-thumb">
-                        <img src="{{ image.image.url|cdn_optimize }}" alt="">
-                    </div>
-                    {% endfor %}
-                </div>
-            </article>
-            {% endif %}
-        </aside>
-    </section>
+    </div><!-- /main column -->
+
+    <!-- Aside column -->
+    <div class="zd-editor-aside">
+
+      <!-- Publish controls -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Publish</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-toggle-group">
+            <label class="zd-toggle">
+              <span>Visible on storefront</span>
+              {{ form.is_active }}
+            </label>
+            <label class="zd-toggle">
+              <span>Featured placement</span>
+              {{ form.is_featured }}
+            </label>
+            <label class="zd-toggle">
+              <span>Mark as sold out</span>
+              {{ form.is_sold_out }}
+            </label>
+          </div>
+          <div style="display:grid;gap:8px;margin-top:14px">
+            <button type="submit" class="zd-btn zd-btn--primary" style="width:100%">Save product</button>
+            <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--ghost" style="width:100%"
+              onclick="return confirm('Post this product to the Telegram channel immediately?')">
+              Save &amp; post to Telegram
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory preview -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Inventory preview</p>
+            <p class="zd-panel-head-sub">{{ stock_per_size }} units per size on creation</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          {% if size_tokens %}
+          <div class="zd-token-list">
+            {% for size in size_tokens %}
+            <span class="zd-token">{{ size }} · {{ stock_per_size }}</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="font-size:13px;color:var(--z-text-3);margin:0">
+            No sizes entered yet. Add sizes above to preview inventory rows.
+          </p>
+          {% endif %}
+          {% if product %}
+          <div style="display:grid;gap:4px;margin-top:14px;padding-top:14px;border-top:1px solid var(--z-border)">
+            <span class="zd-kicker">Current stock</span>
+            <strong style="font-size:22px;letter-spacing:-0.04em">{{ product.stock_quantity }}</strong>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Affiliate link pattern -->
+      {% if product and product_affiliate_pattern %}
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Affiliate link</p>
+            <p class="zd-panel-head-sub">Share format for affiliates</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-code">
+            <strong>Relative path</strong>
+            <code>{{ product_affiliate_pattern.relative }}</code>
+          </div>
+          {% if product_affiliate_pattern.absolute %}
+          <div class="zd-code" style="margin-top:10px">
+            <strong>Absolute URL</strong>
+            <code>{{ product_affiliate_pattern.absolute }}</code>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Existing gallery -->
+      {% if gallery_images %}
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Current gallery</p>
+            <p class="zd-panel-head-sub">{{ gallery_images|length }} image{{ gallery_images|length|pluralize }}</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-gallery-grid">
+            {% for img in gallery_images %}
+            <div class="zd-gallery-thumb">
+              <img src="{{ img.image.url|cdn_optimize }}" alt="">
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /aside -->
+
+  </div><!-- /editor-layout -->
 </form>
+
 {% endblock %}
