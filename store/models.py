@@ -678,3 +678,23 @@ class TelegramBotOrder(models.Model):
 
     def __str__(self):
         return f"TG-{self.id} {self.product_title} ({self.customer_full_name})"
+
+
+class TelegramConversationState(models.Model):
+    """Persisted state for the multi-step Telegram order conversation.
+
+    The bot runs on serverless/multi-process hosting where an in-memory cache
+    is not shared between requests, so the conversation state must live in the
+    database to survive between webhook updates.
+    """
+
+    chat_id = models.CharField(max_length=40, unique=True, db_index=True)
+    state = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Telegram conversation state"
+        verbose_name_plural = "Telegram conversation states"
+
+    def __str__(self):
+        return f"State for chat {self.chat_id}"

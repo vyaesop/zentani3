@@ -37,6 +37,7 @@ from .models import (
     Order,
     Product,
     ProductAIDraft,
+    ProductImages,
     ProductReview,
     RestockRequest,
     TelegramBotOrder,
@@ -118,6 +119,24 @@ def _parse_dashboard_size_list(value):
 
 def _sync_product_size_inventory(product):
     product._sync_size_inventory()
+
+
+def _save_bulk_gallery_images(product, uploaded_files):
+    """Attach any number of gallery images selected in a single multi-file picker.
+
+    Lets staff pick several photos at once instead of clicking "Add image" for
+    each one. Non-image uploads are skipped so a stray file can't break the save.
+    """
+    created = 0
+    for uploaded in uploaded_files or []:
+        if not uploaded:
+            continue
+        content_type = getattr(uploaded, "content_type", "") or ""
+        if content_type and not content_type.startswith("image/"):
+            continue
+        ProductImages.objects.create(product=product, image=uploaded)
+        created += 1
+    return created
 
 
 def _ai_draft_redirect_url(product, draft):
@@ -655,6 +674,7 @@ def dashboard_product_edit(request, product_id=None):
                         saved_product = form.save()
                         image_formset.instance = saved_product
                         image_formset.save()
+                        _save_bulk_gallery_images(saved_product, request.FILES.getlist("bulk_gallery_images"))
                         _sync_product_size_inventory(saved_product)
 
                         if ai_draft and ai_draft.product_id != saved_product.id:

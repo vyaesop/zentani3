@@ -1,6 +1,7 @@
 import decimal
 import json
 import os
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -38,6 +39,7 @@ from store.models import (
     ProductSizeStock,
     RestockRequest,
     TelegramBotOrder,
+    TelegramConversationState,
     Wishlist,
 )
 from store.telegram_notify import (
@@ -84,25 +86,33 @@ from .constants import (
     OUTSIDE_ADDIS_SHIPPING_FEE,
     RECENTLY_VIEWED_SESSION_KEY,
     SIZE_DISPLAY_ORDER,
-    TELEGRAM_ORDER_STATE_PREFIX,
     TELEGRAM_ORDER_STATE_TTL_SECONDS,
 )
 
 
-def _telegram_state_key(chat_id):
-    return f"{TELEGRAM_ORDER_STATE_PREFIX}:{chat_id}"
-
-
 def _set_telegram_order_state(chat_id, state):
-    cache.set(_telegram_state_key(chat_id), state, TELEGRAM_ORDER_STATE_TTL_SECONDS)
+    # Stored in the database (not the cache) so the conversation survives between
+    # webhook requests on serverless/multi-process hosting where the local-memory
+    # cache is not shared across processes.
+    TelegramConversationState.objects.update_or_create(
+        chat_id=str(chat_id),
+        defaults={"state": state},
+    )
 
 
 def _get_telegram_order_state(chat_id):
-    return cache.get(_telegram_state_key(chat_id))
+    record = TelegramConversationState.objects.filter(chat_id=str(chat_id)).first()
+    if not record:
+        return None
+    expiry_cutoff = timezone.now() - timedelta(seconds=TELEGRAM_ORDER_STATE_TTL_SECONDS)
+    if record.updated_at < expiry_cutoff:
+        record.delete()
+        return None
+    return record.state
 
 
 def _clear_telegram_order_state(chat_id):
-    cache.delete(_telegram_state_key(chat_id))
+    TelegramConversationState.objects.filter(chat_id=str(chat_id)).delete()
 
 
 def _send_customer_bot_text(chat_id, text):
