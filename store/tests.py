@@ -356,22 +356,15 @@ class StoreFlowTests(TestCase):
         )
 
     @override_settings(MEDIA_ROOT=tempfile.gettempdir())
-    def test_uploaded_product_image_is_converted_to_webp(self):
-        image_bytes = BytesIO()
-        Image.new("RGB", (30, 30), color="red").save(image_bytes, format="JPEG")
-        image_bytes.seek(0)
-
-        uploaded = SimpleUploadedFile(
-            "test-upload.jpg",
-            image_bytes.read(),
-            content_type="image/jpeg",
-        )
+    def test_uploaded_product_image_keeps_original_format(self):
+        # Cloudinary transforms at delivery time now — no server-side conversion.
+        uploaded = self._make_uploaded_image(name="test-upload.jpg", color="red")
 
         product = Product.objects.create(
-            title="WebP Product",
-            slug="webp-product",
-            sku="SKU-WEBP-1",
-            short_description="Image conversion test",
+            title="Original Format Product",
+            slug="original-format-product",
+            sku="SKU-ORIG-1",
+            short_description="Image upload test",
             available_sizes="",
             product_image=uploaded,
             price=Decimal("150.00"),
@@ -382,7 +375,32 @@ class StoreFlowTests(TestCase):
             is_sold_out=False,
         )
 
-        self.assertTrue(product.product_image.name.lower().endswith(".webp"))
+        self.assertTrue(product.product_image.name.lower().endswith(".jpg"))
+
+    def test_cld_url_inserts_cloudinary_transforms(self):
+        from store.templatetags.image_optim import cld_url
+
+        source = "https://res.cloudinary.com/demo/image/upload/v1/media/product/ring.jpg"
+        self.assertEqual(
+            cld_url(source, 600),
+            "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_600/v1/media/product/ring.jpg",
+        )
+        # Non-Cloudinary URLs pass through untouched so local dev keeps working.
+        self.assertEqual(cld_url("/media/product/ring.jpg", 600), "/media/product/ring.jpg")
+
+    def test_cld_img_renders_srcset_and_lazy_loading(self):
+        from store.templatetags.image_optim import cld_img
+
+        source = "https://res.cloudinary.com/demo/image/upload/v1/media/product/ring.jpg"
+        html = cld_img(source, width=420, alt="Silver Ring", html_width=420, html_height=520)
+        self.assertIn('src="https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_420/v1/media/product/ring.jpg"', html)
+        self.assertIn("f_auto,q_auto,c_limit,w_840", html)
+        self.assertIn('loading="lazy"', html)
+        self.assertIn('width="420" height="520"', html)
+
+        hero = cld_img(source, width=900, alt="Hero", loading="eager", fetchpriority="high")
+        self.assertIn('loading="eager"', hero)
+        self.assertIn('fetchpriority="high"', hero)
 
     def test_staff_user_can_access_dashboard_home(self):
         self.client.login(username="0911444555", password="test-pass-123")
@@ -424,7 +442,7 @@ class StoreFlowTests(TestCase):
         self.assertEqual(order.status, "Delivered")
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="test-gemini-key")
-    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
     def test_staff_user_can_generate_ai_product_draft(self, generate_product_ai_payload_for_draft_mock):
         generate_product_ai_payload_for_draft_mock.return_value = self._mock_ai_result(title="Midnight Linen Shirt")
 
@@ -456,7 +474,7 @@ class StoreFlowTests(TestCase):
         self.assertContains(follow_up, "Midnight Linen Shirt")
         self.assertContains(follow_up, "Mercato Studio")
         self.assertContains(follow_up, "value=\"SKU-100\"", html=False)
-        self.assertContains(follow_up, "Generate copy from a reference image")
+        self.assertContains(follow_up, "Generate copy from image")
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="")
     def test_ai_draft_generation_requires_configured_key(self):
@@ -605,7 +623,7 @@ class StoreFlowTests(TestCase):
 
         response = self.client.get(reverse("store:dashboard-ai-queue"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Queue Gemini copy generation")
+        self.assertContains(response, "Gemini copy queue")
         self.assertContains(response, "Add to queue")
 
     @override_settings(
@@ -640,7 +658,7 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
     def test_queue_process_endpoint_generates_copy(self, generate_payload_mock):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
@@ -710,7 +728,7 @@ class StoreFlowTests(TestCase):
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
-    @patch("store.dashboard_views.generate_product_ai_payload_for_draft")
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
     def test_queue_process_endpoint_marks_manual_review_on_failure(self, generate_payload_mock):
         draft = ProductAIDraft.objects.create(
             created_by=self.staff_user,
