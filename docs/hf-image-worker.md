@@ -4,31 +4,21 @@ This worker powers the hosted image generation flow. It accepts the full referen
 payload from the dashboard and returns generated images to be attached to product media
 automatically.
 
-## Setup (Hugging Face Spaces)
-Your Space already exists: `vyaesop/zentanee`. We will deploy a Docker-based FastAPI worker
-so we can expose a clean `POST /generate` endpoint.
+> **Canonical source:** the worker's code lives in the deployed Hugging Face Space repo
+> (`vyaesop/zentanee`), which has its own git history. The duplicated `hf_image_worker/`
+> copy was removed from this repo — clone the Space to change the worker.
 
-### 1) Clone the Space repo
+## Setup (Hugging Face Spaces)
+Your Space already exists: `vyaesop/zentanee`. It runs a Docker-based FastAPI worker
+exposing a clean `POST /generate` endpoint.
+
+### Working on the worker
 ```
 git clone https://huggingface.co/spaces/vyaesop/zentanee
 ```
 When prompted for a password, use your Hugging Face access token with write permissions.
-
-### 2) Copy the worker files into the Space
-Copy everything from `hf_image_worker/` into the root of the Space repo:
-- `app.py`
-- `requirements.txt`
-- `Dockerfile`
-- `README.md`
-
-The provided `README.md` already sets `sdk: docker` and `app_port: 7860`.
-
-### 3) Commit + push
-```
-git add app.py requirements.txt Dockerfile README.md
-git commit -m "Deploy Zentanee FastAPI image worker"
-git push
-```
+Edit `app.py` / `requirements.txt` / `Dockerfile` there, commit, and push — the Space
+redeploys automatically.
 
 ### 4) Set Space environment variables
 In the Space settings, add:
