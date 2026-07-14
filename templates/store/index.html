@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load cache %}
 {% load static %}
 {% load image_optim %}
 
@@ -33,101 +34,13 @@
   </section>
   {% endif %}
 
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Latest Drops</h2>
-          <a href="{% url 'store:all-products' %}?sort=newest">See all new arrivals</a>
-      </div>
-      <div class="spring-product-grid">
-          {% for product in latest_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
-          {% empty %}
-          <p class="text-muted mb-0">New arrivals will appear here as soon as products go live.</p>
-          {% endfor %}
-      </div>
-  </section>
-
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Shop Collections</h2>
-          <a href="{% url 'store:all-categories' %}">View all collections</a>
-      </div>
-      <div class="spring-collection-grid">
-          {% for category in categories %}
-          <article class="spring-collection-card">
-              <a href="{% url 'store:category-products' category.slug %}">
-                  <div class="spring-collection-card__media">
-                      {% if category.category_image %}
-                      <img loading="lazy" src="{{ category.category_image.url|cdn_optimize }}" alt="{{ category.title }}">
-                      {% else %}
-                      <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ category.title }}">
-                      {% endif %}
-                  </div>
-                  <div class="spring-collection-card__body">
-                      <h3>{{ category.title }}</h3>
-                  </div>
-              </a>
-          </article>
-          {% empty %}
-          <p class="text-muted mb-0">Featured collections will appear here once they are marked in admin.</p>
-          {% endfor %}
-      </div>
-  </section>
-
-  {% if top_selling_products %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Most Wanted</h2>
-          <span class="spring-section__meta">The products Zentanee shoppers order most</span>
-      </div>
-      <div class="spring-product-grid">
-          {% for product in top_selling_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
-          {% endfor %}
-      </div>
-  </section>
+  {% if request.user.is_authenticated %}
+  {% include 'store/_home_sections.html' %}
+  {% else %}
+  {% cache 600 home_sections catalog_version %}
+  {% include 'store/_home_sections.html' %}
+  {% endcache %}
   {% endif %}
-
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Featured Products</h2>
-          <a href="{% url 'store:all-products' %}">View all</a>
-      </div>
-      <div class="spring-product-grid">
-          {% for product in products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
-          {% empty %}
-          <p class="text-muted mb-0">Featured products will appear here once they are marked in admin.</p>
-          {% endfor %}
-      </div>
-  </section>
-
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>Featured Brands</h2>
-          <a href="{% url 'store:all-brands' %}">View all brands</a>
-      </div>
-      <div class="spring-brand-grid">
-          {% for brand in brands %}
-          <a href="{% url 'store:brand-products' brand.slug %}" class="spring-brand-card">
-              {% if brand.brand_image %}
-              <img loading="lazy" src="{{ brand.brand_image.url|cdn_optimize }}" alt="{{ brand.title }}">
-              {% else %}
-              <span>{{ brand.title }}</span>
-              {% endif %}
-              <strong>{{ brand.title }}</strong>
-          </a>
-          {% empty %}
-          <p class="text-muted mb-0">Featured brands will appear here once they are marked in admin.</p>
-          {% endfor %}
-      </div>
-  </section>
 
   <section class="spring-section spring-container spring-trust-bar">
       <div class="spring-trust-item">
