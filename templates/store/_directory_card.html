@@ -5,7 +5,7 @@
     <a href="{{ href }}">
         <div class="spring-collection-card__media">
             {% if image_file %}
-            <img loading="lazy" src="{{ image_file.url|cdn_optimize }}" alt="{{ title }}">
+            {% cld_img image_file width=600 alt=title %}
             {% else %}
             <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ title }}">
             {% endif %}

@@ -30,7 +30,7 @@
           {% for order in orders %}
           <article class="spring-order-item">
               {% if order.product.product_image %}
-              <img loading="lazy" src="{{ order.product.product_image.url|cdn_optimize }}" alt="{{ order.product.title }}">
+              {% cld_img order.product.product_image width=160 alt=order.product.title %}
               {% else %}
               <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ order.product.title }}">
               {% endif %}
