@@ -13,33 +13,18 @@ from store.constants import (
     ORDER_STATUS_SEQUENCE,
 )
 from store.forms import GuestCheckoutForm
-from store.models import STATUS_CHOICES, Address, BackgroundTask, Cart, Order
+from store.models import STATUS_CHOICES, BackgroundTask, Cart, Order
 from store.services.checkout import OrderPlacementError, place_order
 from store.tasks import enqueue
 
 from .affiliate import _affiliate_profile_from_session
 from .cart import (
     _address_entry_url,
-    _cart_owner_user,
+    _cart_owner_kwargs,
     _latest_saved_address,
     _shipping_amount_for_city,
 )
 from .common import _querystring_without
-
-
-def _apply_guest_checkout_profile(guest_user, full_name, phone, city, address):
-    clean_name = (full_name or "").strip()
-    parts = clean_name.split(None, 1)
-    guest_user.first_name = parts[0] if parts else ""
-    guest_user.last_name = parts[1] if len(parts) > 1 else ""
-    guest_user.save(update_fields=["first_name", "last_name"])
-
-    return Address.objects.create(
-        user=guest_user,
-        address=(address or "").strip(),
-        city=(city or "").strip(),
-        phone=(phone or "").strip(),
-    )
 
 
 def _build_order_flow_status(orders_queryset):
@@ -107,12 +92,12 @@ def checkout(request):
         messages.warning(request, "Invalid checkout request.")
         return redirect("store:cart")
 
-    user = _cart_owner_user(request)
+    user = request.user if request.user.is_authenticated else None
     affiliate_profile = _affiliate_profile_from_session(request)
-    if affiliate_profile and affiliate_profile.user_id == user.id:
+    if affiliate_profile and user and affiliate_profile.user_id == user.id:
         affiliate_profile = None
 
-    cart_items = list(Cart.objects.filter(user=user).select_related("product", "coupon"))
+    cart_items = list(Cart.objects.filter(**_cart_owner_kwargs(request)).select_related("product", "coupon"))
 
     if not cart_items:
         messages.warning(request, "Your cart is empty.")
@@ -129,37 +114,31 @@ def checkout(request):
         return redirect("store:cart")
 
     customer_address = _latest_saved_address(request.user)
-    guest_checkout_address = None
+    guest_contact = None
 
-    if not request.user.is_authenticated:
+    if user is None:
         guest_form = GuestCheckoutForm(request.POST)
         if not guest_form.is_valid():
             for field_errors in guest_form.errors.values():
                 for error in field_errors:
                     messages.error(request, error)
             return redirect("store:cart")
-        full_name = guest_form.cleaned_data["full_name"]
-        phone = guest_form.cleaned_data["phone"]
-        city = guest_form.cleaned_data["city"]
-        address = guest_form.cleaned_data["address"]
-
-        guest_checkout_address = _apply_guest_checkout_profile(
-            guest_user=user,
-            full_name=full_name,
-            phone=phone,
-            city=city,
-            address=address,
-        )
+        guest_contact = {
+            "full_name": guest_form.cleaned_data["full_name"].strip(),
+            "phone": guest_form.cleaned_data["phone"].strip(),
+            "city": guest_form.cleaned_data["city"].strip(),
+            "address": guest_form.cleaned_data["address"].strip(),
+        }
     elif customer_address is None:
         messages.error(request, "Add a delivery address before placing your order.")
         return redirect(_address_entry_url("store:cart"))
-
-    shipping_source_address = guest_checkout_address or customer_address
 
     try:
         placement = place_order(
             user,
             cart_items,
+            guest_contact=guest_contact,
+            session_key=request.session.session_key or "",
             affiliate_profile=affiliate_profile,
             affiliate_click_id=request.session.get(AFFILIATE_CLICK_SESSION_KEY),
         )
@@ -167,16 +146,15 @@ def checkout(request):
         messages.error(request, str(exc))
         return redirect("store:cart")
 
-    shipping_amount = _shipping_amount_for_city(
-        getattr(shipping_source_address, "city", ""),
-        placement.order_total,
-    )
+    shipping_city = guest_contact["city"] if guest_contact else getattr(customer_address, "city", "")
+    shipping_amount = _shipping_amount_for_city(shipping_city, placement.order_total)
 
     notify_payload = {
-        "user_id": user.id,
+        "user_id": user.id if user else None,
+        "guest_contact": guest_contact,
         "order_count": placement.order_count,
         "order_total": str(placement.order_total),
-        "address_id": shipping_source_address.id if shipping_source_address else None,
+        "address_id": customer_address.id if (user and customer_address) else None,
         "order_lines": placement.order_lines,
         "order_ids": placement.order_ids,
     }

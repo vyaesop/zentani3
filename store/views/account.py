@@ -104,6 +104,7 @@ def profile(request):
     saved_items = (
         Wishlist.objects.filter(user=request.user)
         .select_related("product", "product__category", "product__brand")
+        .prefetch_related("product__size_inventory")
         .only(
             "id",
             "created_at",
@@ -112,7 +113,6 @@ def profile(request):
             "product__title",
             "product__price",
             "product__product_image",
-            "product__available_sizes",
             "product__is_sold_out",
             "product__category__title",
             "product__category__slug",

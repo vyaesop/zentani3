@@ -20,6 +20,14 @@ ACCOUNT_ORDERS_PAGE_SIZE = 12
 SIZE_DISPLAY_ORDER = ("XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL")
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_product_ids"
 
+
+def size_sort_key(size_value):
+    """Sort sizes garment-first (XS < S < M …), then alphabetically."""
+    normalized = size_value.upper()
+    if normalized in SIZE_DISPLAY_ORDER:
+        return (0, SIZE_DISPLAY_ORDER.index(normalized))
+    return (1, normalized)
+
 COLLECTION_SORT_OPTIONS = (
     ("newest", "Newest first", "-created_at"),
     ("price-asc", "Price: Low to High", "price"),
@@ -39,6 +47,5 @@ ORDER_STATUS_COPY = {
 }
 
 # Session keys
-GUEST_SESSION_USER_ID_KEY = "guest_session_user_id"
 TELEGRAM_ORDER_STATE_PREFIX = "telegram_order_state"
 TELEGRAM_ORDER_STATE_TTL_SECONDS = 60 * 30

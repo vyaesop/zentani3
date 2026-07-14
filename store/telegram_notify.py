@@ -700,8 +700,8 @@ def notify_new_signup(user, address=None):
     return send_admin_alert_message(_trim_message(message))
 
 
-def notify_new_order(user, order_count, order_total, address=None, order_lines=None, order_ids=None):
-    if not user or order_count <= 0:
+def notify_new_order(user, order_count, order_total, address=None, order_lines=None, order_ids=None, guest_contact=None):
+    if (not user and not guest_contact) or order_count <= 0:
         return False
 
     if not isinstance(order_total, Decimal):
@@ -712,9 +712,15 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
 
     timestamp = timezone.now().strftime("%Y-%m-%d %H:%M")
 
-    address_text = _safe_text(getattr(address, "address", None))
-    city_text = _safe_text(getattr(address, "city", None))
-    phone_text = _safe_text(getattr(address, "phone", None), fallback=_safe_text(user.username))
+    guest_contact = guest_contact or {}
+    customer_id_text = str(user.id) if user else "Guest"
+    customer_name_text = _format_full_name(user) if user else _safe_text(guest_contact.get("full_name"))
+    customer_phone_text = _safe_text(user.username) if user else _safe_text(guest_contact.get("phone"))
+    customer_email_text = _safe_text(user.email) if user else "N/A"
+
+    address_text = _safe_text(getattr(address, "address", None) or guest_contact.get("address"))
+    city_text = _safe_text(getattr(address, "city", None) or guest_contact.get("city"))
+    phone_text = _safe_text(getattr(address, "phone", None) or guest_contact.get("phone"), fallback=customer_phone_text)
 
     order_ids_text = ", ".join([str(oid) for oid in (order_ids or [])]) if order_ids else "N/A"
 
@@ -735,10 +741,10 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         "🛒 NEW ORDER ALERT\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "👤 Customer\n"
-        f"• ID: {user.id}\n"
-        f"• Full name: {_format_full_name(user)}\n"
-        f"• Phone/Username: {_safe_text(user.username)}\n"
-        f"• Email: {_safe_text(user.email)}\n"
+        f"• ID: {customer_id_text}\n"
+        f"• Full name: {customer_name_text}\n"
+        f"• Phone/Username: {customer_phone_text}\n"
+        f"• Email: {customer_email_text}\n"
         "\n"
         "📍 Delivery\n"
         f"• Address: {address_text}\n"

@@ -64,8 +64,12 @@ class OrderPlacement:
     order_lines: list = field(default_factory=list)
 
 
-def place_order(user, cart_items, *, affiliate_profile=None, affiliate_click_id=None):
+def place_order(user, cart_items, *, guest_contact=None, session_key="", affiliate_profile=None, affiliate_click_id=None):
     """Atomically convert cart rows into orders with stock decrement.
+
+    `user` is None for guest checkout — the order rows then carry
+    guest_contact (full_name/phone/city/address) and the session key instead
+    of a placeholder auth_user row.
 
     Locks each product (and size row) before checking stock, creates one Order
     per cart line, records affiliate commissions and coupon usage, clears the
@@ -99,6 +103,8 @@ def place_order(user, cart_items, *, affiliate_profile=None, affiliate_click_id=
                 line_total_for_order = cart_item.quantity * effective_price_per_item
                 order = Order.objects.create(
                     user=user,
+                    session_key=session_key if user is None else "",
+                    guest_contact=guest_contact if user is None else None,
                     product=locked_product,
                     quantity=cart_item.quantity,
                     size=cart_item.size,

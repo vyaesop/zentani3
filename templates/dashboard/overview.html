@@ -49,7 +49,7 @@
       <div class="zd-activity-row">
         <div class="zd-activity-info">
           <div class="zd-activity-title">#{{ order.id }} · {{ order.product.title }}</div>
-          <div class="zd-activity-sub">{{ order.user.get_full_name|default:order.user.username }} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</div>
+          <div class="zd-activity-sub">{{ order.customer_name }} · {{ order.quantity }} unit{{ order.quantity|pluralize }}</div>
         </div>
         <div class="zd-activity-meta">
           <span class="zd-pill zd-pill--{{ order.status|slugify }}">{{ order.status }}</span>

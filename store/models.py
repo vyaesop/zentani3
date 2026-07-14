@@ -84,7 +84,6 @@ class Product(models.Model):
     seo_title = models.CharField(max_length=180, blank=True, verbose_name="SEO Title")
     seo_description = models.CharField(max_length=320, blank=True, verbose_name="SEO Description")
     image_alt_text = models.CharField(max_length=180, blank=True, verbose_name="Image Alt Text")
-    available_sizes = models.CharField(max_length=100, blank=True, help_text="Comma-separated list of available sizes (e.g., S,M,L,XL)", verbose_name="Available Sizes")
     detail_description = models.TextField(blank=True, null=True, verbose_name="Detail Description")
     material = models.CharField(max_length=120, blank=True, verbose_name="Material")
     color = models.CharField(max_length=80, blank=True, verbose_name="Color")
@@ -118,92 +117,24 @@ class Product(models.Model):
     def __str__(self):
         return self.title
 
-    def _normalized_size_values(self):
-        seen = set()
-        normalized_sizes = []
-        for chunk in (self.available_sizes or "").replace("\r", "\n").replace(",", "\n").split("\n"):
-            value = " ".join(chunk.split()).strip()
-            if not value:
-                continue
-            lookup = value.casefold()
-            if lookup in seen:
-                continue
-            seen.add(lookup)
-            normalized_sizes.append(value)
-        return normalized_sizes
+    @property
+    def available_sizes(self):
+        """CSV of sizes from ProductSizeStock (read-only compatibility shim).
 
-    def _sync_size_inventory(self):
-        if not self.pk:
-            return
+        Uses .all() so a prefetch_related("size_inventory") on list queries is
+        honored. Size mutations go through store.services.inventory.
+        """
+        from store.constants import size_sort_key
 
-        desired_sizes = self._normalized_size_values()
-        desired_keys = {size.casefold() for size in desired_sizes}
-        existing_inventory = {
-            item.size.casefold(): item
-            for item in ProductSizeStock.objects.filter(product=self)
-            if item.size and item.size.strip()
-        }
-        kept_quantities = []
-
-        for lookup_key, inventory_row in existing_inventory.items():
-            if lookup_key not in desired_keys:
-                inventory_row.delete()
-
-        for size in desired_sizes:
-            lookup_key = size.casefold()
-            inventory_row = existing_inventory.get(lookup_key)
-            if inventory_row:
-                if inventory_row.size != size:
-                    inventory_row.size = size
-                    inventory_row.save(update_fields=["size", "updated_at"])
-                kept_quantities.append(inventory_row.quantity)
-                continue
-
-            inventory_row = ProductSizeStock.objects.create(
-                product=self,
-                size=size,
-                quantity=self.DEFAULT_STOCK_PER_SIZE,
-            )
-            kept_quantities.append(inventory_row.quantity)
-
-        if desired_sizes:
-            total_quantity = sum(kept_quantities)
-            sold_out = total_quantity <= 0
-            if self.stock_quantity != total_quantity or self.is_sold_out != sold_out:
-                self.stock_quantity = total_quantity
-                self.is_sold_out = sold_out
-                Product.objects.filter(pk=self.pk).update(
-                    stock_quantity=total_quantity,
-                    is_sold_out=sold_out,
-                    updated_at=self.updated_at,
-                )
-            return
-
-        if self.stock_quantity < 0:
-            Product.objects.filter(pk=self.pk).update(stock_quantity=0)
-            self.stock_quantity = 0
-
-    def _reconcile_sold_out_flag(self):
-        """Keep is_sold_out consistent with stock_quantity when sizes are tracked."""
-        if self.pk and ProductSizeStock.objects.filter(product_id=self.pk).exists():
-            # Sizes are managed — derive sold-out from actual stock, never trust the flag alone.
-            total = (
-                ProductSizeStock.objects.filter(product_id=self.pk)
-                .aggregate(total=models.Sum("quantity"))["total"]
-                or 0
-            )
-            return total <= 0
-        # No per-size inventory: fall back to stock_quantity.
-        return self.stock_quantity <= 0
+        sizes = [row.size for row in self.size_inventory.all() if row.size and row.size.strip()]
+        return ",".join(sorted(sizes, key=size_sort_key))
 
     def save(self, *args, **kwargs):
+        # Inventory sync and sold-out reconciliation are explicit service
+        # calls (store.services.inventory) — save() has no side effects.
         if self.product_image and getattr(self.product_image, "name", ""):
             self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
-        # Reconcile before save so the written value is always consistent.
-        if self.pk:
-            self.is_sold_out = self._reconcile_sold_out_flag()
         super().save(*args, **kwargs)
-        self._sync_size_inventory()
 
 class ProductImages(models.Model):
     image = models.ImageField(upload_to="product-images", default="product.jpg")
@@ -426,12 +357,12 @@ class RestockRequest(models.Model):
         return f"{self.product.title} restock request ({size_label})"
 
 class Coupon(models.Model):
-    code = models.CharField(max_length=30, unique=True, default=None)
+    code = models.CharField(max_length=30, unique=True)
     active = models.BooleanField(default=True)
-    discount = models.PositiveBigIntegerField(help_text='discount in percentage', default=None)
-    active_date = models.DateField(default=None)
-    expiry_date = models.DateField(default=None)
-    created_date = models.DateTimeField(default=None)
+    discount = models.PositiveIntegerField(help_text='discount in percentage')
+    active_date = models.DateField()
+    expiry_date = models.DateField()
+    created_date = models.DateTimeField(default=timezone.now)
     used_count = models.PositiveIntegerField(default=0, verbose_name="Times Used", editable=False)
     max_uses = models.PositiveIntegerField(null=True, blank=True, verbose_name="Max Uses", help_text="Leave blank for unlimited.")
 
@@ -448,21 +379,25 @@ class Coupon(models.Model):
         return self.max_uses is not None and self.used_count >= self.max_uses
     
 class Cart(models.Model):
-    user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
+    # Owned by a user (authenticated) or a session key (guest) — guests no
+    # longer get placeholder rows in auth_user.
+    user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE, null=True, blank=True)
+    session_key = models.CharField(max_length=64, null=True, blank=True, db_index=True, verbose_name="Guest Session Key")
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
     coupon = models.ForeignKey(Coupon, verbose_name="Coupon", on_delete=models.CASCADE, null=True, blank=True)
     size = models.CharField(max_length=50, null=True, blank=True, verbose_name="Size")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Quantity")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Date")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Date")
- 
+
     def __str__(self):
-        return str(self.user)
+        return str(self.user) if self.user_id else f"guest:{self.session_key}"
 
     class Meta:
         indexes = [
             models.Index(fields=['user', 'updated_at']),
             models.Index(fields=['user', 'product']),
+            models.Index(fields=['session_key', 'updated_at']),
         ]
  
     # Creating Model Property to calculate Quantity x Price
@@ -490,7 +425,11 @@ STATUS_CHOICES = (
 )
 
 class Order(models.Model):
-    user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE)
+    # user is null for guest checkouts; the delivery/contact details captured
+    # at checkout live in guest_contact and the session is kept for tracing.
+    user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE, null=True, blank=True)
+    session_key = models.CharField(max_length=64, blank=True, default="", db_index=True, verbose_name="Guest Session Key")
+    guest_contact = models.JSONField(null=True, blank=True, verbose_name="Guest Contact", help_text="full_name/phone/city/address captured at guest checkout")
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
     size = models.CharField(max_length=50, null=True, blank=True, verbose_name="Size")
     quantity = models.PositiveIntegerField(verbose_name="Quantity")
@@ -510,6 +449,33 @@ class Order(models.Model):
             models.Index(fields=['product', 'ordered_date']),
             models.Index(fields=['status', 'ordered_date']),
         ]
+
+    @property
+    def customer_name(self):
+        if self.user_id:
+            return self.user.get_full_name() or self.user.username
+        if self.guest_contact:
+            return self.guest_contact.get("full_name") or "Guest"
+        return "Guest"
+
+    @property
+    def customer_phone(self):
+        if self.guest_contact and self.guest_contact.get("phone"):
+            return self.guest_contact["phone"]
+        if self.user_id:
+            return self.user.username
+        return ""
+
+    @property
+    def customer_location(self):
+        if self.guest_contact:
+            parts = [self.guest_contact.get("address", ""), self.guest_contact.get("city", "")]
+            return ", ".join(part for part in parts if part)
+        if self.user_id:
+            latest = self.user.address_set.last()
+            if latest:
+                return f"{latest.address}, {latest.city}"
+        return ""
 
 
 class AffiliateProfile(models.Model):

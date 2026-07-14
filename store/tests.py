@@ -13,6 +13,7 @@ from PIL import Image
 
 from . import ai_enrichment
 from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Order, Product, ProductAIDraft, ProductAIDraftImage
+from .services.inventory import set_product_sizes
 
 
 class StoreFlowTests(TestCase):
@@ -44,7 +45,6 @@ class StoreFlowTests(TestCase):
             slug="silver-ring",
             sku="SKU-100",
             short_description="A classic ring",
-            available_sizes="S,M,L",
             product_image="product/test.jpg",
             price=Decimal("100.00"),
             category=self.category,
@@ -53,6 +53,7 @@ class StoreFlowTests(TestCase):
             is_featured=True,
             is_sold_out=False,
         )
+        set_product_sizes(self.product, ["S", "M", "L"])
 
     def _make_uploaded_image(self, *, name="identifier.jpg", color="navy"):
         image_bytes = BytesIO()
@@ -365,7 +366,6 @@ class StoreFlowTests(TestCase):
             slug="original-format-product",
             sku="SKU-ORIG-1",
             short_description="Image upload test",
-            available_sizes="",
             product_image=uploaded,
             price=Decimal("150.00"),
             category=self.category,

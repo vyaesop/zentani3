@@ -91,13 +91,6 @@ def _search_rank_expression(current_query):
 
 def _collection_size_options(queryset):
     sizes = set()
-    for raw_sizes in queryset.values_list("available_sizes", flat=True):
-        if not raw_sizes:
-            continue
-        for size in raw_sizes.split(","):
-            normalized = size.strip()
-            if normalized:
-                sizes.add(normalized)
     for size_value in ProductSizeStock.objects.filter(product__in=queryset).values_list("size", flat=True):
         normalized = (size_value or "").strip()
         if normalized:
@@ -161,7 +154,7 @@ def _build_collection_state(
     if selected_sizes:
         size_query = Q()
         for size in selected_sizes:
-            size_query |= Q(available_sizes__icontains=size) | Q(size_inventory__size__iexact=size, size_inventory__quantity__gt=0)
+            size_query |= Q(size_inventory__size__iexact=size, size_inventory__quantity__gt=0)
         filtered_queryset = filtered_queryset.filter(size_query)
     if availability:
         filtered_queryset = filtered_queryset.filter(is_sold_out=False)
@@ -260,7 +253,7 @@ def _build_collection_state(
 
 
 def search_view(request):
-    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -302,7 +295,7 @@ def search_suggestions(request):
 
 
 def products(request):
-    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -347,7 +340,7 @@ def all_brands(request):
 
 def category_products(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    base_products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -360,7 +353,7 @@ def category_products(request, slug):
 
 def brand_products(request, slug):
     brand = get_object_or_404(Brand, slug=slug)
-    base_products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
