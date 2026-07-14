@@ -4,23 +4,13 @@
 
 {% block content %}
 <main class="main spring-main">
-  <div class="spring-container spring-directory">
+  <div class="spring-container spring-directory zent-busy-region" id="collection-page"
+       hx-target="#collection-page" hx-select="#collection-page" hx-swap="outerHTML show:window:top"
+       hx-push-url="true" hx-indicator="#collection-page">
       {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description=brand.description|default:'Browse everything currently available from this brand.' count=product_count browse_state=browse_state %}
 
       <div class="spring-directory__layout">
-          <div class="spring-directory__main">
-              <div class="spring-product-grid">
-                  {% for product in products %}
-                  <div class="spring-grid-item">
-                      {% include 'store/_product_card_content.html' with product=product %}
-                  </div>
-                  {% empty %}
-                  <p class="text-muted mb-0">No products are available for this brand yet.</p>
-                  {% endfor %}
-              </div>
-
-              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers page_query=browse_state.page_query aria_label='Brand product pages' %}
-          </div>
+          {% include 'store/_collection_results.html' with cache_collection=True empty_message='No products are available for this brand yet.' pagination_label='Brand product pages' %}
 
           {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
       </div>

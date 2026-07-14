@@ -1,0 +1,176 @@
+/* ── Zentanee core: tokens + components shared by storefront and dashboard ──
+   Loaded before zent-storefront.css / zent-dashboard.css by both base
+   templates. The storefront system is canonical; dashboard pages migrate to
+   these tokens page-by-page. */
+
+:root {
+  /* Type scale */
+  --zent-font-size-xs: 12px;
+  --zent-font-size-sm: 13px;
+  --zent-font-size-md: 15px;
+  --zent-font-size-lg: 18px;
+  --zent-font-size-xl: 24px;
+
+  /* Spacing scale */
+  --zent-space-1: 4px;
+  --zent-space-2: 8px;
+  --zent-space-3: 12px;
+  --zent-space-4: 16px;
+  --zent-space-5: 24px;
+  --zent-space-6: 32px;
+
+  /* Radii */
+  --zent-radius-sm: 6px;
+  --zent-radius: 10px;
+  --zent-radius-lg: 16px;
+
+  /* Neutral core palette (canonical) */
+  --zent-neutral-0: #ffffff;
+  --zent-neutral-50: #f9f8f6;
+  --zent-neutral-100: #f2f1ee;
+  --zent-neutral-200: #e6e4df;
+  --zent-neutral-600: #5a5752;
+  --zent-neutral-900: #0d0d0d;
+
+  /* Status colors (shared by flash messages, pills, feedback) */
+  --zent-success-bg: #edfaf3;
+  --zent-success-text: #1a7a46;
+  --zent-info-bg: #edf3ff;
+  --zent-info-text: #2456b0;
+  --zent-warning-bg: #fff7e6;
+  --zent-warning-text: #965f0a;
+  --zent-danger-bg: #fff1f0;
+  --zent-danger-text: #b52a2a;
+
+  /* Focus ring */
+  --zent-focus-ring: 0 0 0 3px rgba(13, 13, 13, 0.18);
+}
+
+/* ── htmx loading states ─────────────────────────────────────────────── */
+
+/* Elements marked hx-indicator dim while a request is in flight. */
+.zent-busy-region.htmx-request {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+/* Inline spinner shown only during a request. */
+.zent-spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: zent-spin 0.6s linear infinite;
+  vertical-align: -2px;
+  margin-left: var(--zent-space-2);
+}
+.htmx-request .zent-spinner,
+.htmx-request.zent-spinner {
+  display: inline-block;
+}
+@keyframes zent-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Disable action buttons while their form is in flight. */
+form.htmx-request button[type="submit"],
+form.htmx-request .spring-cart-qty-btn {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ── Search suggestions panel ────────────────────────────────────────── */
+
+.zent-search {
+  position: relative;
+}
+.zent-search-suggest {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+}
+.zent-search-suggest__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--zent-space-2);
+  background: var(--zent-neutral-0);
+  border: 1px solid var(--zent-neutral-200);
+  border-radius: var(--zent-radius);
+  box-shadow: 0 18px 45px rgba(8, 16, 36, 0.12);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.zent-search-suggest__list li a {
+  display: flex;
+  align-items: center;
+  gap: var(--zent-space-2);
+  padding: var(--zent-space-2) var(--zent-space-3);
+  border-radius: var(--zent-radius-sm);
+  color: var(--zent-neutral-900);
+  font-size: var(--zent-font-size-sm);
+  text-decoration: none;
+}
+.zent-search-suggest__list li a:hover,
+.zent-search-suggest__list li a:focus {
+  background: var(--zent-neutral-100);
+}
+.zent-search-suggest__tag {
+  font-size: var(--zent-font-size-xs);
+  color: var(--zent-neutral-600);
+  background: var(--zent-neutral-100);
+  border-radius: var(--zent-radius-sm);
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Inline alerts (cart feedback, htmx action results) ─────────────── */
+
+.zent-alert {
+  border-radius: var(--zent-radius);
+  padding: var(--zent-space-3) var(--zent-space-4);
+  font-size: var(--zent-font-size-sm);
+  margin-bottom: var(--zent-space-4);
+}
+.zent-alert--success { background: var(--zent-success-bg); color: var(--zent-success-text); }
+.zent-alert--info    { background: var(--zent-info-bg);    color: var(--zent-info-text); }
+.zent-alert--warning { background: var(--zent-warning-bg); color: var(--zent-warning-text); }
+.zent-alert--danger  { background: var(--zent-danger-bg);  color: var(--zent-danger-text); }
+
+/* ── Dashboard product form (classes replacing inline styles) ────────── */
+
+.zd-ai-summary-field--wide { grid-column: 1 / -1; }
+.zd-panel--danger { border-color: rgba(181, 42, 42, 0.3); background: var(--zent-danger-bg); }
+.zd-panel--danger .zd-panel-body { color: var(--zent-danger-text); }
+.zd-panel--danger .zd-panel-body p { margin: 0; }
+
+.zd-panel-body--divided { border-top: 1px solid var(--z-border, var(--zent-neutral-200)); }
+.zd-panel-note { font-size: var(--zent-font-size-sm); color: var(--z-text-2, var(--zent-neutral-600)); margin: 0 0 var(--zent-space-4); }
+.zd-form-actions { margin-top: 14px; display: flex; gap: var(--zent-space-2); }
+.zd-head-actions { gap: var(--zent-space-2); }
+.zd-cover-preview--constrained { margin-top: var(--zent-space-3); max-width: 260px; }
+.zd-field--separated { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--z-border, var(--zent-neutral-200)); }
+.zd-formset--tight { margin-top: 6px; }
+.zd-bulk-gallery-preview { display: none; gap: var(--zent-space-2); flex-wrap: wrap; margin-top: var(--zent-space-3); }
+.zd-bulk-gallery-preview.is-visible { display: flex; }
+.zd-bulk-gallery-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--zent-radius-sm);
+  border: 1px solid var(--z-border, var(--zent-neutral-200));
+}
+.zd-bulk-gallery-preview__count { font-size: var(--zent-font-size-sm); color: var(--z-text-3, var(--zent-neutral-600)); align-self: center; }
+.zd-stack { display: grid; gap: var(--zent-space-2); margin-top: 14px; }
+.zd-stack > * { width: 100%; }
+.zd-empty-hint { font-size: var(--zent-font-size-sm); color: var(--z-text-3, var(--zent-neutral-600)); margin: 0; }
+.zd-stock-readout { display: grid; gap: var(--zent-space-1); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--z-border, var(--zent-neutral-200)); }
+.zd-stock-readout strong { font-size: 22px; letter-spacing: -0.04em; }
+.zd-code + .zd-code { margin-top: var(--zent-space-3); }
+.zd-flash-stack--padded { padding: 0 20px; }
+.zd-nav-label--footer { padding-bottom: 6px; }

@@ -3,7 +3,7 @@
     <small>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small>
     <ul>
         {% if page_obj.has_previous %}
-        <li><a href="?{{ page_query }}page={{ page_obj.previous_page_number }}" aria-label="Previous">Prev</a></li>
+        <li><a href="?{{ page_query }}page={{ page_obj.previous_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.previous_page_number }}"{% endif %} aria-label="Previous">Prev</a></li>
         {% else %}
         <li><span class="is-disabled">Prev</span></li>
         {% endif %}
@@ -14,12 +14,12 @@
             {% elif p == page_obj.number %}
             <li><span class="is-active">{{ p }}</span></li>
             {% else %}
-            <li><a href="?{{ page_query }}page={{ p }}">{{ p }}</a></li>
+            <li><a href="?{{ page_query }}page={{ p }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ p }}"{% endif %}>{{ p }}</a></li>
             {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
-        <li><a href="?{{ page_query }}page={{ page_obj.next_page_number }}" aria-label="Next">Next</a></li>
+        <li><a href="?{{ page_query }}page={{ page_obj.next_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.next_page_number }}"{% endif %} aria-label="Next">Next</a></li>
         {% else %}
         <li><span class="is-disabled">Next</span></li>
         {% endif %}
