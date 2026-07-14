@@ -1,0 +1,12 @@
+{% load cache %}
+{# Product grid + pagination. Cached per URL for anonymous visitors only — #}
+{# authenticated markup varies (wishlist state), so it always renders live. #}
+<div id="collection-results" class="spring-directory__main">
+    {% if cache_collection and not request.user.is_authenticated %}
+    {% cache 600 collection_grid catalog_version request.get_full_path %}
+    {% include 'store/_collection_grid.html' %}
+    {% endcache %}
+    {% else %}
+    {% include 'store/_collection_grid.html' %}
+    {% endif %}
+</div>

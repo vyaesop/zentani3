@@ -1,0 +1,26 @@
+<section class="spring-search-empty">
+    <h2>No products matched that search</h2>
+    <p>Try a broader keyword, or jump into one of the collections and brands below.</p>
+
+    <div class="spring-search-empty__links">
+        {% for category in search_help_categories %}
+        <a href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a>
+        {% endfor %}
+        {% for brand in search_help_brands %}
+        <a href="{% url 'store:brand-products' brand.slug %}">{{ brand.title }}</a>
+        {% endfor %}
+    </div>
+
+    {% if recently_viewed_products %}
+    <div class="spring-search-empty__recent">
+        <h3>Recently viewed</h3>
+        <div class="spring-product-grid">
+            {% for product in recently_viewed_products %}
+            <div class="spring-grid-item">
+                {% include 'store/_product_card_content.html' with product=product %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</section>
