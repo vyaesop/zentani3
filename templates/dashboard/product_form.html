@@ -5,10 +5,10 @@
 
 <!-- Non-field errors -->
 {% if form.non_field_errors or image_formset.non_form_errors %}
-<div class="zd-panel" style="border-color:rgba(181,42,42,.3);background:var(--z-red-bg)">
-  <div class="zd-panel-body" style="color:var(--z-red-text)">
-    {% for e in form.non_field_errors %}<p style="margin:0">{{ e }}</p>{% endfor %}
-    {% for e in image_formset.non_form_errors %}<p style="margin:0">{{ e }}</p>{% endfor %}
+<div class="zd-panel zd-panel--danger">
+  <div class="zd-panel-body">
+    {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+    {% for e in image_formset.non_form_errors %}<p>{{ e }}</p>{% endfor %}
   </div>
 </div>
 {% endif %}
@@ -48,7 +48,7 @@
           {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
       </div>
-      <div style="margin-top:14px">
+      <div class="zd-form-actions">
         <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--ghost">
           Generate copy from image
         </button>
@@ -58,10 +58,23 @@
 </div>
 {% endif %}
 
+<!-- AI draft in progress -->
+{% if ai_draft and ai_draft.pipeline_state == "queued" or ai_draft and ai_draft.pipeline_state == "analyzing" %}
+<div class="zd-panel" data-ai-draft-progress data-status-url="{% url 'store:dashboard-ai-draft-status' ai_draft.id %}">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Gemini is drafting the copy…</p>
+      <p class="zd-panel-head-sub">This page refreshes automatically when the draft is ready — you can keep editing meanwhile.</p>
+    </div>
+    <span class="zd-pill zd-pill--{{ ai_draft.pipeline_state|slugify }}" data-ai-draft-progress-badge>{{ ai_draft.queue_label }}</span>
+  </div>
+</div>
+{% endif %}
+
 <!-- AI draft result -->
 {% if ai_draft and ai_draft.status == "succeeded" %}
 <div class="zd-ai-summary">
-  <div class="zd-ai-summary-field" style="grid-column:1/-1">
+  <div class="zd-ai-summary-field zd-ai-summary-field--wide">
     <span>AI draft ready</span>
     <strong>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</strong>
   </div>
@@ -105,7 +118,7 @@
           {% endif %}
         </p>
       </div>
-      <div class="zd-panel-head-right" style="gap:8px">
+      <div class="zd-panel-head-right zd-head-actions">
         <a href="{% url 'store:dashboard-products' %}" class="zd-btn zd-btn--ghost zd-btn--sm">← Back</a>
         <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm">Save draft</button>
         <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary zd-btn--sm"
@@ -139,25 +152,24 @@
             {% for e in form.product_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
           </div>
           {% if product and product.product_image %}
-          <div class="zd-cover-preview" style="margin-top:12px;max-width:260px">
+          <div class="zd-cover-preview zd-cover-preview--constrained">
             <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ product.title }}">
           </div>
           {% endif %}
 
           <!-- Bulk gallery upload: pick as many photos as you want at once -->
-          <div class="zd-field zd-field-wide" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--z-border)">
+          <div class="zd-field zd-field-wide zd-field--separated">
             <span class="zd-field-label">Gallery images</span>
             <input type="file" name="bulk_gallery_images" accept="image/*" multiple
                    class="spring-dashboard-file" data-bulk-gallery>
             <span class="zd-field-hint">
               Select several photos at once (Ctrl/Cmd-click or drag-select) — no need to add them one by one.
             </span>
-            <div class="zd-bulk-gallery-preview" data-bulk-gallery-preview
-                 style="display:none;gap:8px;flex-wrap:wrap;margin-top:12px"></div>
+            <div class="zd-bulk-gallery-preview" data-bulk-gallery-preview></div>
           </div>
 
           <!-- Existing gallery rows (edit / remove individual images) -->
-          <div class="zd-formset" data-formset-rows style="margin-top:6px">
+          <div class="zd-formset zd-formset--tight" data-formset-rows>
             {{ image_formset.management_form }}
             {% for image_form in image_formset %}
             <div class="zd-formset-row" data-formset-row>
@@ -367,9 +379,9 @@
               {{ form.is_sold_out }}
             </label>
           </div>
-          <div style="display:grid;gap:8px;margin-top:14px">
-            <button type="submit" class="zd-btn zd-btn--primary" style="width:100%">Save product</button>
-            <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--ghost" style="width:100%"
+          <div class="zd-stack">
+            <button type="submit" class="zd-btn zd-btn--primary">Save product</button>
+            <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--ghost"
               onclick="return confirm('Post this product to the Telegram channel immediately?')">
               Save &amp; post to Telegram
             </button>
@@ -393,14 +405,14 @@
             {% endfor %}
           </div>
           {% else %}
-          <p style="font-size:13px;color:var(--z-text-3);margin:0">
+          <p class="zd-empty-hint">
             No sizes entered yet. Add sizes above to preview inventory rows.
           </p>
           {% endif %}
           {% if product %}
-          <div style="display:grid;gap:4px;margin-top:14px;padding-top:14px;border-top:1px solid var(--z-border)">
+          <div class="zd-stock-readout">
             <span class="zd-kicker">Current stock</span>
-            <strong style="font-size:22px;letter-spacing:-0.04em">{{ product.stock_quantity }}</strong>
+            <strong>{{ product.stock_quantity }}</strong>
           </div>
           {% endif %}
         </div>
@@ -421,7 +433,7 @@
             <code>{{ product_affiliate_pattern.relative }}</code>
           </div>
           {% if product_affiliate_pattern.absolute %}
-          <div class="zd-code" style="margin-top:10px">
+          <div class="zd-code">
             <strong>Absolute URL</strong>
             <code>{{ product_affiliate_pattern.absolute }}</code>
           </div>
@@ -459,38 +471,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  /* Live thumbnail previews for the bulk gallery picker */
-  const input = document.querySelector('[data-bulk-gallery]');
-  const preview = document.querySelector('[data-bulk-gallery-preview]');
-  if (!input || !preview) return;
-
-  input.addEventListener('change', function () {
-    preview.innerHTML = '';
-    const files = Array.from(input.files || []);
-    if (!files.length) { preview.style.display = 'none'; return; }
-    preview.style.display = 'flex';
-    files.forEach(function (file) {
-      if (!file.type || !file.type.startsWith('image/')) return;
-      const img = document.createElement('img');
-      img.style.width = '72px';
-      img.style.height = '72px';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '8px';
-      img.style.border = '1px solid var(--z-border)';
-      img.alt = file.name;
-      img.onload = function () { URL.revokeObjectURL(img.src); };
-      img.src = URL.createObjectURL(file);
-      preview.appendChild(img);
-    });
-    const count = document.createElement('span');
-    count.style.fontSize = '13px';
-    count.style.color = 'var(--z-text-3)';
-    count.style.alignSelf = 'center';
-    count.textContent = files.length + ' image' + (files.length === 1 ? '' : 's') + ' ready to upload';
-    preview.appendChild(count);
-  });
-});
-</script>
+{% load static %}
+<script src="{% static 'asset/js/zd-product-form.js' %}" defer></script>
 {% endblock %}

@@ -8,10 +8,12 @@
   <title>{% block title %}{{ dashboard_page_title }} · Zentanee{% endblock %}</title>
   <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
+  <link rel="stylesheet" href="{% static 'asset/css/zent-core.css' %}">
   <link rel="stylesheet" href="{% static 'asset/css/zent-dashboard.css' %}">
+  <script src="{% static 'asset/vendor/htmx/htmx.min.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="zd-body">
+<body class="zd-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <div class="zd-shell">
 
   <!-- ── Sidebar ──────────────────────────────────────────────── -->
@@ -79,6 +81,15 @@
           <path d="M8 2l1.5 3 3.5.5-2.5 2.4.6 3.5L8 10l-3.1 1.4.6-3.5L3 5.5 6.5 5z"/>
         </svg>
         Gemini Queue
+      </a>
+
+      <a href="{% url 'store:dashboard-tasks' %}"
+         class="zd-nav-item {% if dashboard_section == 'tasks' %}is-active{% endif %}">
+        <svg class="zd-nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="8" cy="8" r="6"/>
+          <path d="M8 5v3l2 2"/>
+        </svg>
+        Background Tasks
       </a>
 
       <div class="zd-sidebar-footer">

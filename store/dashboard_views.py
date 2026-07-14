@@ -17,10 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .ai_enrichment import (
-    apply_ai_draft_result,
-    ProductAIError,
     draft_to_product_initial,
-    generate_product_ai_payload_for_draft,
     gemini_is_configured,
 )
 from .dashboard_forms import (
@@ -32,6 +29,7 @@ from .dashboard_forms import (
 from .models import (
     STATUS_CHOICES,
     AffiliateCommission,
+    BackgroundTask,
     Brand,
     Category,
     Order,
@@ -42,9 +40,10 @@ from .models import (
     RestockRequest,
     TelegramBotOrder,
 )
+from .services.enrichment import mark_draft_manual_review
+from .tasks import enqueue, has_active_task, retry_task
 from .telegram_notify import (
     notify_customer_delivery_status,
-    post_product_to_channel,
     suspend_telegram_autopublish,
 )
 
@@ -206,25 +205,6 @@ def _queueable_drafts_queryset(user):
     )
 
 
-def _mark_draft_manual_review(draft, *, error_message, stage):
-    draft.status = ProductAIDraft.STATUS_FAILED
-    draft.pipeline_state = ProductAIDraft.PIPELINE_MANUAL_REVIEW
-    draft.error_message = str(error_message)[:250]
-    draft.last_error_stage = stage
-    draft.processing_finished_at = timezone.now()
-    draft.save(
-        update_fields=[
-            "status",
-            "pipeline_state",
-            "error_message",
-            "last_error_stage",
-            "processing_finished_at",
-            "updated_at",
-        ]
-    )
-    return draft
-
-
 def _queue_draft_json(draft):
     return {
         "id": draft.id,
@@ -239,6 +219,41 @@ def _queue_draft_json(draft):
         "attempt_count": draft.attempt_count,
         "edit_url": _ai_draft_redirect_url(draft.product, draft),
     }
+
+
+def _draft_state_response(draft):
+    is_manual_review = draft.pipeline_state == ProductAIDraft.PIPELINE_MANUAL_REVIEW
+    payload = {
+        "ok": not is_manual_review,
+        "pipeline_state": draft.pipeline_state,
+        "queue_label": draft.queue_label,
+        "draft": _queue_draft_json(draft),
+    }
+    if is_manual_review and draft.error_message:
+        payload["error"] = draft.error_message
+    return JsonResponse(payload)
+
+
+def _queue_draft_for_enrichment(draft):
+    """Move a draft into the queued state and enqueue its background task."""
+    draft.status = ProductAIDraft.STATUS_PENDING
+    draft.pipeline_state = ProductAIDraft.PIPELINE_QUEUED
+    draft.queued_at = timezone.now()
+    draft.error_message = ""
+    draft.last_error_stage = ""
+    draft.save(
+        update_fields=[
+            "status",
+            "pipeline_state",
+            "queued_at",
+            "error_message",
+            "last_error_stage",
+            "updated_at",
+        ]
+    )
+    enqueue(BackgroundTask.TYPE_AI_ENRICH_DRAFT, {"draft_id": draft.id})
+    draft.refresh_from_db()
+    return draft
 
 
 @staff_required
@@ -496,11 +511,11 @@ def dashboard_products(request):
             if not product.is_active or product.is_sold_out:
                 messages.warning(request, f"{product.title} must be active and in stock before it can be posted to Telegram.")
             else:
-                posted = post_product_to_channel(product, force=True)
-                if posted:
-                    messages.success(request, f"{product.title} was posted to Telegram.")
-                else:
-                    messages.warning(request, f"{product.title} could not be posted. Check Telegram and media configuration.")
+                enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": product.id, "force": True})
+                messages.success(
+                    request,
+                    f"{product.title} was queued for Telegram publishing. Failures appear under Background Tasks.",
+                )
         else:
             messages.error(request, "That product action is not supported.")
         return redirect(redirect_to)
@@ -630,33 +645,19 @@ def dashboard_product_edit(request, product_id=None):
                 draft = ai_draft_form.save(commit=False)
                 draft.created_by = request.user
                 draft.product = product
-                draft.status = ProductAIDraft.STATUS_PENDING
-                draft.pipeline_state = ProductAIDraft.PIPELINE_IDLE
-                draft.error_message = ""
-                draft.last_error_stage = ""
                 draft.save()
 
-                try:
-                    result = generate_product_ai_payload_for_draft(draft)
-                except ProductAIError as exc:
-                    draft.status = ProductAIDraft.STATUS_FAILED
-                    draft.error_message = str(exc)
-                    draft.last_error_stage = "content"
-                    draft.save(update_fields=["status", "error_message", "last_error_stage", "updated_at"])
-                    messages.error(request, str(exc))
+                draft = _queue_draft_for_enrichment(draft)
+                if draft.pipeline_state == ProductAIDraft.PIPELINE_MANUAL_REVIEW:
+                    messages.error(request, draft.error_message or "AI draft generation failed.")
                     ai_draft = draft
                 else:
-                    apply_ai_draft_result(
-                        draft,
-                        result,
-                        status=ProductAIDraft.STATUS_SUCCEEDED,
-                        pipeline_state=ProductAIDraft.PIPELINE_IDLE,
-                        error_message="",
-                        last_error_stage="",
-                    )
                     if product is None:
                         request.session[AI_DRAFT_SESSION_KEY] = draft.id
-                    messages.success(request, "AI draft generated. Review the copy suggestions, then save the product when it looks right.")
+                    if draft.pipeline_state == ProductAIDraft.PIPELINE_READY:
+                        messages.success(request, "AI draft generated. Review the copy suggestions, then save the product when it looks right.")
+                    else:
+                        messages.info(request, "AI draft queued. Gemini is drafting the copy in the background — this page refreshes when it is ready.")
                     return redirect(_ai_draft_redirect_url(product, draft))
             else:
                 messages.error(request, "Add a reference image, SKU, and price to generate an AI draft.")
@@ -684,14 +685,14 @@ def dashboard_product_edit(request, product_id=None):
 
                 should_publish = "save_and_publish" in request.POST
                 if should_publish and saved_product.is_active and not saved_product.is_sold_out:
-                    posted = post_product_to_channel(saved_product, force=True)
-                    if posted:
-                        messages.success(request, f"{saved_product.title} was saved and posted to Telegram.")
-                    else:
-                        messages.warning(
-                            request,
-                            f"{saved_product.title} was saved, but Telegram publishing did not complete.",
-                        )
+                    enqueue(
+                        BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
+                        {"product_id": saved_product.id, "force": True},
+                    )
+                    messages.success(
+                        request,
+                        f"{saved_product.title} was saved and queued for Telegram publishing.",
+                    )
                 elif should_publish:
                     messages.warning(
                         request,
@@ -738,89 +739,40 @@ def dashboard_product_edit(request, product_id=None):
 @staff_required
 @require_POST
 def dashboard_ai_draft_process(request, draft_id):
+    """Ensure a draft is queued for background enrichment and report its state.
+
+    Idempotent: safe for the queue page to POST on every poll tick. The actual
+    Gemini call runs in the task queue, never inside this request.
+    """
     draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
 
     if draft.response_payload and draft.pipeline_state == ProductAIDraft.PIPELINE_READY:
-        return JsonResponse(
-            {
-                "ok": True,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "draft": _queue_draft_json(draft),
-            }
-        )
+        return _draft_state_response(draft)
 
-    if draft.response_payload and draft.pipeline_state not in {ProductAIDraft.PIPELINE_MANUAL_REVIEW}:
+    if draft.response_payload and draft.pipeline_state != ProductAIDraft.PIPELINE_MANUAL_REVIEW:
         draft.pipeline_state = ProductAIDraft.PIPELINE_READY
         draft.status = ProductAIDraft.STATUS_SUCCEEDED
         draft.processing_finished_at = timezone.now()
         draft.save(update_fields=["pipeline_state", "status", "processing_finished_at", "updated_at"])
-        return JsonResponse(
-            {
-                "ok": True,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "draft": _queue_draft_json(draft),
-            }
-        )
+        return _draft_state_response(draft)
 
-    draft.pipeline_state = ProductAIDraft.PIPELINE_ANALYZING
-    draft.processing_started_at = timezone.now()
-    draft.processing_finished_at = None
-    draft.attempt_count += 1
-    draft.error_message = ""
-    draft.last_error_stage = ""
-    draft.save(
-        update_fields=[
-            "pipeline_state",
-            "processing_started_at",
-            "processing_finished_at",
-            "attempt_count",
-            "error_message",
-            "last_error_stage",
-            "updated_at",
-        ]
-    )
+    if not has_active_task(BackgroundTask.TYPE_AI_ENRICH_DRAFT, draft_id=draft.id):
+        draft = _queue_draft_for_enrichment(draft)
+    return _draft_state_response(draft)
 
-    try:
-        result = generate_product_ai_payload_for_draft(draft)
-    except ProductAIError as exc:
-        _mark_draft_manual_review(draft, error_message=exc, stage="content")
-        return JsonResponse(
-            {
-                "ok": False,
-                "pipeline_state": draft.pipeline_state,
-                "queue_label": draft.queue_label,
-                "error": str(exc),
-                "draft": _queue_draft_json(draft),
-            }
-        )
 
-    apply_ai_draft_result(
-        draft,
-        result,
-        status=ProductAIDraft.STATUS_SUCCEEDED,
-        pipeline_state=ProductAIDraft.PIPELINE_READY,
-        error_message="",
-        last_error_stage="",
-    )
-    draft.processing_finished_at = timezone.now()
-    draft.save(update_fields=["processing_finished_at", "updated_at"])
-    return JsonResponse(
-        {
-            "ok": True,
-            "pipeline_state": draft.pipeline_state,
-            "queue_label": draft.queue_label,
-            "draft": _queue_draft_json(draft),
-        }
-    )
+@staff_required
+def dashboard_ai_draft_status(request, draft_id):
+    """Read-only polling endpoint for draft pipeline state."""
+    draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+    return _draft_state_response(draft)
 
 
 @staff_required
 @require_POST
 def dashboard_ai_draft_manual_review(request, draft_id):
     draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
-    _mark_draft_manual_review(draft, error_message="Queued draft sent to manual review.", stage="content")
+    mark_draft_manual_review(draft, error_message="Queued draft sent to manual review.", stage="content")
     return JsonResponse(
         {
             "ok": True,
@@ -841,3 +793,54 @@ def dashboard_ai_draft_generated_images(request, draft_id):
         },
         status=410,
     )
+
+
+@staff_required
+def dashboard_tasks(request):
+    status = (request.GET.get("status") or "").strip()
+    task_status_values = {value for value, _ in BackgroundTask.STATUS_CHOICES}
+
+    tasks_queryset = BackgroundTask.objects.order_by("-created_at")
+    if status in task_status_values:
+        tasks_queryset = tasks_queryset.filter(status=status)
+
+    summary = BackgroundTask.objects.aggregate(
+        total=Count("id"),
+        pending=Count("id", filter=Q(status=BackgroundTask.STATUS_PENDING)),
+        running=Count("id", filter=Q(status=BackgroundTask.STATUS_RUNNING)),
+        done=Count("id", filter=Q(status=BackgroundTask.STATUS_DONE)),
+        failed=Count("id", filter=Q(status=BackgroundTask.STATUS_FAILED)),
+    )
+
+    paginator = Paginator(tasks_queryset, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    context = _dashboard_context(
+        request,
+        section="tasks",
+        title="Background Tasks",
+        intro="Telegram notifications and AI enrichment run here instead of inside user requests. Failed tasks can be retried.",
+        tasks=page_obj,
+        page_obj=page_obj,
+        page_numbers=paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
+        task_summary=summary,
+        filters={"status": status},
+        task_status_choices=BackgroundTask.STATUS_CHOICES,
+        query_string_without_page=_query_string_without(request, "page"),
+    )
+    return render(request, "dashboard/tasks.html", context)
+
+
+@staff_required
+@require_POST
+def dashboard_task_retry(request, task_id):
+    task = get_object_or_404(BackgroundTask, pk=task_id)
+    next_url = request.POST.get("next") or reverse("store:dashboard-tasks")
+
+    if task.status != BackgroundTask.STATUS_FAILED:
+        messages.info(request, f"Task #{task.id} is {task.status} — only failed tasks can be retried.")
+        return redirect(next_url)
+
+    retry_task(task)
+    messages.success(request, f"Task #{task.id} ({task.get_task_type_display()}) was queued for retry.")
+    return redirect(next_url)

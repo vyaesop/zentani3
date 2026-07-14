@@ -1,0 +1,111 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Queue health</p>
+      <p class="zd-panel-head-sub">Rows are drained by the task worker (or the cron trigger on serverless)</p>
+    </div>
+  </div>
+  <div class="zd-mini-stats">
+    <div class="zd-mini-stat">
+      <span>Pending</span>
+      <strong>{{ task_summary.pending }}</strong>
+      <p>Waiting for the worker</p>
+    </div>
+    <div class="zd-mini-stat">
+      <span>Running</span>
+      <strong>{{ task_summary.running }}</strong>
+      <p>In flight right now</p>
+    </div>
+    <div class="zd-mini-stat">
+      <span>Done</span>
+      <strong>{{ task_summary.done }}</strong>
+      <p>Completed successfully</p>
+    </div>
+    <div class="zd-mini-stat">
+      <span>Failed</span>
+      <strong>{{ task_summary.failed }}</strong>
+      <p>Gave up after retries</p>
+    </div>
+  </div>
+</div>
+
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Tasks</p>
+      <p class="zd-panel-head-sub">{{ task_summary.total }} total</p>
+    </div>
+  </div>
+
+  <form method="get" class="zd-filters">
+    <div class="zd-filters-field">
+      <label for="task-status-filter">Status</label>
+      <select id="task-status-filter" name="status">
+        <option value="">All statuses</option>
+        {% for value, label in task_status_choices %}
+        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="zd-filters-actions">
+      <button type="submit" class="zd-btn zd-btn--primary zd-btn--sm">Filter</button>
+      <a href="{% url 'store:dashboard-tasks' %}" class="zd-btn zd-btn--ghost zd-btn--sm">Reset</a>
+    </div>
+  </form>
+
+  {% if tasks %}
+  <div class="zd-table-wrap">
+    <table class="zd-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Attempts</th>
+          <th>Run after</th>
+          <th>Last error</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td>#{{ task.id }}</td>
+          <td>{{ task.get_task_type_display }}</td>
+          <td><span class="zd-pill zd-pill--{{ task.status }}">{{ task.get_status_display }}</span></td>
+          <td>{{ task.attempts }}</td>
+          <td>{{ task.run_after|date:"M d, H:i" }}</td>
+          <td style="max-width:320px;overflow-wrap:anywhere">
+            {% if task.last_error %}{{ task.last_error|truncatechars:160 }}{% else %}—{% endif %}
+          </td>
+          <td>{{ task.created_at|date:"M d, H:i" }}</td>
+          <td>
+            {% if task.status == "failed" %}
+            <form method="post" action="{% url 'store:dashboard-task-retry' task.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm">Retry</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/_pagination.html" %}
+  {% else %}
+  <div class="zd-empty">
+    <div class="zd-empty-icon">📭</div>
+    <div class="zd-empty-title">No tasks yet</div>
+    <p class="zd-empty-sub">Checkout notifications, Telegram posts and AI enrichment will appear here as they run.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

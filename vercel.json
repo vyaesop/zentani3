@@ -14,6 +14,12 @@
       }
     }
   ],
+  "crons": [
+    {
+      "path": "/internal/run-tasks/",
+      "schedule": "* * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/static/(.*)",

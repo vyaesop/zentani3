@@ -216,15 +216,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (body.draft) updateCard(card, body.draft, body.error || 'Draft updated.');
   }
 
+  /* Enrichment runs in the background task queue. The process endpoint is
+     idempotent (it only ensures the draft is enqueued), so each tick POSTs it
+     for every active card and repaints with the returned state. */
   async function runLoop() {
     if (running) return;
     running = true;
     try {
-      while (true) {
-        const next = root.querySelector('[data-ai-queue-item][data-state="queued"],[data-ai-queue-item][data-state="analyzing"]');
-        if (!next) break;
-        try { await processCard(next); }
-        catch (e) { await toManualReview(next, e.message); }
+      const active = root.querySelectorAll(
+        '[data-ai-queue-item][data-state="queued"],[data-ai-queue-item][data-state="analyzing"],[data-ai-queue-item][data-state="idle"]'
+      );
+      for (const card of active) {
+        try { await processCard(card); }
+        catch (e) { /* transient network error — retry on the next tick */ }
       }
     } finally { running = false; }
   }
@@ -239,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   runLoop();
-  setInterval(runLoop, 12000);
+  setInterval(runLoop, 6000);
 });
 </script>
 {% endblock %}

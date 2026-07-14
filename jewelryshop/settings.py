@@ -20,11 +20,16 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY') or 'django-insecure-3%y3laftm62q0zaj+s7#p-xqq9(&#q+)s8)p-&#&bz*0$!xu$0'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY (or SECRET_KEY) must be set when DEBUG is off.')
+    # Development-only fallback; never used in production.
+    SECRET_KEY = 'django-insecure-dev-only-key'
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 SITE_URL = os.getenv('SITE_URL', '').rstrip('/')
@@ -85,20 +90,13 @@ TEMPLATES = [
                 'store.context_preprocessors.store_menu',
                 'store.context_preprocessors.brand_menu',
                 'store.context_preprocessors.cart_menu',
+                'store.context_preprocessors.cache_versions',
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = 'jewelryshop.wsgi.application'
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 IS_VERCEL = os.getenv('VERCEL') == '1'
@@ -123,33 +121,6 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'postgres',  # Supabase DB name
-#         'USER': 'postgres',
-#         'PASSWORD': 'x9KpmtFXiPIWg92f',
-#         'HOST': 'db.hndfdrhwatomdlqnnthz.supabase.co',  # or from Supabase host setting
-#         'PORT': 5432,
-#         'OPTIONS': {
-#             'sslmode': 'require',
-#             # Optional: if Supabase gives a root cert
-#             # 'sslrootcert': os.path.join(BASE_DIR, 'ssl', 'supabase_root.crt'),
-#         },
-#     }
-# }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'railway',
-#         'USER':'postgres',
-#         'PASSWORD':'hCiUyBWsBsTmWKQutUnEeoMuDjqpvMAQ',
-#         'HOST':'caboose.proxy.rlwy.net',
-#         'PORT':'24537'
-        
-#     }
-# }
-
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -234,14 +205,38 @@ if HAS_VALID_CLOUDINARY_CONFIG:
         )
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-# Default cache backend powers menu caching and can be replaced by Redis in production.
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'zent-cache',
-        'TIMEOUT': 300,
+# Shared cache backend. On serverless/multi-process hosting LocMem caches almost
+# nothing, so production should always set REDIS_URL (e.g. Upstash on Vercel).
+REDIS_URL = os.getenv('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT': 300,
+        }
     }
-}
+    # Sessions read from cache, write through to the DB.
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+else:
+    # Local development fallback (per-process).
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'zent-cache',
+            'TIMEOUT': 300,
+        }
+    }
+
+# Dev-only query debugging: `pip install django-debug-toolbar` and run with DEBUG=true.
+if DEBUG and importlib.util.find_spec('debug_toolbar'):
+    INSTALLED_APPS.append('debug_toolbar')
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
+
+# Background task queue (store.tasks). Eager mode executes handlers inline at
+# enqueue time — used in DEBUG/tests so local flows stay synchronous.
+TASKS_EAGER = os.getenv('TASKS_EAGER', str(DEBUG)).lower() == 'true'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
