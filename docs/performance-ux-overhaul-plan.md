@@ -28,7 +28,7 @@ Phases P0–P3 are the core: roughly 4–5 days of work for the large majority o
 ---
 
 ## P0 — Security & Housekeeping
-Status: Not started
+Status: Done (code) — credential rotation still required (see notes)
 Depends on: nothing. Do this first; it is half a day.
 
 ### 0.1 Rotate leaked database credentials
@@ -50,7 +50,7 @@ Real passwords sit in commented-out blocks in `jewelryshop/settings.py` (Supabas
 ---
 
 ## P1 — Get Blocking Work Out of the Request Path
-Status: Not started
+Status: Done
 Depends on: P0. Works on current hosting via cron endpoint; becomes nicer after P4.
 
 This is the single biggest UX fix in the plan. Today every one of these runs synchronously inside a user-facing request:
@@ -86,7 +86,7 @@ No Celery, no Redis broker — a plain database table drained by a worker. This 
 ---
 
 ## P2 — Cloudinary-Native Image Delivery
-Status: Not started
+Status: Done
 Depends on: nothing (independent of P1).
 
 We already pay for Cloudinary but convert images to webp ourselves with Pillow inside `Product.save()` (`store/models.py:254–264`, also Category/Brand/ProductImages), then serve one fixed file to every device. Cloudinary does format, quality, and resize on the fly via URL parameters — better output, zero server CPU.
@@ -106,7 +106,7 @@ We already pay for Cloudinary but convert images to webp ourselves with Pillow i
 ---
 
 ## P3 — Real Caching + Query Fixes
-Status: Not started
+Status: Done (code) — provision Redis and set REDIS_URL in production
 Depends on: P0. Cache backend choice interacts with P4.
 
 The cache backend is `LocMemCache` (`jewelryshop/settings.py:240`) — per-process, so on serverless it caches essentially nothing. Only the nav menu uses it.
@@ -132,7 +132,7 @@ The cache backend is `LocMemCache` (`jewelryshop/settings.py:240`) — per-proce
 ---
 
 ## P4 — Hosting Decision
-Status: Not started
+Status: Prepared — see docs/hosting.md and Procfile; decision/migration pending
 Depends on: none technically, but do it before or alongside P1/P3 to simplify them.
 
 Django on Vercel serverless fights the platform: cold starts, no background processes, no shared memory, media workarounds. One small always-on host removes an entire class of problems.
@@ -153,7 +153,7 @@ Django on Vercel serverless fights the platform: cold starts, no background proc
 ---
 
 ## P5 — Frontend Unification (htmx + one design system)
-Status: Not started
+Status: Done — htmx interactions live; zd-* token migration continues page-by-page
 Depends on: none. Ship page-by-page; each step is independently deployable.
 
 Two problems: (a) ~10 hand-rolled fetch/JSON endpoints each with bespoke JS for cart, wishlist, and filters; (b) two unrelated design systems — `spring-*` (storefront, off `templates/base.html`) and `zd-*` (dashboard, off `templates/dashboard/base.html`) — plus heavy inline styling in the dashboard (`dashboard/product_form.html` alone has 18 inline `style=` attributes and an inline `<script>`).
@@ -181,7 +181,7 @@ Two problems: (a) ~10 hand-rolled fetch/JSON endpoints each with bespoke JS for 
 ---
 
 ## P6 — Code Structure & Model Cleanup
-Status: Not started
+Status: In progress
 Depends on: best done after P1 (services layer hosts the task handlers).
 
 ### 6.1 Split the god files (pure moves, no behavior change)
