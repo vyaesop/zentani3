@@ -1,16 +1,9 @@
 from decimal import Decimal
 import uuid
-import os
-from io import BytesIO
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import MaxValueValidator, MinValueValidator
-
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from django.utils import timezone
 
 
 def _normalize_legacy_media_name(name):
@@ -18,48 +11,6 @@ def _normalize_legacy_media_name(name):
     if value.startswith("media/"):
         return value[len("media/"):]
     return value
-
-
-def _convert_uploaded_image_to_webp(field_file, quality=80):
-    """Return a converted WebP upload for admin/user-uploaded files before storage save."""
-    if Image is None or not field_file:
-        return None
-
-    # Only process new uploads that are not yet stored.
-    if getattr(field_file, "_committed", True):
-        return None
-
-    source_file = getattr(field_file, "file", None)
-    if source_file is None or not hasattr(source_file, "read"):
-        return None
-
-    original_name = field_file.name or getattr(source_file, "name", "upload.jpg")
-    original_extension = os.path.splitext(original_name)[1].lower()
-    if original_extension == ".webp":
-        return None
-
-    try:
-        source_file.seek(0)
-        image = Image.open(source_file)
-        image.load()
-    except Exception:
-        return None
-
-    if image.mode in ("RGBA", "P"):
-        image = image.convert("RGBA")
-    else:
-        image = image.convert("RGB")
-
-    output = BytesIO()
-    image.save(output, format="WEBP", quality=quality, optimize=True)
-    output.seek(0)
-
-    webp_name = f"{os.path.splitext(os.path.basename(original_name))[0]}.webp"
-    return SimpleUploadedFile(
-        webp_name,
-        output.read(),
-        content_type="image/webp",
-    )
 
 # Create your models here.
 class Address(models.Model):
@@ -95,9 +46,6 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         if self.category_image and getattr(self.category_image, "name", ""):
             self.category_image.name = _normalize_legacy_media_name(self.category_image.name)
-        converted = _convert_uploaded_image_to_webp(self.category_image)
-        if converted is not None:
-            self.category_image = converted
         super().save(*args, **kwargs)
     
 class Brand(models.Model):
@@ -123,9 +71,6 @@ class Brand(models.Model):
     def save(self, *args, **kwargs):
         if self.brand_image and getattr(self.brand_image, "name", ""):
             self.brand_image.name = _normalize_legacy_media_name(self.brand_image.name)
-        converted = _convert_uploaded_image_to_webp(self.brand_image)
-        if converted is not None:
-            self.brand_image = converted
         super().save(*args, **kwargs)
 
 
@@ -254,9 +199,6 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if self.product_image and getattr(self.product_image, "name", ""):
             self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
-        converted = _convert_uploaded_image_to_webp(self.product_image)
-        if converted is not None:
-            self.product_image = converted
         # Reconcile before save so the written value is always consistent.
         if self.pk:
             self.is_sold_out = self._reconcile_sold_out_flag()
@@ -274,9 +216,6 @@ class ProductImages(models.Model):
     def save(self, *args, **kwargs):
         if self.image and getattr(self.image, "name", ""):
             self.image.name = _normalize_legacy_media_name(self.image.name)
-        converted = _convert_uploaded_image_to_webp(self.image)
-        if converted is not None:
-            self.image = converted
         super().save(*args, **kwargs)
 
 
@@ -365,14 +304,8 @@ class ProductAIDraft(models.Model):
     def save(self, *args, **kwargs):
         if self.reference_image and getattr(self.reference_image, "name", ""):
             self.reference_image.name = _normalize_legacy_media_name(self.reference_image.name)
-        converted = _convert_uploaded_image_to_webp(self.reference_image)
-        if converted is not None:
-            self.reference_image = converted
         if self.secondary_reference_image and getattr(self.secondary_reference_image, "name", ""):
             self.secondary_reference_image.name = _normalize_legacy_media_name(self.secondary_reference_image.name)
-        secondary_converted = _convert_uploaded_image_to_webp(self.secondary_reference_image)
-        if secondary_converted is not None:
-            self.secondary_reference_image = secondary_converted
         super().save(*args, **kwargs)
 
     @property
@@ -403,9 +336,6 @@ class ProductAIDraftImage(models.Model):
     def save(self, *args, **kwargs):
         if self.image and getattr(self.image, "name", ""):
             self.image.name = _normalize_legacy_media_name(self.image.name)
-        converted = _convert_uploaded_image_to_webp(self.image)
-        if converted is not None:
-            self.image = converted
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -678,6 +608,55 @@ class TelegramBotOrder(models.Model):
 
     def __str__(self):
         return f"TG-{self.id} {self.product_title} ({self.customer_full_name})"
+
+
+class BackgroundTask(models.Model):
+    """Outbox row for work that must not block a user-facing request.
+
+    Drained by `manage.py run_tasks` (always-on hosting) or the
+    `POST /internal/run-tasks/` trigger (serverless cron).
+    """
+
+    TYPE_TELEGRAM_PRODUCT_POST = "telegram_product_post"
+    TYPE_TELEGRAM_ORDER_NOTIFY = "telegram_order_notify"
+    TYPE_TELEGRAM_SIGNUP_NOTIFY = "telegram_signup_notify"
+    TYPE_AI_ENRICH_DRAFT = "ai_enrich_draft"
+    TASK_TYPE_CHOICES = (
+        (TYPE_TELEGRAM_PRODUCT_POST, "Telegram product post"),
+        (TYPE_TELEGRAM_ORDER_NOTIFY, "Telegram order notification"),
+        (TYPE_TELEGRAM_SIGNUP_NOTIFY, "Telegram signup notification"),
+        (TYPE_AI_ENRICH_DRAFT, "AI draft enrichment"),
+    )
+
+    STATUS_PENDING = "pending"
+    STATUS_RUNNING = "running"
+    STATUS_DONE = "done"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Pending"),
+        (STATUS_RUNNING, "Running"),
+        (STATUS_DONE, "Done"),
+        (STATUS_FAILED, "Failed"),
+    )
+
+    task_type = models.CharField(max_length=40, choices=TASK_TYPE_CHOICES)
+    payload = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    run_after = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["status", "run_after"]),
+            models.Index(fields=["task_type", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.task_type} #{self.pk} ({self.status})"
 
 
 class TelegramConversationState(models.Model):

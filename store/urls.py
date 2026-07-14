@@ -1,6 +1,6 @@
 from store.forms import LoginForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
-from django.urls import path
-from . import dashboard_views, views
+from django.urls import path, re_path
+from . import dashboard_views, tasks, views
 from django.contrib.auth import views as auth_views
 
 
@@ -16,8 +16,12 @@ urlpatterns = [
     path('dashboard/products/new/', dashboard_views.dashboard_product_edit, name="dashboard-product-create"),
     path('dashboard/products/<int:product_id>/', dashboard_views.dashboard_product_edit, name="dashboard-product-edit"),
     path('dashboard/ai-drafts/<int:draft_id>/process/', dashboard_views.dashboard_ai_draft_process, name="dashboard-ai-draft-process"),
+    path('dashboard/ai-drafts/<int:draft_id>/status/', dashboard_views.dashboard_ai_draft_status, name="dashboard-ai-draft-status"),
     path('dashboard/ai-drafts/<int:draft_id>/manual-review/', dashboard_views.dashboard_ai_draft_manual_review, name="dashboard-ai-draft-manual-review"),
     path('dashboard/ai-drafts/<int:draft_id>/generated-images/', dashboard_views.dashboard_ai_draft_generated_images, name="dashboard-ai-draft-generated-images"),
+    path('dashboard/tasks/', dashboard_views.dashboard_tasks, name="dashboard-tasks"),
+    path('dashboard/tasks/<int:task_id>/retry/', dashboard_views.dashboard_task_retry, name="dashboard-task-retry"),
+    path('internal/run-tasks/', tasks.run_tasks_endpoint, name="run-tasks"),
     path('', views.home, name="home"),
     # URL for Cart and Checkout
     path('add-to-cart/', views.add_to_cart, name="add-to-cart"),
@@ -32,7 +36,6 @@ urlpatterns = [
     path('orders/<int:order_id>/cancel/', views.cancel_order, name="cancel-order"),
     path("search/", views.search_view, name="search"),
     path("search/suggestions/", views.search_suggestions, name="search-suggestions"),
-    path("filter-products/", views.filter_product, name="filter-product"),
     path('products/', views.products, name="all-products"),
     path('brands/', views.all_brands, name="all-brands"),
     path('brand/<slug:slug>/', views.brand_products, name="brand-products"),
@@ -70,16 +73,11 @@ urlpatterns = [
     # Affiliate links
     path('ref/<slug:code>/', views.track_affiliate_link, name='affiliate-track'),
 
-    # Telegram bot webhooks
-    path('telegram/customer-webhook/', views.customer_telegram_webhook, name='telegram-customer-webhook'),
-    path('telegram/customer-webhook', views.customer_telegram_webhook, name='telegram-customer-webhook-no-slash'),
-    path('telegram/admin-webhook/', views.admin_telegram_webhook, name='telegram-admin-webhook'),
-    path('telegram/admin-webhook', views.admin_telegram_webhook, name='telegram-admin-webhook-no-slash'),
-    path('telegram/webhook/', views.telegram_webhook, name='telegram-webhook'),
-    path('telegram/webhook', views.telegram_webhook, name='telegram-webhook-no-slash'),
-
-
-    
+    # Telegram bot webhooks. Optional trailing slash so registrations with either
+    # form keep working (Telegram POSTs are not safely re-sent through redirects).
+    re_path(r'^telegram/customer-webhook/?$', views.customer_telegram_webhook, name='telegram-customer-webhook'),
+    re_path(r'^telegram/admin-webhook/?$', views.admin_telegram_webhook, name='telegram-admin-webhook'),
+    re_path(r'^telegram/webhook/?$', views.telegram_webhook, name='telegram-webhook'),
 ]
 # def cart(request):
 #     user = request.user

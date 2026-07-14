@@ -29,6 +29,7 @@ from store.models import (
     AffiliateClick,
     AffiliateCommission,
     AffiliateProfile,
+    BackgroundTask,
     Brand,
     Cart,
     Category,
@@ -42,10 +43,9 @@ from store.models import (
     TelegramConversationState,
     Wishlist,
 )
+from store.tasks import enqueue
 from store.telegram_notify import (
     notify_bot_order_lead,
-    notify_new_order,
-    notify_new_signup,
     send_product_gallery_to_customer,
     send_admin_alert_message,
     send_customer_bot_message,
@@ -69,6 +69,11 @@ PRODUCT_LIST_FIELDS = (
 )
 
 
+from .cache_utils import (
+    COLLECTION_META_TTL,
+    HOME_TOP_SELLING_TTL,
+    collection_meta_key,
+)
 from .constants import (
     ACCOUNT_ORDERS_PAGE_SIZE,
     ADDIS_FREE_SHIPPING_THRESHOLD,
@@ -1078,9 +1083,20 @@ def _build_collection_state(
     if current_query:
         query_scoped_queryset = query_scoped_queryset.filter(_browse_text_query(current_query))
 
-    price_bounds = query_scoped_queryset.aggregate(min_price=Min("price"), max_price=Max("price"))
-    min_price_bound = price_bounds.get("min_price")
-    max_price_bound = price_bounds.get("max_price")
+    # Price bounds and the size-option scan only depend on the scope (path +
+    # text query), not on filters/sort/page — cache them per catalog version.
+    meta_cache_key = collection_meta_key(form_action or request.path, current_query)
+    collection_meta = cache.get(meta_cache_key)
+    if collection_meta is None:
+        price_bounds = query_scoped_queryset.aggregate(min_price=Min("price"), max_price=Max("price"))
+        collection_meta = {
+            "min_price": price_bounds.get("min_price"),
+            "max_price": price_bounds.get("max_price"),
+            "size_options": _collection_size_options(query_scoped_queryset),
+        }
+        cache.set(meta_cache_key, collection_meta, COLLECTION_META_TTL)
+    min_price_bound = collection_meta["min_price"]
+    max_price_bound = collection_meta["max_price"]
     current_min_price = _parse_decimal_param(request.GET.get("min_price"))
     current_max_price = _parse_decimal_param(request.GET.get("max_price"))
 
@@ -1145,11 +1161,12 @@ def _build_collection_state(
         active_filters.append(f"Min {current_min_price:.2f} ETB")
     if current_max_price is not None:
         active_filters.append(f"Max {current_max_price:.2f} ETB")
-    if current_sort != "newest":
-        selected_sort_label = next(
-            label for value, label, _ in COLLECTION_SORT_OPTIONS if value == current_sort
-        )
-        active_filters.append(f"Sort: {selected_sort_label}")
+    if current_sort not in ("newest", default_sort):
+        sort_labels = {value: label for value, label, _ in COLLECTION_SORT_OPTIONS}
+        sort_labels["relevance"] = "Most relevant"
+        selected_sort_label = sort_labels.get(current_sort)
+        if selected_sort_label:
+            active_filters.append(f"Sort: {selected_sort_label}")
 
     reset_params = request.GET.copy()
     for key in ("category", "brand", "size", "availability", "min_price", "max_price", "sort", "page"):
@@ -1181,7 +1198,7 @@ def _build_collection_state(
             "selected_brands": selected_brands,
             "selected_sizes": selected_sizes,
             "availability": availability,
-            "size_options": _collection_size_options(query_scoped_queryset),
+            "size_options": collection_meta["size_options"],
             "result_summary": result_summary,
             "active_filters": active_filters,
             "reset_filters_url": _url_with_query(form_action or request.path, reset_params),
@@ -1269,16 +1286,24 @@ def _apply_guest_checkout_profile(guest_user, full_name, phone, city, address):
     )
 
 
+def _is_htmx(request):
+    return request.headers.get("HX-Request") == "true"
+
+
 def home(request):
     categories = Category.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "category_image").order_by("-created_at")[:8]
     brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image").order_by("-created_at")[:12]
     products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)[:24]
     latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
-    top_selling_ids = list(
-        Order.objects.values("product_id")
-        .annotate(total_quantity=Sum("quantity"))
-        .order_by("-total_quantity", "-product_id")
-        .values_list("product_id", flat=True)[:8]
+    top_selling_ids = cache.get_or_set(
+        "home_top_selling_ids",
+        lambda: list(
+            Order.objects.values("product_id")
+            .annotate(total_quantity=Sum("quantity"))
+            .order_by("-total_quantity", "-product_id")
+            .values_list("product_id", flat=True)[:8]
+        ),
+        HOME_TOP_SELLING_TTL,
     )
     top_selling_lookup = {
         product.id: product
@@ -1327,8 +1352,12 @@ def toggle_wishlist(request, product_id):
         saved = True
         message = f"Saved {product.title} for later."
 
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JsonResponse({"ok": True, "saved": saved, "message": message})
+    if _is_htmx(request):
+        return render(
+            request,
+            "store/_wishlist_button.html",
+            {"product": product, "saved": saved, "variant": request.POST.get("variant", "")},
+        )
 
     messages.success(request, message)
     return redirect(request.POST.get("next") or reverse("store:product-detail", kwargs={"slug": product.slug}))
@@ -1401,7 +1430,7 @@ def search_view(request):
 def search_suggestions(request):
     query = (request.GET.get("q") or "").strip()
     if len(query) < 2:
-        return JsonResponse({"products": [], "categories": [], "brands": []})
+        return HttpResponse("")
 
     product_suggestions = list(
         Product.objects.filter(is_active=True)
@@ -1416,12 +1445,14 @@ def search_suggestions(request):
     brand_suggestions = list(
         Brand.objects.filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
     )
-    return JsonResponse(
+    return render(
+        request,
+        "store/_search_suggestions.html",
         {
             "products": product_suggestions,
             "categories": category_suggestions,
             "brands": brand_suggestions,
-        }
+        },
     )
 
 
@@ -1433,30 +1464,6 @@ def products(request):
         form_action=reverse("store:all-products"),
     )
     return render(request, "store/products.html", context)
-
-
-def filter_product(request):
-    categories = request.GET.getlist("category[]")
-
-    min_price = request.GET["min_price"]
-    max_price = request.GET["max_price"]
-
-    try:
-        min_price = Decimal(min_price)
-        max_price = Decimal(max_price)
-    except decimal.InvalidOperation:
-        return JsonResponse({"error": "Invalid price values"})
-
-    products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS).order_by("-id").distinct()
-
-    products = products.filter(price__gte=min_price)
-    products = products.filter(price__lte=max_price)
-
-    if categories:
-        products = products.filter(category__id__in=categories).distinct()
-
-    data = render_to_string("store/product-list.html", {"products": products})
-    return JsonResponse({"data": data})
 
 
 def all_categories(request):
@@ -1545,7 +1552,10 @@ class RegistrationView(View):
             if authenticated_user is not None:
                 login(request, authenticated_user)
 
-            notify_new_signup(user=user, address=signup_address)
+            enqueue(
+                BackgroundTask.TYPE_TELEGRAM_SIGNUP_NOTIFY,
+                {"user_id": user.id, "address_id": signup_address.id},
+            )
             messages.success(request, "Account created successfully. You can continue with your order now.")
             return redirect(_safe_redirect_url_with_query(request, "store:profile"))
         return render(request, "account/register.html", {"form": form, "next_url": request.POST.get("next", "")})
@@ -1706,30 +1716,25 @@ def remove_address(request, id):
 
 
 def add_to_cart(request):
-    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
-    def _json(message, ok=True, status=200):
-        owner_user = _cart_owner_user(request)
-        payload = {
-            "ok": ok,
-            "message": message,
-            "cart_items_count": Cart.objects.filter(user=owner_user).count(),
-        }
-        return JsonResponse(payload, status=status)
+    def _feedback(message, tone="success"):
+        return render(
+            request,
+            "store/_add_to_cart_result.html",
+            {"message": message, "tone": tone, "include_oob_badge": True},
+        )
 
     if request.method != "POST":
-        if is_ajax:
-            return _json("Please use the add-to-cart button to add an item.", ok=False, status=405)
         messages.warning(request, "Please use the add-to-cart button to add an item.")
         return redirect("store:home")
 
+    is_htmx = _is_htmx(request)
     user = _cart_owner_user(request)
     product_id = request.POST.get("prod_id")
     selected_size = (request.POST.get("size") or "").strip()
 
     if not product_id:
-        if is_ajax:
-            return _json("Unable to add product to cart. Please try again.", ok=False, status=400)
+        if is_htmx:
+            return _feedback("Unable to add product to cart. Please try again.", tone="danger")
         messages.error(request, "Unable to add product to cart. Please try again.")
         return redirect("store:home")
 
@@ -1740,8 +1745,8 @@ def add_to_cart(request):
     )
 
     if product.is_sold_out:
-        if is_ajax:
-            return _json(f"{product.title} is currently sold out.", ok=False, status=400)
+        if is_htmx:
+            return _feedback(f"{product.title} is currently sold out.", tone="warning")
         messages.warning(request, f"{product.title} is currently sold out.")
         return redirect("store:product-detail", slug=product.slug)
 
@@ -1749,14 +1754,14 @@ def add_to_cart(request):
     selected_size_value = selected_size or None
 
     if available_sizes and not selected_size:
-        if is_ajax:
-            return _json("Please select a size for this product.", ok=False, status=400)
+        if is_htmx:
+            return _feedback("Please select a size for this product.", tone="danger")
         messages.error(request, "Please select a size for this product.")
         return redirect("store:product-detail", slug=product.slug)
 
     if selected_size and selected_size not in available_sizes:
-        if is_ajax:
-            return _json("Selected size is not available for this product.", ok=False, status=400)
+        if is_htmx:
+            return _feedback("Selected size is not available for this product.", tone="danger")
         messages.error(request, "Selected size is not available for this product.")
         return redirect("store:product-detail", slug=product.slug)
 
@@ -1772,8 +1777,8 @@ def add_to_cart(request):
         message = f"Only {_product_size_stock(product, size_value=selected_size_value)} unit(s) are available for {product.title} ({selected_size_value or 'default size'})."
         if created:
             cart_item.delete()
-        if is_ajax:
-            return _json(message, ok=False, status=400)
+        if is_htmx:
+            return _feedback(message, tone="warning")
         messages.warning(request, message)
         return redirect("store:product-detail", slug=product.slug)
 
@@ -1781,18 +1786,17 @@ def add_to_cart(request):
         cart_item.quantity = requested_quantity
         cart_item.save(update_fields=["quantity", "updated_at"])
         success_message = f"Quantity of {product.title} (Size: {selected_size_value or 'N/A'}) updated in cart. Open your cart when you are ready to place the order."
-        messages.success(request, success_message)
     else:
         success_message = f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart. Open your cart to review delivery details and place the order."
-        messages.success(request, success_message)
 
-    if is_ajax:
-        return _json(success_message, ok=True, status=200)
+    if is_htmx:
+        return _feedback(success_message, tone="success")
 
+    messages.success(request, success_message)
     return redirect(_safe_redirect_url(request, fallback_url="store:cart"))
 
 
-def cart(request):
+def _cart_page_context(request):
     user = _cart_owner_user(request)
     cart_products = Cart.objects.filter(user=user).select_related("product", "coupon", "product__category", "product__brand")
     latest_address = _latest_saved_address(request.user)
@@ -1812,7 +1816,7 @@ def cart(request):
     if first_item_with_coupon and not _coupon_issue(first_item_with_coupon.coupon):
         coupon_for_display = first_item_with_coupon.coupon
 
-    context = {
+    return {
         "cart_products": cart_products,
         "amount": amount,
         "shipping_amount": shipping_amount,
@@ -1823,17 +1827,29 @@ def cart(request):
         "flow_status": _build_cart_flow_status(request, cart_products, latest_address),
         "shipping_note": shipping_note,
     }
-    return render(request, "store/cart.html", context)
+
+
+def _render_cart_contents(request, alert=None, tone="info"):
+    """htmx response for cart mutations: fresh cart contents + OOB nav badge."""
+    context = _cart_page_context(request)
+    context["include_oob_badge"] = True
+    if alert:
+        context["cart_alert"] = alert
+        context["cart_alert_tone"] = tone
+    return render(request, "store/_cart_contents.html", context)
+
+
+def cart(request):
+    return render(request, "store/cart.html", _cart_page_context(request))
 
 
 class AddCoupon(View):
     def post(self, request, *args, **kwargs):
-        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
         code = (request.POST.get("coupon") or "").strip()
 
         def _fail(msg):
-            if is_ajax:
-                return JsonResponse({"ok": False, "message": msg})
+            if _is_htmx(request):
+                return _render_cart_contents(request, alert=msg, tone="warning")
             messages.warning(request, msg)
             return redirect("store:cart")
 
@@ -1853,34 +1869,18 @@ class AddCoupon(View):
             return _fail("Your cart is empty.")
 
         cart_products.update(coupon=coupon)
-        if is_ajax:
-            return JsonResponse({"ok": True, "message": f"Coupon '{coupon.code}' applied — {coupon.discount}% off."})
+        if _is_htmx(request):
+            return _render_cart_contents(
+                request,
+                alert=f"Coupon '{coupon.code}' applied — {coupon.discount}% off.",
+                tone="success",
+            )
         messages.success(request, "Coupon applied successfully.")
         return redirect("store:cart")
 
 
-def _cart_ajax_response(request, user, *, ok=True, message="", item=None):
-    """Build a JSON payload for cart AJAX calls with updated totals."""
-    cart_qs = Cart.objects.filter(user=user).select_related("product", "coupon")
-    cart_items_count = cart_qs.count()
-    subtotal = sum(c.total_price for c in cart_qs)
-    payload = {
-        "ok": ok,
-        "message": message,
-        "cart_items_count": cart_items_count,
-        "subtotal": str(subtotal),
-        "total": str(subtotal),
-    }
-    if item is not None:
-        payload["quantity"] = item.quantity if item.pk else 0
-        payload["item_total"] = str(item.total_price) if item.pk else "0"
-    return JsonResponse(payload)
-
-
 def remove_cart(request, cart_id):
     if request.method != "POST":
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
@@ -1888,65 +1888,58 @@ def remove_cart(request, cart_id):
     c = get_object_or_404(Cart, id=cart_id, user=user)
     c.delete()
 
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return _cart_ajax_response(request, user, ok=True, message="Item removed.")
+    if _is_htmx(request):
+        return _render_cart_contents(request, alert="Item removed.", tone="success")
     messages.success(request, "Product removed from cart.")
     return redirect("store:cart")
 
 
 def plus_cart(request, cart_id):
     if request.method != "POST":
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
     user = _cart_owner_user(request)
     cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
-    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if not cp.product.is_active or cp.product.is_sold_out:
         msg = f"{cp.product.title} is no longer available."
-        if is_ajax:
-            return JsonResponse({"ok": False, "message": msg})
+        if _is_htmx(request):
+            return _render_cart_contents(request, alert=msg, tone="warning")
         messages.warning(request, msg)
         return redirect("store:cart")
 
     requested_quantity = cp.quantity + 1
     if not _product_can_fulfill_quantity(cp.product, requested_quantity, size_value=cp.size):
         msg = f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available."
-        if is_ajax:
-            return JsonResponse({"ok": False, "message": msg})
+        if _is_htmx(request):
+            return _render_cart_contents(request, alert=msg, tone="warning")
         messages.warning(request, msg)
         return redirect("store:cart")
 
     cp.quantity += 1
     cp.save(update_fields=["quantity", "updated_at"])
-    if is_ajax:
-        return _cart_ajax_response(request, user, ok=True, item=cp)
+    if _is_htmx(request):
+        return _render_cart_contents(request)
     return redirect("store:cart")
 
 
 def minus_cart(request, cart_id):
     if request.method != "POST":
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse({"ok": False, "message": "Invalid request."}, status=405)
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
     user = _cart_owner_user(request)
     cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
-    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if cp.quantity == 1:
         cp.delete()
-        if is_ajax:
-            return _cart_ajax_response(request, user, ok=True, message="Item removed.")
     else:
         cp.quantity -= 1
         cp.save(update_fields=["quantity", "updated_at"])
-        if is_ajax:
-            return _cart_ajax_response(request, user, ok=True, item=cp)
+
+    if _is_htmx(request):
+        return _render_cart_contents(request)
     return redirect("store:cart")
 
 
@@ -2096,13 +2089,17 @@ def checkout(request):
         order_total,
     )
 
-    notify_new_order(
-        user=user,
-        order_count=order_count,
-        order_total=order_total,
-        address=guest_checkout_address or customer_address,
-        order_lines=order_lines,
-        order_ids=created_order_ids,
+    notify_address = guest_checkout_address or customer_address
+    notify_payload = {
+        "user_id": user.id,
+        "order_count": order_count,
+        "order_total": str(order_total),
+        "address_id": notify_address.id if notify_address else None,
+        "order_lines": order_lines,
+        "order_ids": created_order_ids,
+    }
+    transaction.on_commit(
+        lambda: enqueue(BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY, notify_payload)
     )
 
     messages.success(
@@ -2129,14 +2126,14 @@ def orders(request):
         "product__title",
         "product__slug",
     ).order_by("-ordered_date")
-    orders_for_display = []
-    for order in all_orders:
+    # Paginate the queryset first, then decorate only the current page's rows —
+    # never materialize the full order history per request.
+    paginator = Paginator(all_orders, ACCOUNT_ORDERS_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    for order in page_obj.object_list:
         order.timeline = _order_status_timeline(order.status)
         order.status_copy = ORDER_STATUS_COPY.get(order.status, "")
         order.can_cancel = _can_cancel_order(order)
-        orders_for_display.append(order)
-    paginator = Paginator(orders_for_display, ACCOUNT_ORDERS_PAGE_SIZE)
-    page_obj = paginator.get_page(request.GET.get("page"))
     return render(
         request,
         "store/orders.html",
