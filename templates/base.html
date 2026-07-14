@@ -20,16 +20,18 @@
     {% block seo_head %}{% endblock %}
     <meta name="author" content="Zentanee">
     <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
 
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
 
     <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/style.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-core.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-storefront.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="spring-body">
+<body class="spring-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <div class="spring-announcement">
         <div class="spring-container">
             <p>Free delivery in Addis Ababa. Shop new arrivals now.</p>
@@ -44,12 +46,17 @@
                         <i class="fas fa-bars"></i>
                         <span>Menu</span>
                     </button>
-                    <form action="{% url 'store:search' %}" method="GET" class="spring-header-search">
-                        <input type="text" name="q" autocomplete="off" placeholder="Search products" list="spring-search-suggestions" data-spring-search-input>
+                    <form action="{% url 'store:search' %}" method="GET" class="spring-header-search zent-search">
+                        <input type="text" name="q" autocomplete="off" placeholder="Search products"
+                               hx-get="{% url 'store:search-suggestions' %}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="next .zent-search-suggest"
+                               hx-swap="innerHTML">
                         <button type="submit" class="spring-link" aria-label="Search">
                             <i class="fas fa-search"></i>
                             <span>Search</span>
                         </button>
+                        <div class="zent-search-suggest" role="listbox" aria-label="Search suggestions"></div>
                     </form>
                 </div>
 
@@ -71,7 +78,7 @@
                     {% endif %}
                     <a href="{% url 'store:cart' %}" class="spring-link spring-cart-link">
                         <span>Cart</span>
-                        <span class="spring-cart-count">{{ cart_items_count }}</span>
+                        <span class="spring-cart-count" id="cart-count-desktop">{{ cart_items_count }}</span>
                     </a>
                 </div>
             </div>
@@ -83,7 +90,7 @@
                 <a href="{% url 'store:home' %}" class="spring-logo spring-logo--mobile" aria-label="Zentanee home">Zentanee</a>
                 <a href="{% url 'store:cart' %}" class="spring-mobile-icon spring-mobile-icon--cart" aria-label="Open cart">
                     <i class="fas fa-shopping-bag"></i>
-                    <span class="spring-cart-count">{{ cart_items_count }}</span>
+                    <span class="spring-cart-count" id="cart-count-mobile">{{ cart_items_count }}</span>
                 </a>
             </div>
 
@@ -160,9 +167,14 @@
         <a href="#" class="mobile-menu-close"><i class="close-icon"></i></a>
 
         <div class="mobile-menu-container scrollable spring-mobile-drawer">
-            <form action="{% url 'store:search' %}" method="GET" class="spring-mobile-search">
-                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products" list="spring-search-suggestions" data-spring-search-input required>
+            <form action="{% url 'store:search' %}" method="GET" class="spring-mobile-search zent-search">
+                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="Search products" required
+                       hx-get="{% url 'store:search-suggestions' %}"
+                       hx-trigger="keyup changed delay:300ms"
+                       hx-target="next .zent-search-suggest"
+                       hx-swap="innerHTML">
                 <button class="btn btn-dark" type="submit">Search</button>
+                <div class="zent-search-suggest" role="listbox" aria-label="Search suggestions"></div>
             </form>
 
             <ul class="spring-mobile-menu">
@@ -185,73 +197,22 @@
         </div>
     </div>
 
-    <datalist id="spring-search-suggestions"></datalist>
-
+    <script src="{% static 'asset/vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/jquery/jquery.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/sticky/sticky.js' %}" defer></script>
     <script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}" defer></script>
     <script src="{% static 'asset/js/main.min.js' %}" defer></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const inputs = document.querySelectorAll('[data-spring-search-input]');
-        const datalist = document.getElementById('spring-search-suggestions');
-        if (!inputs.length || !datalist) return;
-
-        let controller = null;
-        let timer = null;
-
-        function renderSuggestions(payload) {
-            datalist.innerHTML = '';
-            const values = [];
-
-            ['products', 'categories', 'brands'].forEach(function (key) {
-                (payload[key] || []).forEach(function (item) {
-                    if (item.title && !values.includes(item.title)) {
-                        values.push(item.title);
-                    }
-                });
-            });
-
-            values.slice(0, 10).forEach(function (value) {
-                const option = document.createElement('option');
-                option.value = value;
-                datalist.appendChild(option);
-            });
-        }
-
-        inputs.forEach(function (input) {
-            input.addEventListener('input', function () {
-                const query = input.value.trim();
-                if (query.length < 2) {
-                    datalist.innerHTML = '';
-                    return;
-                }
-
-                if (timer) {
-                    window.clearTimeout(timer);
-                }
-                timer = window.setTimeout(async function () {
-                    try {
-                        if (controller) {
-                            controller.abort();
-                        }
-                        controller = new AbortController();
-                        const response = await fetch('{% url "store:search-suggestions" %}?q=' + encodeURIComponent(query), {
-                            signal: controller.signal,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                        });
-                        if (!response.ok) return;
-                        renderSuggestions(await response.json());
-                    } catch (error) {
-                        if (error.name !== 'AbortError') {
-                            datalist.innerHTML = '';
-                        }
-                    }
-                }, 180);
-            });
+    // Close search suggestion panels when clicking away or pressing Escape.
+    document.addEventListener('click', function (e) {
+        document.querySelectorAll('.zent-search-suggest').forEach(function (panel) {
+            if (!panel.closest('.zent-search').contains(e.target)) panel.innerHTML = '';
         });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.zent-search-suggest').forEach(function (panel) { panel.innerHTML = ''; });
+        }
     });
     </script>
     {% block extra_scripts %}{% endblock %}

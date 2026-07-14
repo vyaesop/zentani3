@@ -4,23 +4,13 @@
 
 {% block content %}
 <main class="main spring-main">
-  <div class="spring-container spring-directory">
+  <div class="spring-container spring-directory zent-busy-region" id="collection-page"
+       hx-target="#collection-page" hx-select="#collection-page" hx-swap="outerHTML show:window:top"
+       hx-push-url="true" hx-indicator="#collection-page">
       {% include 'store/_collection_header.html' with kicker='Shop all' title='All Products' description='Browse everything currently live in the store.' count=product_count browse_state=browse_state %}
 
       <div class="spring-directory__layout">
-          <div class="spring-directory__main">
-              <div class="spring-product-grid">
-                  {% for product in products %}
-                  <div class="spring-grid-item">
-                      {% include 'store/_product_card_content.html' with product=product %}
-                  </div>
-                  {% empty %}
-                  <p class="text-muted mb-0">Products will appear here once they are active in admin.</p>
-                  {% endfor %}
-              </div>
-
-              {% include 'store/_collection_pagination.html' with products=products page_numbers=page_numbers page_query=browse_state.page_query aria_label='All products pages' %}
-          </div>
+          {% include 'store/_collection_results.html' with cache_collection=True pagination_label='All products pages' %}
 
           {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
       </div>

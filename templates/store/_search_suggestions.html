@@ -1,0 +1,13 @@
+{% if products or categories or brands %}
+<ul class="zent-search-suggest__list">
+    {% for item in products %}
+    <li><a href="{% url 'store:product-detail' item.slug %}">{{ item.title }}</a></li>
+    {% endfor %}
+    {% for item in categories %}
+    <li><a href="{% url 'store:category-products' item.slug %}"><span class="zent-search-suggest__tag">Collection</span>{{ item.title }}</a></li>
+    {% endfor %}
+    {% for item in brands %}
+    <li><a href="{% url 'store:brand-products' item.slug %}"><span class="zent-search-suggest__tag">Brand</span>{{ item.title }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}

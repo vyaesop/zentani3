@@ -1,5 +1,6 @@
 <aside class="spring-directory-sidebar">
-    <form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="spring-directory-filters">
+    <form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="spring-directory-filters"
+          hx-get="{{ browse_state.form_action|default:request.path }}">
         <div class="spring-directory-search">
             <label for="spring-browse-search">Search</label>
             <input id="spring-browse-search" type="text" name="q" class="form-control" placeholder="Search products" value="{{ browse_state.current_query|default:'' }}">
@@ -89,8 +90,8 @@
         {% endif %}
 
         <div class="spring-directory-filters__actions">
-            <button type="submit" class="btn btn-dark">Apply filters</button>
-            <a href="{{ browse_state.reset_filters_url }}" class="btn btn-outline-dark">Reset</a>
+            <button type="submit" class="btn btn-dark">Apply filters<span class="zent-spinner" aria-hidden="true"></span></button>
+            <a href="{{ browse_state.reset_filters_url }}" hx-get="{{ browse_state.reset_filters_url }}" class="btn btn-outline-dark">Reset</a>
         </div>
     </form>
 </aside>

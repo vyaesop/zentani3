@@ -1,0 +1,48 @@
+{# Save/unsave toggle. htmx swaps the form in place; the plain form POST +
+   redirect keeps working without JS. variant="inline" renders the product
+   page styling; the default renders the product-card styling. #}
+{% if request.user.is_authenticated %}
+{% if variant == "inline" %}
+<form action="{% url 'store:toggle-wishlist' product.id %}" method="POST"
+      hx-post="{% url 'store:toggle-wishlist' product.id %}" hx-target="this" hx-swap="outerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="variant" value="inline">
+    <button type="submit" class="spring-inline-action {% if saved %}is-saved{% endif %}">
+        {% if saved %}
+        <i class="fas fa-heart"></i> Saved
+        {% else %}
+        <i class="far fa-heart"></i> Save item
+        {% endif %}
+    </button>
+</form>
+{% else %}
+<form action="{% url 'store:toggle-wishlist' product.id %}" method="POST" class="spring-product-card__save-form"
+      hx-post="{% url 'store:toggle-wishlist' product.id %}" hx-target="this" hx-swap="outerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit"
+        class="spring-product-card__save {% if saved %}is-saved{% endif %}"
+        aria-label="{% if saved %}Remove {{ product.title }} from saved items{% else %}Save {{ product.title }}{% endif %}">
+        {% if saved %}
+        <i class="fas fa-heart" aria-hidden="true"></i>
+        <span>Saved</span>
+        {% else %}
+        <i class="far fa-heart" aria-hidden="true"></i>
+        <span>Save</span>
+        {% endif %}
+    </button>
+</form>
+{% endif %}
+{% elif variant == "inline" %}
+<a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">
+    <i class="far fa-heart"></i> Save item
+</a>
+{% else %}
+<a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}"
+    class="spring-product-card__save"
+    aria-label="Log in to save {{ product.title }}">
+    <i class="far fa-heart" aria-hidden="true"></i>
+    <span>Save</span>
+</a>
+{% endif %}

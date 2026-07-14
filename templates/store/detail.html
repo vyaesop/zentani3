@@ -36,7 +36,12 @@
           <section class="spring-product-gallery">
               <figure class="spring-product-gallery__main" id="gallery-main-wrap">
                   {% if product.product_image %}
-                  <img id="main-product-image" src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}" data-zoom="{{ product.product_image.url|cdn_optimize }}">
+                  <img id="main-product-image"
+                       src="{% cld_url product.product_image 900 %}"
+                       srcset="{% cld_url product.product_image 900 %} 1x, {% cld_url product.product_image 1800 %} 2x"
+                       alt="{{ seo_image_alt_text }}"
+                       data-zoom="{% cld_url product.product_image 1600 %}"
+                       loading="eager" fetchpriority="high" decoding="async">
                   {% else %}
                   <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                   {% endif %}
@@ -46,16 +51,16 @@
               </figure>
 
               <div class="spring-product-gallery__thumbs">
-                  <button type="button" class="spring-thumb is-active" data-image="{% if product.product_image %}{{ product.product_image.url|cdn_optimize }}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
+                  <button type="button" class="spring-thumb is-active" data-image="{% if product.product_image %}{% cld_url product.product_image 900 %}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
                       {% if product.product_image %}
-                      <img src="{{ product.product_image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
+                      {% cld_img product.product_image width=160 alt=seo_image_alt_text %}
                       {% else %}
                       <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                       {% endif %}
                   </button>
                   {% for image in p_image %}
-                  <button type="button" class="spring-thumb" data-image="{{ image.image.url|cdn_optimize }}">
-                      <img src="{{ image.image.url|cdn_optimize }}" alt="{{ seo_image_alt_text }}">
+                  <button type="button" class="spring-thumb" data-image="{% cld_url image.image 900 %}">
+                      {% cld_img image.image width=160 alt=seo_image_alt_text %}
                   </button>
                   {% endfor %}
               </div>
@@ -79,22 +84,10 @@
                   </p>
                   {% endif %}
 
-                  {% if request.user.is_authenticated %}
-                  <form action="{% url 'store:toggle-wishlist' product.id %}" method="POST">
-                      {% csrf_token %}
-                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                      <button type="submit" class="spring-inline-action {% if is_saved_product %}is-saved{% endif %}">
-                          {% if is_saved_product %}
-                          <i class="fas fa-heart"></i> Saved
-                          {% else %}
-                          <i class="far fa-heart"></i> Save item
-                          {% endif %}
-                      </button>
-                  </form>
+                  {% if is_saved_product %}
+                  {% include 'store/_wishlist_button.html' with saved=True variant="inline" %}
                   {% else %}
-                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">
-                      <i class="far fa-heart"></i> Save item
-                  </a>
+                  {% include 'store/_wishlist_button.html' with saved=False variant="inline" %}
                   {% endif %}
               </div>
               <p class="spring-product-info__price">
@@ -116,7 +109,8 @@
               </div>
               {% endif %}
 
-              <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="spring-product-form">
+              <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="spring-product-form"
+                    hx-post="{% url 'store:add-to-cart' %}" hx-target="#add-to-cart-feedback" hx-swap="innerHTML">
                   {% csrf_token %}
                   <input type="hidden" name="prod_id" value="{{ product.id }}" id="product_id">
                   <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -144,7 +138,7 @@
 
                   <div class="spring-product-form__actions">
                       <button type="submit" class="btn btn-dark w-100" id="add-to-cart-btn" {% if product.is_sold_out %}disabled{% endif %}>
-                          {% if product.is_sold_out %}Sold Out{% else %}Add to cart{% endif %}
+                          {% if product.is_sold_out %}Sold Out{% else %}Add to cart{% endif %}<span class="zent-spinner" aria-hidden="true"></span>
                       </button>
                   </div>
                   <div id="add-to-cart-feedback" class="mt-3 small" role="alert" aria-live="polite"></div>
@@ -439,43 +433,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Add-to-cart AJAX
-    const form = document.getElementById('product-add-to-cart-form');
-    const feedback = document.getElementById('add-to-cart-feedback');
-    const addBtn = document.getElementById('add-to-cart-btn');
-    if (!form || !feedback) return;
-
-    form.addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const originalLabel = addBtn ? addBtn.textContent : '';
-        try {
-            if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Adding…'; }
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-                },
-                body: new FormData(form),
-            });
-            const payload = await response.json();
-            feedback.className = 'mt-3 small ' + (payload.ok ? 'text-success' : 'text-danger');
-            feedback.textContent = payload.message || 'Something went wrong. Please try again.';
-            if (payload.ok && typeof payload.cart_items_count !== 'undefined') {
-                document.querySelectorAll('.spring-cart-count, .cart-count').forEach(function (node) {
-                    node.textContent = payload.cart_items_count;
-                });
-            }
-        } catch (error) {
-            feedback.className = 'mt-3 small text-danger';
-            feedback.textContent = 'Unable to add this item right now. Please try again.';
-        } finally {
-            if (addBtn) {
-                addBtn.disabled = {{ product.is_sold_out|yesno:"true,false" }};
-                addBtn.textContent = originalLabel;
-            }
-        }
-    });
+    // Add-to-cart is handled by htmx (hx-post on the form).
 });
 </script>
 
