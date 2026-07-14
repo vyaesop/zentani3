@@ -51,8 +51,11 @@ def send_product_post(product_id, force=False):
 
 
 def send_order_notification(payload):
-    user = User.objects.filter(pk=payload.get("user_id")).first()
-    if user is None:
+    user = None
+    if payload.get("user_id"):
+        user = User.objects.filter(pk=payload["user_id"]).first()
+    guest_contact = payload.get("guest_contact")
+    if user is None and not guest_contact:
         return
     address = None
     if payload.get("address_id"):
@@ -64,6 +67,7 @@ def send_order_notification(payload):
         address=address,
         order_lines=payload.get("order_lines") or [],
         order_ids=payload.get("order_ids") or [],
+        guest_contact=guest_contact,
     )
     if not sent and admin_bot_configured():
         raise TelegramSendError("Telegram order notification failed.")

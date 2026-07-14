@@ -43,8 +43,8 @@ class ProductSizeStockAdmin(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImagesAdmin, ProductSizeStockAdmin]
     
-    list_display = ('title', 'is_sold_out', 'stock_quantity', 'slug', 'category','brand', 'available_sizes', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
-    list_editable = ('slug', 'category','brand', 'available_sizes', 'stock_quantity', 'is_sold_out', 'is_active', 'is_featured')
+    list_display = ('title', 'is_sold_out', 'stock_quantity', 'slug', 'category','brand', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
+    list_editable = ('slug', 'category','brand', 'stock_quantity', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
     search_fields = ('title', 'category', 'short_description')
@@ -67,7 +67,6 @@ class ProductAdmin(admin.ModelAdmin):
         }),
         ("Product details", {
             "fields": (
-                "available_sizes",
                 "stock_quantity",
                 "material",
                 "color",

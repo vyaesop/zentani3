@@ -100,15 +100,15 @@
             </td>
 
             <td data-label="Customer">
-              <span class="zd-cell-primary">{{ order.user.get_full_name|default:order.user.username }}</span>
-              {% with addr=order.user.address_set.last %}
-              {% if addr %}
-              <span class="zd-cell-sub">📞 {{ addr.phone }}</span>
-              <span class="zd-cell-sub">📍 {{ addr.address }}, {{ addr.city }}</span>
+              <span class="zd-cell-primary">{{ order.customer_name }}{% if not order.user %} <span class="zd-pill zd-pill--gray">Guest</span>{% endif %}</span>
+              {% if order.customer_phone %}
+              <span class="zd-cell-sub">📞 {{ order.customer_phone }}</span>
+              {% endif %}
+              {% if order.customer_location %}
+              <span class="zd-cell-sub">📍 {{ order.customer_location }}</span>
               {% else %}
               <span class="zd-cell-sub" style="color:var(--z-text-3)">No saved address</span>
               {% endif %}
-              {% endwith %}
             </td>
 
             <td data-label="Product">

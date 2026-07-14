@@ -24,6 +24,18 @@ def _decorate_dashboard_fields(fields):
 
 
 class DashboardProductForm(forms.ModelForm):
+    # Sizes are stored as ProductSizeStock rows (single source of truth); the
+    # view applies this field via store.services.inventory.set_product_sizes.
+    available_sizes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": "Comma-separated, e.g. XS, S, M, L",
+            }
+        ),
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -41,7 +53,6 @@ class DashboardProductForm(forms.ModelForm):
             "care_notes",
             "delivery_note",
             "return_note",
-            "available_sizes",
             "price",
             "product_image",
             "category",
@@ -58,12 +69,6 @@ class DashboardProductForm(forms.ModelForm):
             "care_notes": forms.Textarea(attrs={"rows": 3}),
             "delivery_note": forms.TextInput(attrs={"placeholder": "Delivery promise shown on PDP"}),
             "return_note": forms.TextInput(attrs={"placeholder": "Return/support note shown on PDP"}),
-            "available_sizes": forms.Textarea(
-                attrs={
-                    "rows": 3,
-                    "placeholder": "Comma-separated, e.g. XS, S, M, L",
-                }
-            ),
             "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
         }
 
@@ -71,22 +76,14 @@ class DashboardProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["category"].queryset = self.fields["category"].queryset.order_by("title")
         self.fields["brand"].queryset = self.fields["brand"].queryset.order_by("title")
+        if self.instance.pk and "available_sizes" not in self.initial:
+            self.initial["available_sizes"] = self.instance.available_sizes
         _decorate_dashboard_fields(self.fields)
 
     def clean_available_sizes(self):
-        raw_value = self.cleaned_data.get("available_sizes") or ""
-        seen = set()
-        normalized_sizes = []
-        for chunk in raw_value.replace("\r", "\n").replace(",", "\n").split("\n"):
-            value = " ".join(chunk.split()).strip()
-            if not value:
-                continue
-            lookup = value.casefold()
-            if lookup in seen:
-                continue
-            seen.add(lookup)
-            normalized_sizes.append(value)
-        return ", ".join(normalized_sizes)
+        from store.services.inventory import parse_size_list
+
+        return ", ".join(parse_size_list(self.cleaned_data.get("available_sizes") or ""))
 
 
 class ProductAIDraftForm(forms.ModelForm):

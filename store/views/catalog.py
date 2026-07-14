@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from store.cache_utils import HOME_TOP_SELLING_TTL
-from store.constants import RECENTLY_VIEWED_SESSION_KEY, SIZE_DISPLAY_ORDER
+from store.constants import RECENTLY_VIEWED_SESSION_KEY, size_sort_key as _size_sort_key
 from store.forms import ProductReviewForm, RestockRequestForm
 from store.models import (
     Brand,
@@ -30,7 +30,6 @@ PRODUCT_LIST_FIELDS = (
     "title",
     "price",
     "product_image",
-    "available_sizes",
     "is_sold_out",
     "category__title",
     "category__slug",
@@ -58,6 +57,7 @@ def _recently_viewed_products(request, exclude_id=None, limit=4):
         product.id: product
         for product in Product.objects.filter(id__in=product_ids, is_active=True)
         .select_related("category", "brand")
+        .prefetch_related("size_inventory")
         .only(*PRODUCT_LIST_FIELDS)
     }
     ordered_products = [products_by_id[product_id] for product_id in product_ids if product_id in products_by_id]
@@ -75,6 +75,7 @@ def _build_product_detail_context(request, product):
         Product.objects.filter(is_active=True, category=product.category)
         .exclude(id=product.id)
         .select_related("category", "brand")
+        .prefetch_related("size_inventory")
         .only(*PRODUCT_LIST_FIELDS)[:4]
     )
     p_image = product.p_images.only("id", "image").all()
@@ -234,13 +235,6 @@ def _breadcrumb_schema(request, product):
     }
 
 
-def _size_sort_key(size_value):
-    normalized = size_value.upper()
-    if normalized in SIZE_DISPLAY_ORDER:
-        return (0, SIZE_DISPLAY_ORDER.index(normalized))
-    return (1, normalized)
-
-
 def _parse_available_sizes(product):
     if not product.available_sizes:
         return []
@@ -312,8 +306,8 @@ def _product_stock_message(product, size_value=None):
 def home(request):
     categories = Category.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "category_image").order_by("-created_at")[:8]
     brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image").order_by("-created_at")[:12]
-    products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS)[:24]
-    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
+    products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)[:24]
+    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
     top_selling_ids = cache.get_or_set(
         "home_top_selling_ids",
         lambda: list(
@@ -328,6 +322,7 @@ def home(request):
         product.id: product
         for product in Product.objects.filter(id__in=top_selling_ids, is_active=True)
         .select_related("category", "brand")
+        .prefetch_related("size_inventory")
         .only(*PRODUCT_LIST_FIELDS)
     }
     top_selling_products = [top_selling_lookup[product_id] for product_id in top_selling_ids if product_id in top_selling_lookup]

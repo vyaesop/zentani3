@@ -3,7 +3,6 @@ import decimal
 from decimal import Decimal
 
 from django.contrib import messages
-from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -11,7 +10,6 @@ from django.views import View
 from store.constants import (
     ADDIS_FREE_SHIPPING_THRESHOLD,
     ADDIS_SHIPPING_FEE,
-    GUEST_SESSION_USER_ID_KEY,
     OUTSIDE_ADDIS_SHIPPING_FEE,
 )
 from store.models import Address, Cart, Coupon, Product
@@ -84,25 +82,15 @@ def _build_cart_flow_status(request, cart_products, latest_address):
     }
 
 
-def _cart_owner_user(request):
+def _cart_owner_kwargs(request):
+    """Cart ownership scope: the user when authenticated, else the session.
+
+    Guests never get placeholder rows in auth_user — their cart rows carry
+    the session key instead.
+    """
     if request.user.is_authenticated:
-        return request.user
-
-    _ensure_session_key(request)
-    guest_user_id = request.session.get(GUEST_SESSION_USER_ID_KEY)
-    if guest_user_id:
-        existing = User.objects.filter(id=guest_user_id).first()
-        if existing:
-            return existing
-
-    username = f"guest-{request.session.session_key}"
-    user, created = User.objects.get_or_create(username=username)
-    if created:
-        user.set_unusable_password()
-        user.save(update_fields=["password"])
-
-    request.session[GUEST_SESSION_USER_ID_KEY] = user.id
-    return user
+        return {"user": request.user}
+    return {"user": None, "session_key": _ensure_session_key(request)}
 
 
 def _normalized_city(value):
@@ -145,7 +133,7 @@ def add_to_cart(request):
         return redirect("store:home")
 
     is_htmx = _is_htmx(request)
-    user = _cart_owner_user(request)
+    owner = _cart_owner_kwargs(request)
     product_id = request.POST.get("prod_id")
     selected_size = (request.POST.get("size") or "").strip()
 
@@ -183,10 +171,10 @@ def add_to_cart(request):
         return redirect("store:product-detail", slug=product.slug)
 
     cart_item, created = Cart.objects.get_or_create(
-        user=user,
         product=product,
         size=selected_size_value,
         defaults={"quantity": 1},
+        **owner,
     )
 
     requested_quantity = 1 if created else cart_item.quantity + 1
@@ -214,8 +202,7 @@ def add_to_cart(request):
 
 
 def _cart_page_context(request):
-    user = _cart_owner_user(request)
-    cart_products = Cart.objects.filter(user=user).select_related("product", "coupon", "product__category", "product__brand")
+    cart_products = Cart.objects.filter(**_cart_owner_kwargs(request)).select_related("product", "coupon", "product__category", "product__brand")
     latest_address = _latest_saved_address(request.user)
 
     amount = decimal.Decimal(0)
@@ -281,7 +268,7 @@ class AddCoupon(View):
         if issue:
             return _fail(issue)
 
-        cart_products = Cart.objects.filter(user=_cart_owner_user(request))
+        cart_products = Cart.objects.filter(**_cart_owner_kwargs(request))
         if not cart_products.exists():
             return _fail("Your cart is empty.")
 
@@ -301,8 +288,7 @@ def remove_cart(request, cart_id):
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    user = _cart_owner_user(request)
-    c = get_object_or_404(Cart, id=cart_id, user=user)
+    c = get_object_or_404(Cart, id=cart_id, **_cart_owner_kwargs(request))
     c.delete()
 
     if _is_htmx(request):
@@ -316,8 +302,7 @@ def plus_cart(request, cart_id):
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    user = _cart_owner_user(request)
-    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
+    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, **_cart_owner_kwargs(request))
 
     if not cp.product.is_active or cp.product.is_sold_out:
         msg = f"{cp.product.title} is no longer available."
@@ -346,8 +331,7 @@ def minus_cart(request, cart_id):
         messages.warning(request, "Invalid cart action.")
         return redirect("store:cart")
 
-    user = _cart_owner_user(request)
-    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, user=user)
+    cp = get_object_or_404(Cart.objects.select_related("product", "coupon"), id=cart_id, **_cart_owner_kwargs(request))
 
     if cp.quantity == 1:
         cp.delete()

@@ -1,4 +1,3 @@
-import re
 from datetime import timedelta
 from decimal import Decimal
 from functools import wraps
@@ -41,6 +40,7 @@ from .models import (
     TelegramBotOrder,
 )
 from .services.enrichment import mark_draft_manual_review
+from .services.inventory import parse_size_list, set_product_sizes
 from .tasks import enqueue, has_active_task, retry_task
 from .telegram_notify import (
     notify_customer_delivery_status,
@@ -101,23 +101,6 @@ def _absolute_affiliate_pattern(product):
     return {"relative": relative, "absolute": ""}
 
 
-def _parse_dashboard_size_list(value):
-    normalized_sizes = []
-    seen = set()
-    for chunk in re.split(r"[\n,]+", value or ""):
-        size = " ".join(chunk.split()).strip()
-        if not size:
-            continue
-        lookup = size.casefold()
-        if lookup in seen:
-            continue
-        seen.add(lookup)
-        normalized_sizes.append(size)
-    return normalized_sizes
-
-
-def _sync_product_size_inventory(product):
-    product._sync_size_inventory()
 
 
 def _save_bulk_gallery_images(product, uploaded_files):
@@ -378,7 +361,6 @@ def dashboard_orders(request):
     query = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "").strip()
 
-    from .models import Address as _Address
 
     orders = Order.objects.select_related("user", "product", "product__category").order_by("-ordered_date")
     if status in STATUS_VALUES:
@@ -391,6 +373,8 @@ def dashboard_orders(request):
             | Q(user__first_name__icontains=query)
             | Q(user__last_name__icontains=query)
             | Q(user__email__icontains=query)
+            | Q(guest_contact__full_name__icontains=query)
+            | Q(guest_contact__phone__icontains=query)
         )
         if query.isdigit():
             query_filter |= Q(id=int(query))
@@ -524,7 +508,7 @@ def dashboard_products(request):
     category_slug = (request.GET.get("category") or "").strip()
     state = (request.GET.get("state") or "").strip()
 
-    products = Product.objects.select_related("category", "brand").order_by("-updated_at", "-created_at")
+    products = Product.objects.select_related("category", "brand").prefetch_related("size_inventory").order_by("-updated_at", "-created_at")
     if category_slug:
         products = products.filter(category__slug=category_slug)
     if state == "active":
@@ -670,13 +654,14 @@ def dashboard_product_edit(request, product_id=None):
             )
 
             if form.is_valid() and image_formset.is_valid():
+                size_list = parse_size_list(form.cleaned_data.get("available_sizes", ""))
                 with transaction.atomic():
                     with suspend_telegram_autopublish():
                         saved_product = form.save()
                         image_formset.instance = saved_product
                         image_formset.save()
                         _save_bulk_gallery_images(saved_product, request.FILES.getlist("bulk_gallery_images"))
-                        _sync_product_size_inventory(saved_product)
+                        set_product_sizes(saved_product, size_list)
 
                         if ai_draft and ai_draft.product_id != saved_product.id:
                             ai_draft.product = saved_product
@@ -699,7 +684,7 @@ def dashboard_product_edit(request, product_id=None):
                         f"{saved_product.title} was saved, but it must be active and in stock before Telegram publishing.",
                     )
                 else:
-                    size_count = len(_parse_dashboard_size_list(saved_product.available_sizes))
+                    size_count = len(size_list)
                     if size_count:
                         messages.success(
                             request,
@@ -715,7 +700,7 @@ def dashboard_product_edit(request, product_id=None):
         ai_draft_form = _build_ai_draft_form(product=product, ai_draft=ai_draft)
 
     size_source = form["available_sizes"].value() if "available_sizes" in form.fields else ""
-    size_tokens = _parse_dashboard_size_list(size_source or (product.available_sizes if product else ""))
+    size_tokens = parse_size_list(size_source or (product.available_sizes if product else ""))
 
     context = _dashboard_context(
         request,
