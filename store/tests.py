@@ -12,8 +12,23 @@ from django.urls import reverse
 from PIL import Image
 
 from . import ai_enrichment
-from .models import Address, AffiliateCommission, AffiliateProfile, Brand, Cart, Category, Order, Product, ProductAIDraft, ProductAIDraftImage
+from . import tasks as task_queue
+from .models import (
+    Address,
+    AffiliateCommission,
+    AffiliateProfile,
+    BackgroundTask,
+    Brand,
+    Cart,
+    Category,
+    Order,
+    Product,
+    ProductAIDraft,
+    ProductAIDraftImage,
+    Wishlist,
+)
 from .services.inventory import set_product_sizes
+from .telegram_notify import suspend_telegram_autopublish
 
 
 class StoreFlowTests(TestCase):
@@ -776,3 +791,255 @@ class StoreFlowTests(TestCase):
         draft.refresh_from_db()
         self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
         self.assertEqual(response.json()["ok"], True)
+
+
+def _make_catalog(prefix="Guard"):
+    """Category/brand/product fixture shared by the focused test classes."""
+    category = Category.objects.create(
+        title=f"{prefix} Category",
+        slug=f"{prefix.lower()}-category",
+        is_active=True,
+        is_featured=True,
+    )
+    brand = Brand.objects.create(
+        title=f"{prefix} Brand",
+        slug=f"{prefix.lower()}-brand",
+        is_active=True,
+        is_featured=True,
+    )
+    product = Product.objects.create(
+        title=f"{prefix} Ring",
+        slug=f"{prefix.lower()}-ring",
+        sku=f"SKU-{prefix.upper()}-1",
+        short_description="A ring",
+        product_image="product/test.jpg",
+        price=Decimal("100.00"),
+        category=category,
+        brand=brand,
+        is_active=True,
+        is_featured=True,
+        is_sold_out=False,
+    )
+    set_product_sizes(product, ["S", "M", "L"])
+    return category, brand, product
+
+
+class BackgroundTaskQueueTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Queue")
+        self.user = User.objects.create_user(username="0911600000", password="test-pass-123")
+        Address.objects.create(user=self.user, address="Bole Atlas", city="Addis Ababa", phone="0911600000")
+        # Product creation above already enqueued an autopublish task; start clean.
+        BackgroundTask.objects.all().delete()
+
+    @override_settings(TASKS_EAGER=False)
+    def test_enqueue_creates_pending_row(self):
+        task = task_queue.enqueue(
+            BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
+            {"product_id": self.product.id},
+        )
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+        self.assertEqual(task.attempts, 0)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_run_pending_executes_due_tasks(self):
+        task_queue.enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": self.product.id})
+        processed = task_queue.run_pending()
+        self.assertEqual(processed, 1)
+        task = BackgroundTask.objects.get()
+        # No Telegram credentials in tests -> handler is a silent no-op.
+        self.assertEqual(task.status, BackgroundTask.STATUS_DONE)
+
+    @override_settings(TASKS_EAGER=False)
+    @patch("store.services.telegram.send_product_post", side_effect=RuntimeError("boom"))
+    def test_failing_handler_retries_with_backoff_then_fails(self, send_mock):
+        task = task_queue.enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": self.product.id})
+        for attempt in range(1, task_queue.MAX_ATTEMPTS + 1):
+            task_queue.execute(task)
+            task.refresh_from_db()
+            self.assertEqual(task.attempts, attempt)
+            self.assertIn("boom", task.last_error)
+            if attempt < task_queue.MAX_ATTEMPTS:
+                self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+            else:
+                self.assertEqual(task.status, BackgroundTask.STATUS_FAILED)
+
+        # A staff retry re-queues the task for a fresh round of attempts.
+        task_queue.retry_task(task)
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+        self.assertEqual(task.attempts, 0)
+
+    def test_checkout_enqueues_order_notification_after_commit(self):
+        Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
+        self.client.login(username="0911600000", password="test-pass-123")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("store:checkout"))
+
+        self.assertEqual(response.status_code, 302)
+        task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY)
+        self.assertEqual(task.payload["user_id"], self.user.id)
+        self.assertEqual(task.payload["order_count"], 1)
+
+    def test_suspension_skips_product_post_enqueue(self):
+        BackgroundTask.objects.all().delete()
+        with suspend_telegram_autopublish():
+            self.product.save()
+        self.assertFalse(
+            BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST).exists()
+        )
+
+        self.product.save()
+        self.assertTrue(
+            BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST).exists()
+        )
+
+
+class GuestCheckoutTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Guest")
+
+    def test_guest_checkout_creates_no_auth_user_row(self):
+        users_before = User.objects.count()
+
+        add_response = self.client.post(
+            reverse("store:add-to-cart"), {"prod_id": self.product.id, "size": "M"}
+        )
+        self.assertEqual(add_response.status_code, 302)
+        session_key = self.client.session.session_key
+        self.assertEqual(Cart.objects.filter(user=None, session_key=session_key).count(), 1)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            checkout_response = self.client.post(
+                reverse("store:checkout"),
+                {
+                    "full_name": "Guest Buyer",
+                    "phone": "0911000111",
+                    "city": "Addis Ababa",
+                    "address": "Bole Atlas street 12",
+                },
+            )
+
+        self.assertEqual(checkout_response.status_code, 302)
+        self.assertEqual(User.objects.count(), users_before)
+
+        order = Order.objects.get(session_key=session_key)
+        self.assertIsNone(order.user)
+        self.assertEqual(order.guest_contact["full_name"], "Guest Buyer")
+        self.assertEqual(order.customer_name, "Guest Buyer")
+        self.assertEqual(Cart.objects.filter(session_key=session_key).count(), 0)
+
+        notify_task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY)
+        self.assertIsNone(notify_task.payload["user_id"])
+        self.assertEqual(notify_task.payload["guest_contact"]["phone"], "0911000111")
+
+    def test_guest_carts_are_isolated_per_session(self):
+        first = self.client
+        first.post(reverse("store:add-to-cart"), {"prod_id": self.product.id, "size": "M"})
+
+        from django.test import Client as TestClient
+
+        second = TestClient()
+        response = second.get(reverse("store:cart"))
+        self.assertContains(response, "Your cart is empty")
+
+
+class HtmxInteractionTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Htmx")
+        self.user = User.objects.create_user(username="0911700000", password="test-pass-123")
+
+    def test_add_to_cart_returns_feedback_partial_with_badge(self):
+        response = self.client.post(
+            reverse("store:add-to-cart"),
+            {"prod_id": self.product.id, "size": "M"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "zent-alert--success")
+        self.assertContains(response, 'id="cart-count-desktop"')
+        self.assertContains(response, "hx-swap-oob")
+
+    def test_plus_cart_returns_full_cart_contents(self):
+        self.client.login(username="0911700000", password="test-pass-123")
+        item = Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
+
+        response = self.client.post(
+            reverse("store:plus-cart", args=[item.id]),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="cart-contents"')
+        self.assertContains(response, '<span class="spring-cart-qty-display">2</span>', html=False)
+        item.refresh_from_db()
+        self.assertEqual(item.quantity, 2)
+
+    def test_wishlist_toggle_swaps_button_partial(self):
+        self.client.login(username="0911700000", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:toggle-wishlist", args=[self.product.id]),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "is-saved")
+        self.assertTrue(Wishlist.objects.filter(user=self.user, product=self.product).exists())
+
+        response = self.client.post(
+            reverse("store:toggle-wishlist", args=[self.product.id]),
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertNotContains(response, "is-saved")
+        self.assertFalse(Wishlist.objects.filter(user=self.user, product=self.product).exists())
+
+
+class QueryCountGuardTests(TestCase):
+    """Lock in the P3 query-count wins so regressions fail loudly.
+
+    If one of these numbers changes, check `CaptureQueriesContext` output
+    before bumping it — an accidental N+1 in the card grid shows up here.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.category, self.brand, self.product = _make_catalog("Qc")
+        for index in range(6):
+            extra = Product.objects.create(
+                title=f"Qc Extra {index}",
+                slug=f"qc-extra-{index}",
+                sku=f"SKU-QC-EXTRA-{index}",
+                short_description="Extra",
+                product_image="product/test.jpg",
+                price=Decimal("50.00"),
+                category=self.category,
+                brand=self.brand,
+                is_active=True,
+                is_featured=False,
+                is_sold_out=False,
+            )
+            set_product_sizes(extra, ["S", "M"])
+
+    def test_detail_view_query_count(self):
+        url = reverse("store:product-detail", args=[self.product.slug])
+        self.client.get(url)  # warm menu caches + session
+        with self.assertNumQueries(13):
+            self.client.get(url)
+
+    def test_collection_view_query_count_anonymous(self):
+        url = reverse("store:all-products")
+        self.client.get(url)  # warm menu/meta/fragment caches
+        with self.assertNumQueries(1):
+            # Fragment-cached grid: only the paginator count remains.
+            self.client.get(url)
+
+    def test_cart_view_query_count(self):
+        user = User.objects.create_user(username="0911800000", password="test-pass-123")
+        Cart.objects.create(user=user, product=self.product, quantity=1, size="M")
+        self.client.login(username="0911800000", password="test-pass-123")
+        self.client.get(reverse("store:cart"))  # warm caches
+        with self.assertNumQueries(7):
+            self.client.get(reverse("store:cart"))

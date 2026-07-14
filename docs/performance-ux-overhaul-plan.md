@@ -181,7 +181,7 @@ Two problems: (a) ~10 hand-rolled fetch/JSON endpoints each with bespoke JS for 
 ---
 
 ## P6 — Code Structure & Model Cleanup
-Status: In progress
+Status: Done
 Depends on: best done after P1 (services layer hosts the task handlers).
 
 ### 6.1 Split the god files (pure moves, no behavior change)
