@@ -234,11 +234,25 @@ def run_draft_enrichment(draft):
         last_error_stage="",
     )
 
+    # Act on Gemini's taxonomy verdict right away, even if the product itself
+    # can't be created yet (e.g. a business-rule miss further down): a
+    # high-confidence "nothing fits" proposal creates the collection/brand now,
+    # so the prefilled form and any later pass find it in place.
+    taxonomy_notes = []
+    for kind in ("collection", "brand"):
+        try:
+            _, taxonomy_note = _resolve_taxonomy_for_draft(draft, kind)
+        except Exception as exc:  # noqa: BLE001 — enrichment result must survive.
+            taxonomy_note = f"Could not resolve the {kind}: {exc}"
+        if taxonomy_note:
+            taxonomy_notes.append(taxonomy_note)
+
     try:
         product, created, notes = create_product_from_draft(draft)
     except Exception as exc:  # noqa: BLE001 — copy succeeded; creation failure must not lose it.
         product, created, notes = None, False, [f"Automatic product creation failed: {exc}"]
-    _record_draft_automation(draft, product=product, created=created, notes=notes)
+    merged_notes = taxonomy_notes + [note for note in notes if note not in taxonomy_notes]
+    _record_draft_automation(draft, product=product, created=created, notes=merged_notes)
 
     draft.processing_finished_at = timezone.now()
     draft.save(update_fields=["processing_finished_at", "updated_at"])

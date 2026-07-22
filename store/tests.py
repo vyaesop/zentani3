@@ -1351,6 +1351,41 @@ class AIDraftAutomationTests(TestCase):
         self.assertContains(response, "Test delivery promise.")
         self.assertContains(response, "on-the-spot returns only")
 
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
+    def test_enrichment_creates_proposed_collection_even_without_product(self, generate_mock):
+        from store.services.enrichment import run_draft_enrichment
+
+        generate_mock.return_value = self._payload(
+            collection_slug=None,
+            collection_proposal="Sets",
+            collection_confidence="high",
+        )
+        draft = self._draft(
+            sku="AI-AUTO-12",
+            price=None,
+            response_payload={},
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+
+        run_draft_enrichment(draft)
+        draft.refresh_from_db()
+
+        # No price -> no product, but the confident collection proposal was
+        # still acted on so the prefilled form finds it in place.
+        self.assertIsNone(draft.product_id)
+        sets = Category.objects.get(title="Sets")
+        self.assertTrue(sets.is_active)
+        notes = draft.response_payload["automation"]["notes"]
+        self.assertTrue(any("Created new collection" in note for note in notes))
+        self.assertTrue(any("price" in note.lower() for note in notes))
+
+        initial = ai_enrichment.draft_to_product_initial(
+            draft, categories=[self.category, sets], brands=[]
+        )
+        self.assertEqual(initial["category"], sets.pk)
+
     def test_draft_initial_carries_no_policy_fields(self):
         draft = self._draft(sku="AI-AUTO-11")
         initial = ai_enrichment.draft_to_product_initial(

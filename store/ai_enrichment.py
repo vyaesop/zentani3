@@ -877,6 +877,9 @@ def match_taxonomy(payload, kind, candidates):
     wanted = {
         _normalize_taxonomy_label((block.get("matched_slug") or "").replace("-", " ")),
         _normalize_taxonomy_label(catalog_fields.get(legacy_key)),
+        # A proposal that was already acted on (row created at enrichment time)
+        # must match that row on later passes instead of looking unresolved.
+        _normalize_taxonomy_label(block.get("proposed_new_title")),
     }
     wanted.discard("")
     if not wanted:
