@@ -1,5 +1,21 @@
 /* Dashboard product form behaviors (extracted from inline template scripts). */
 document.addEventListener('DOMContentLoaded', function () {
+  /* Collapsed editor: the full form starts hidden behind "Edit details" /
+     "Fill in manually" so the AI intake is the whole screen on phones. */
+  document.querySelectorAll('[data-zd-editor-reveal]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const editor = document.querySelector('[data-zd-editor]');
+      const body = document.querySelector('[data-zd-editor-body]');
+      if (editor) editor.hidden = false;
+      if (body) body.hidden = false;
+      document.querySelectorAll('[data-zd-editor-reveal]').forEach(function (b) {
+        const holder = b.closest('.zd-manual-reveal');
+        (holder || b).remove();
+      });
+      if (editor) editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
   /* Poll draft status while Gemini works in the background task queue. */
   const progressPanel = document.querySelector('[data-ai-draft-progress]');
   if (progressPanel) {

@@ -13,65 +13,32 @@
 </div>
 {% endif %}
 
-<!-- AI intake (optional) -->
+<!-- AI intake: hero on the create page, tucked away on the edit page -->
 {% if gemini_is_configured %}
-<div class="zd-panel">
+{% if not product %}
+<div class="zd-panel zd-ai-hero">
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
-      <p class="zd-panel-head-title">Create with AI</p>
-      <p class="zd-panel-head-sub">Reference image, SKU and price — Gemini drafts the copy, picks the collection and brand conservatively, and creates the product ready to publish</p>
+      <p class="zd-panel-head-title">Post a product</p>
+      <p class="zd-panel-head-sub">Add the photos, SKU and price — Gemini writes everything else and picks the collection and brand</p>
     </div>
     <span class="zd-pill zd-pill--gemini-ready">Gemini ready</span>
   </div>
   <div class="zd-panel-body">
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      <div class="zd-form-grid zd-form-grid-col2">
-        <div class="zd-field">
-          <span class="zd-field-label">Source SKU</span>
-          {{ ai_draft_form.sku }}
-          {% for e in ai_draft_form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
-        <div class="zd-field">
-          <span class="zd-field-label">Price (ETB)</span>
-          {{ ai_draft_form.price }}
-          {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
-        <div class="zd-field zd-field-wide">
-          <span class="zd-field-label">Reference image</span>
-          {{ ai_draft_form.reference_image }}
-          <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
-          {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
-        <div class="zd-field">
-          <span class="zd-field-label">Main product image (cover)</span>
-          {{ ai_draft_form.cover_image }}
-          <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
-          {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
-        <div class="zd-field">
-          <span class="zd-field-label">Gallery images</span>
-          <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file">
-          <span class="zd-field-hint">Select several photos at once — attached to the product automatically.</span>
-        </div>
-        <details class="zd-field zd-field-wide">
-          <summary class="zd-field-label" style="cursor:pointer">Advanced</summary>
-          <div class="zd-field" style="margin-top:10px">
-            <span class="zd-field-label">Vendor hint</span>
-            {{ ai_draft_form.vendor_hint }}
-            <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
-            {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-          </div>
-        </details>
-      </div>
-      <div class="zd-form-actions">
-        <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--primary">
-          Create product with AI
-        </button>
-      </div>
-    </form>
+    {% include "dashboard/_ai_intake_fields.html" %}
   </div>
 </div>
+{% else %}
+<details class="zd-collapse">
+  <summary>
+    <span>Regenerate with AI</span>
+    <small>Re-run Gemini on a new reference image for this product</small>
+  </summary>
+  <div class="zd-collapse-body">
+    {% include "dashboard/_ai_intake_fields.html" %}
+  </div>
+</details>
+{% endif %}
 {% endif %}
 
 <!-- AI draft in progress -->
@@ -126,8 +93,18 @@
 </div>
 {% endif %}
 
+<!-- Manual entry escape hatch (create page, editor starts hidden) -->
+{% if editor_collapsed and not product %}
+<div class="zd-manual-reveal">
+  <button type="button" class="zd-btn zd-btn--ghost zd-btn--grow" data-zd-editor-reveal>
+    Fill in the details manually instead
+  </button>
+</div>
+{% endif %}
+
 <!-- Main editor form -->
-<form method="post" enctype="multipart/form-data" class="zd-editor">
+<form method="post" enctype="multipart/form-data" class="zd-editor" data-zd-editor
+  {% if editor_collapsed and not product %}hidden{% endif %}>
   {% csrf_token %}
 
   <!-- Header bar -->
@@ -135,12 +112,12 @@
     <div class="zd-panel-head">
       <div class="zd-panel-head-left">
         <p class="zd-panel-head-title">
-          {% if product %}Editing: {{ product.title }}{% else %}New product{% endif %}
+          {% if product %}{{ product.title }}{% else %}New product{% endif %}
         </p>
         <p class="zd-panel-head-sub">
           {% if product %}
           Status:
-          {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Draft{% endif %}
+          {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Unpublished — "Save &amp; post" makes it live{% endif %}
           · {{ product.stock_quantity }} units in stock
           {% else %}
           Fill in the details below and save to publish
@@ -149,9 +126,12 @@
       </div>
       <div class="zd-panel-head-right zd-head-actions">
         <a href="{% url 'store:dashboard-products' %}" class="zd-btn zd-btn--ghost zd-btn--sm">← Back</a>
+        {% if editor_collapsed and product %}
+        <button type="button" class="zd-btn zd-btn--ghost zd-btn--sm" data-zd-editor-reveal>Edit details</button>
+        {% endif %}
         <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm">Save draft</button>
         <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary zd-btn--sm"
-          onclick="return confirm('Post this product to the Telegram channel immediately?')">
+          onclick="return confirm('Post to the Telegram channel now? The product also goes live on the storefront.')">
           Save &amp; post to Telegram
         </button>
       </div>
@@ -159,7 +139,7 @@
   </div>
 
   <!-- Two-column layout -->
-  <div class="zd-editor-layout">
+  <div class="zd-editor-layout" data-zd-editor-body {% if editor_collapsed and product %}hidden{% endif %}>
 
     <!-- Main column -->
     <div class="zd-editor-main">
@@ -411,7 +391,7 @@
           <div class="zd-stack">
             <button type="submit" class="zd-btn zd-btn--primary">Save product</button>
             <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--ghost"
-              onclick="return confirm('Post this product to the Telegram channel immediately?')">
+              onclick="return confirm('Post to the Telegram channel now? The product also goes live on the storefront.')">
               Save &amp; post to Telegram
             </button>
           </div>
@@ -495,6 +475,15 @@
     </div><!-- /aside -->
 
   </div><!-- /editor-layout -->
+
+  <!-- Thumb-reachable actions on phones -->
+  <div class="zd-editor-mobilebar">
+    <button type="submit" class="zd-btn zd-btn--ghost">Save draft</button>
+    <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary"
+      onclick="return confirm('Post to the Telegram channel now? The product also goes live on the storefront.')">
+      Save &amp; post
+    </button>
+  </div>
 </form>
 
 {% endblock %}

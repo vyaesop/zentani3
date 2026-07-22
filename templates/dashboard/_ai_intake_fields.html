@@ -1,0 +1,50 @@
+{% comment %}
+AI intake form: the fields a merchandiser fills before Gemini takes over.
+Shared by the create-page hero and the edit-page "Regenerate" disclosure.
+{% endcomment %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="zd-form-grid zd-form-grid-col2">
+    <div class="zd-field zd-field-wide">
+      <span class="zd-field-label">Reference image</span>
+      {{ ai_draft_form.reference_image }}
+      <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
+      {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="zd-field">
+      <span class="zd-field-label">Source SKU</span>
+      {{ ai_draft_form.sku }}
+      {% for e in ai_draft_form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="zd-field">
+      <span class="zd-field-label">Price (ETB)</span>
+      {{ ai_draft_form.price }}
+      {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="zd-field">
+      <span class="zd-field-label">Main product image (cover)</span>
+      {{ ai_draft_form.cover_image }}
+      <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
+      {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+    </div>
+    <div class="zd-field">
+      <span class="zd-field-label">Gallery images</span>
+      <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file">
+      <span class="zd-field-hint">Select several photos at once — attached automatically.</span>
+    </div>
+    <details class="zd-field zd-field-wide zd-advanced">
+      <summary>Advanced</summary>
+      <div class="zd-field" style="margin-top:10px">
+        <span class="zd-field-label">Vendor hint</span>
+        {{ ai_draft_form.vendor_hint }}
+        <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
+        {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+      </div>
+    </details>
+  </div>
+  <div class="zd-form-actions">
+    <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--primary zd-btn--lg zd-btn--grow">
+      {% if product %}Regenerate with AI{% else %}Create product with AI{% endif %}
+    </button>
+  </div>
+</form>
