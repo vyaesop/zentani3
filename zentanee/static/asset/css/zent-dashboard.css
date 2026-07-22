@@ -882,3 +882,114 @@
   .zd-catalog-meta { display: none; }
   .zd-order-card-meta { grid-template-columns: 1fr 1fr; }
 }
+
+/* ─── AI-first intake + collapsed editor (mobile-first posting flow) ─── */
+/* Inputs inside any zd-form-grid (the AI intake lives outside .zd-editor). */
+.zd-form-grid textarea,
+.zd-form-grid select,
+.zd-form-grid input[type="text"],
+.zd-form-grid input[type="number"],
+.zd-form-grid input[type="email"],
+.zd-form-grid input[type="url"] {
+  width: 100%; height: 40px; padding: 0 11px;
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-sm);
+  background: var(--z-surface);
+  color: var(--z-text-1);
+  font-size: 13.5px; font-family: var(--z-font);
+}
+.zd-form-grid textarea { height: auto; min-height: 100px; padding: 9px 11px; resize: vertical; }
+.zd-form-grid input:focus, .zd-form-grid textarea:focus, .zd-form-grid select:focus {
+  border-color: var(--z-text-1); outline: none;
+  box-shadow: 0 0 0 3px var(--z-focus);
+}
+
+/* Prominent, tappable file pickers everywhere. */
+.zd-form-grid input[type="file"],
+input[type="file"].spring-dashboard-file {
+  width: 100%; padding: 16px 12px;
+  border: 1.5px dashed var(--z-border);
+  border-radius: var(--z-radius-sm);
+  background: var(--z-surface-2);
+  font-size: 13px; color: var(--z-text-2); font-family: var(--z-font);
+}
+
+/* Create-page hero panel. */
+.zd-ai-hero { border-color: rgba(107,53,194,.35); }
+.zd-ai-hero .zd-panel-head { background: var(--z-purple-bg); }
+.zd-ai-hero .zd-panel-head-title { font-size: 16px; }
+
+/* Collapsible disclosure (Regenerate with AI on the edit page). */
+.zd-collapse {
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-lg);
+  background: var(--z-surface);
+}
+.zd-collapse > summary { list-style: none; cursor: pointer; padding: 14px 18px; display: grid; gap: 2px; }
+.zd-collapse > summary::-webkit-details-marker { display: none; }
+.zd-collapse > summary > span { font-weight: 600; font-size: 14px; }
+.zd-collapse > summary > small { color: var(--z-text-3); font-size: 12px; }
+.zd-collapse[open] > summary { border-bottom: 1px solid var(--z-border); }
+.zd-collapse-body { padding: 16px 18px; }
+
+/* "Advanced" disclosure inside forms. */
+.zd-advanced > summary {
+  list-style: none; cursor: pointer;
+  font-size: 11px; font-weight: 600;
+  color: var(--z-text-2); letter-spacing: .05em; text-transform: uppercase;
+}
+.zd-advanced > summary::-webkit-details-marker { display: none; }
+.zd-advanced > summary::after { content: " +"; }
+.zd-advanced[open] > summary::after { content: " –"; }
+
+/* Manual-entry escape hatch under the AI hero. */
+.zd-manual-reveal { display: flex; justify-content: center; }
+.zd-btn--lg { height: 46px; font-size: 14px; }
+.zd-btn--grow { width: 100%; max-width: 460px; }
+
+/* Sticky action bar so Save/Publish stay under the thumb on phones. */
+.zd-editor-mobilebar {
+  display: none;
+  position: sticky; bottom: 10px; z-index: 30;
+  gap: 10px; padding: 10px;
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-lg);
+  background: var(--z-surface);
+  box-shadow: 0 10px 28px rgba(17,17,16,.16);
+}
+.zd-editor-mobilebar .zd-btn { flex: 1; min-height: 46px; }
+@media (max-width: 1023.98px) {
+  .zd-editor-mobilebar { display: flex; }
+}
+
+/* ─── Phone ergonomics ─────────────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .zd-header-title p { display: none; }
+  .zd-header-user { display: none; }
+  .zd-head-actions { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+  .zd-panel-head { flex-wrap: wrap; gap: 10px; }
+
+  .zd-btn { min-height: 44px; }
+  .zd-btn--sm { min-height: 40px; }
+  .zd-form-actions .zd-btn { width: 100%; }
+
+  /* Single-column fields; 16px inputs so iOS doesn't zoom on focus. */
+  .zd-form-grid-col2 { grid-template-columns: 1fr; }
+  .zd-form-grid input[type="text"],
+  .zd-form-grid input[type="number"],
+  .zd-form-grid input[type="email"],
+  .zd-form-grid input[type="url"],
+  .zd-form-grid select,
+  .zd-editor input[type="text"],
+  .zd-editor input[type="number"],
+  .zd-editor input[type="email"],
+  .zd-editor input[type="url"],
+  .zd-editor select {
+    height: 46px; font-size: 16px;
+  }
+  .zd-form-grid textarea, .zd-editor textarea { height: auto; font-size: 16px; }
+
+  /* Keep content clear of the sticky action bar. */
+  .zd-content { padding-bottom: 96px; }
+}
+

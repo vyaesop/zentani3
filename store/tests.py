@@ -504,7 +504,26 @@ class StoreFlowTests(TestCase):
         follow_up = self.client.get(response.url)
         self.assertEqual(follow_up.status_code, 200)
         self.assertContains(follow_up, "Midnight Linen Shirt")
-        self.assertContains(follow_up, "Create product with AI")
+        # The follow-up lands on the created product's editor: review card up
+        # top, AI re-run tucked into a disclosure, full editor collapsed.
+        self.assertContains(follow_up, "Regenerate with AI")
+        self.assertContains(follow_up, "Edit details")
+
+    @override_settings(DEBUG=True, GEMINI_API_KEY="test-gemini-key")
+    def test_create_page_leads_with_ai_intake_and_collapsed_editor(self):
+        self.client.login(username="0911444555", password="test-pass-123")
+
+        response = self.client.get(reverse("store:dashboard-product-create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Post a product")
+        self.assertContains(response, "Create product with AI")
+        self.assertContains(response, "Fill in the details manually instead")
+        # The manual editor ships hidden until revealed.
+        self.assertRegex(
+            response.content.decode(),
+            r"data-zd-editor\s+hidden",
+        )
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="")
     def test_ai_draft_generation_requires_configured_key(self):

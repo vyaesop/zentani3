@@ -709,19 +709,24 @@ def dashboard_product_edit(request, product_id=None):
                             request.session.pop(AI_DRAFT_SESSION_KEY, None)
 
                 should_publish = "save_and_publish" in request.POST
-                if should_publish and saved_product.is_active and not saved_product.is_sold_out:
+                if should_publish and not saved_product.is_active:
+                    # "Save & post" is an explicit publish intent — activate in the
+                    # same step instead of bouncing the user to a hidden toggle.
+                    saved_product.is_active = True
+                    Product.objects.filter(pk=saved_product.pk).update(is_active=True)
+                if should_publish and not saved_product.is_sold_out:
                     enqueue(
                         BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
                         {"product_id": saved_product.id, "force": True},
                     )
                     messages.success(
                         request,
-                        f"{saved_product.title} was saved and queued for Telegram publishing.",
+                        f"{saved_product.title} is live and queued for Telegram publishing.",
                     )
                 elif should_publish:
                     messages.warning(
                         request,
-                        f"{saved_product.title} was saved, but it must be active and in stock before Telegram publishing.",
+                        f"{saved_product.title} was saved, but it is marked sold out — restock it before Telegram publishing.",
                     )
                 else:
                     size_count = len(size_list)
@@ -742,6 +747,11 @@ def dashboard_product_edit(request, product_id=None):
     size_source = form["available_sizes"].value() if "available_sizes" in form.fields else ""
     size_tokens = parse_size_list(size_source or (product.available_sizes if product else ""))
 
+    # Mobile-first: the full editor starts collapsed behind an "edit details"
+    # button so the AI intake (or the review card) is the whole screen. POST
+    # re-renders stay expanded so validation errors are visible.
+    editor_collapsed = request.method == "GET" and gemini_is_configured()
+
     context = _dashboard_context(
         request,
         section="products",
@@ -753,6 +763,7 @@ def dashboard_product_edit(request, product_id=None):
         ai_draft=ai_draft,
         ai_draft_form=ai_draft_form,
         gemini_is_configured=gemini_is_configured(),
+        editor_collapsed=editor_collapsed,
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
         size_tokens=size_tokens,
