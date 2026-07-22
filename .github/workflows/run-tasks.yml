@@ -1,0 +1,28 @@
+# Drains the background task queue (Telegram posts, AI enrichment) by hitting
+# /internal/run-tasks/ on the deployed site. Vercel Hobby crons may only run
+# once per day, so this scheduled workflow is the primary frequent drain; the
+# daily Vercel cron in vercel.json remains as a fallback.
+#
+# Requires the RUN_TASKS_SECRET repository secret to match the RUN_TASKS_SECRET
+# (or CRON_SECRET) environment variable configured on Vercel.
+name: Drain background tasks
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: run-tasks-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call run-tasks endpoint
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.RUN_TASKS_SECRET }}" \
+            "https://zentani3-959x.vercel.app/internal/run-tasks/?limit=25"
