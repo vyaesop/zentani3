@@ -43,7 +43,9 @@
 
 <!-- AI draft in progress -->
 {% if ai_draft and ai_draft.pipeline_state == "queued" or ai_draft and ai_draft.pipeline_state == "analyzing" %}
-<div class="zd-panel" data-ai-draft-progress data-status-url="{% url 'store:dashboard-ai-draft-status' ai_draft.id %}">
+<div class="zd-panel" data-ai-draft-progress
+     data-status-url="{% url 'store:dashboard-ai-draft-status' ai_draft.id %}"
+     data-process-url="{% url 'store:dashboard-ai-draft-process' ai_draft.id %}">
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
       <p class="zd-panel-head-title">Gemini is drafting the copy…</p>

@@ -16,12 +16,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  /* Poll draft status while Gemini works in the background task queue. */
+  /* Drive the draft while Gemini works: the process endpoint is idempotent
+     and (on serverless) runs the enrichment inside the request, so watching
+     this page is enough to make it finish — no waiting for the cron sweeper. */
   const progressPanel = document.querySelector('[data-ai-draft-progress]');
   if (progressPanel) {
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    let inFlight = false;
     const timer = setInterval(async function () {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const res = await fetch(progressPanel.dataset.statusUrl, { headers: { 'Accept': 'application/json' } });
+        const processUrl = progressPanel.dataset.processUrl;
+        const res = processUrl && csrfInput
+          ? await fetch(processUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRFToken': csrfInput.value } })
+          : await fetch(progressPanel.dataset.statusUrl, { headers: { 'Accept': 'application/json' } });
         const body = await res.json();
         const state = body.pipeline_state || '';
         if (state === 'ready' || state === 'manual_review' || (body.draft && body.draft.status === 'succeeded')) {
@@ -32,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (badge && body.queue_label) badge.textContent = body.queue_label;
         }
       } catch (e) { /* transient — try again next tick */ }
+      finally { inFlight = false; }
     }, 4000);
   }
 

@@ -156,9 +156,26 @@ def execute(task):
     return True
 
 
+STALE_RUNNING_MINUTES = 5
+
+
+def _requeue_stale_running():
+    """Recover tasks stranded in RUNNING (e.g. the serverless function that
+    claimed them was killed mid-flight) by putting them back in the queue."""
+    from store.models import BackgroundTask
+
+    cutoff = timezone.now() - timedelta(minutes=STALE_RUNNING_MINUTES)
+    return BackgroundTask.objects.filter(
+        status=BackgroundTask.STATUS_RUNNING,
+        updated_at__lt=cutoff,
+    ).update(status=BackgroundTask.STATUS_PENDING, run_after=timezone.now())
+
+
 def run_pending(limit=10):
     """Claim and execute due tasks; returns the number of tasks executed."""
     from store.models import BackgroundTask
+
+    _requeue_stale_running()
 
     claim_kwargs = {}
     if connection.features.has_select_for_update_skip_locked:

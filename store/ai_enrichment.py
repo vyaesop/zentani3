@@ -935,6 +935,7 @@ def draft_to_product_initial(draft, *, categories=(), brands=()):
         "color": (catalog_fields.get("color") or "").strip(),
         "fit_notes": (catalog_fields.get("fit_notes") or "").strip(),
         "care_notes": (catalog_fields.get("care_notes") or "").strip(),
+        "available_sizes": (getattr(draft, "sizes", "") or "").strip(),
         "price": draft.price if draft.price is not None else "",
     }
 
