@@ -154,7 +154,8 @@
         {% if draft.error_message %}{{ draft.error_message }}
         {% elif draft.pipeline_state == "ready" and draft.product and draft.product.is_active %}Published — live on the storefront.
         {% elif draft.pipeline_state == "ready" and draft.product %}Product ready — publish in one click or open to adjust.
-        {% elif draft.pipeline_state == "ready" %}Draft ready — open in the product editor.
+        {% elif draft.pipeline_state == "ready" %}Draft ready — open it to finish.
+          {% for note in draft.response_payload.automation.notes %} {{ note }}{% endfor %}
         {% elif draft.pipeline_state == "manual_review" %}Needs manual review before publishing.
         {% elif draft.pipeline_state == "analyzing" %}Gemini is generating copy now…
         {% else %}Waiting for the queue runner.{% endif %}

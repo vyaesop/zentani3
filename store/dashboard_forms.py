@@ -106,6 +106,9 @@ class ProductAIDraftForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["reference_image"].required = True
+        # Price is one of the three merchandiser-owned inputs (image, SKU,
+        # price) — without it the ready draft can't become a product.
+        self.fields["price"].required = True
         _decorate_dashboard_fields(self.fields)
 
 
