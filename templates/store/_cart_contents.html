@@ -1,7 +1,9 @@
 {% load static %}
 {% load image_optim %}
-{# Full cart body. htmx cart mutations replace this element wholesale so line
-   totals, summary, and flow status always agree with the server. #}
+{% comment %}
+Full cart body. htmx cart mutations replace this element wholesale so line
+totals, summary, and flow status always agree with the server.
+{% endcomment %}
 <div id="cart-contents" class="zent-busy-region"
      hx-target="#cart-contents" hx-swap="outerHTML" hx-indicator="#cart-contents">
 
