@@ -1,6 +1,8 @@
-{# Save/unsave toggle. htmx swaps the form in place; the plain form POST +
-   redirect keeps working without JS. variant="inline" renders the product
-   page styling; the default renders the product-card styling. #}
+{% comment %}
+Save/unsave toggle. htmx swaps the form in place; the plain form POST +
+redirect keeps working without JS. variant="inline" renders the product
+page styling; the default renders the product-card styling.
+{% endcomment %}
 {% if request.user.is_authenticated %}
 {% if variant == "inline" %}
 <form action="{% url 'store:toggle-wishlist' product.id %}" method="POST"
