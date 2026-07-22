@@ -203,6 +203,13 @@ class ProductAIDraft(models.Model):
         null=True,
         verbose_name="Secondary Reference Image",
     )
+    cover_image = models.ImageField(
+        upload_to="ai-cover",
+        blank=True,
+        null=True,
+        verbose_name="Storefront Cover Image",
+        help_text="Becomes the product's main image when the draft is turned into a product.",
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     pipeline_state = models.CharField(max_length=30, choices=PIPELINE_STATE_CHOICES, default=PIPELINE_IDLE)
     error_message = models.CharField(max_length=250, blank=True)
@@ -237,6 +244,8 @@ class ProductAIDraft(models.Model):
             self.reference_image.name = _normalize_legacy_media_name(self.reference_image.name)
         if self.secondary_reference_image and getattr(self.secondary_reference_image, "name", ""):
             self.secondary_reference_image.name = _normalize_legacy_media_name(self.secondary_reference_image.name)
+        if self.cover_image and getattr(self.cover_image, "name", ""):
+            self.cover_image.name = _normalize_legacy_media_name(self.cover_image.name)
         super().save(*args, **kwargs)
 
     @property
@@ -247,6 +256,30 @@ class ProductAIDraft(models.Model):
     def queue_label(self):
         labels = dict(self.PIPELINE_STATE_CHOICES)
         return labels.get(self.pipeline_state, self.pipeline_state.replace("_", " ").title())
+
+
+class ProductAIDraftGalleryImage(models.Model):
+    """Gallery photos uploaded at AI-intake time; copied to ProductImages when
+    the draft becomes a product."""
+
+    draft = models.ForeignKey(ProductAIDraft, on_delete=models.CASCADE, related_name="gallery_uploads")
+    image = models.ImageField(upload_to="ai-gallery", verbose_name="Gallery Upload")
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("sort_order", "id")
+        indexes = [
+            models.Index(fields=["draft", "sort_order"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, "name", ""):
+            self.image.name = _normalize_legacy_media_name(self.image.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.draft.sku} gallery upload {self.sort_order}"
 
 
 class ProductAIDraftImage(models.Model):

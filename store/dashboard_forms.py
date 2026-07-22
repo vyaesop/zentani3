@@ -95,6 +95,7 @@ class ProductAIDraftForm(forms.ModelForm):
             "price",
             "reference_image",
             "secondary_reference_image",
+            "cover_image",
         ]
         widgets = {
             "sku": forms.TextInput(attrs={"placeholder": "Vendor SKU / source code"}),

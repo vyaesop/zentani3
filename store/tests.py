@@ -456,7 +456,13 @@ class StoreFlowTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, "Delivered")
 
-    @override_settings(DEBUG=True, GEMINI_API_KEY="test-gemini-key")
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        TASKS_EAGER=True,
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
     @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
     def test_staff_user_can_generate_ai_product_draft(self, generate_product_ai_payload_for_draft_mock):
         generate_product_ai_payload_for_draft_mock.return_value = self._mock_ai_result(title="Midnight Linen Shirt")
@@ -466,7 +472,7 @@ class StoreFlowTests(TestCase):
         response = self.client.post(
             reverse("store:dashboard-product-create"),
             {
-                "sku": "SKU-100",
+                "sku": "SKU-500",
                 "vendor_hint": "Mercato Studio",
                 "price": "249.99",
                 "generate_ai_draft": "1",
@@ -484,12 +490,21 @@ class StoreFlowTests(TestCase):
         self.assertEqual(draft.response_payload["catalog_fields"]["title"], "Midnight Linen Shirt")
         self.assertEqual(self.client.session.get("dashboard_product_ai_draft_id"), draft.id)
 
+        # The ready draft is turned into an unpublished product automatically,
+        # matched to the existing collection/brand from the AI suggestions.
+        product = Product.objects.get(sku="SKU-500")
+        self.assertFalse(product.is_active)
+        self.assertEqual(product.category, self.category)
+        self.assertEqual(product.brand, self.brand)
+        self.assertEqual(product.price, Decimal("249.99"))
+        draft.refresh_from_db()
+        self.assertEqual(draft.product_id, product.id)
+        self.assertTrue(draft.response_payload["automation"]["product_created"])
+
         follow_up = self.client.get(response.url)
         self.assertEqual(follow_up.status_code, 200)
         self.assertContains(follow_up, "Midnight Linen Shirt")
-        self.assertContains(follow_up, "Mercato Studio")
-        self.assertContains(follow_up, "value=\"SKU-100\"", html=False)
-        self.assertContains(follow_up, "Generate copy from image")
+        self.assertContains(follow_up, "Create product with AI")
 
     @override_settings(DEBUG=True, GEMINI_API_KEY="")
     def test_ai_draft_generation_requires_configured_key(self):
@@ -638,7 +653,7 @@ class StoreFlowTests(TestCase):
 
         response = self.client.get(reverse("store:dashboard-ai-queue"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Gemini copy queue")
+        self.assertContains(response, "Gemini product queue")
         self.assertContains(response, "Add to queue")
 
     @override_settings(
@@ -670,6 +685,7 @@ class StoreFlowTests(TestCase):
     @override_settings(
         DEBUG=True,
         GEMINI_API_KEY="test-gemini-key",
+        TASKS_EAGER=True,
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
@@ -695,6 +711,12 @@ class StoreFlowTests(TestCase):
         self.assertEqual(draft.status, ProductAIDraft.STATUS_SUCCEEDED)
         self.assertEqual(response.json()["ok"], True)
         self.assertEqual(response.json()["draft"]["title"], "Queued Abaya")
+
+        # The ready draft became an unpublished product with a one-click publish URL.
+        product = Product.objects.get(sku="QUEUE-2")
+        self.assertFalse(product.is_active)
+        self.assertEqual(response.json()["draft"]["product_id"], product.id)
+        self.assertIn("/publish/", response.json()["draft"]["publish_url"])
 
     @override_settings(DEBUG=True)
     def test_categories_and_brands_pages_are_paginated(self):
@@ -740,6 +762,7 @@ class StoreFlowTests(TestCase):
     @override_settings(
         DEBUG=True,
         GEMINI_API_KEY="test-gemini-key",
+        TASKS_EAGER=True,
         MEDIA_ROOT=tempfile.gettempdir(),
         DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
     )
@@ -1043,3 +1066,279 @@ class QueryCountGuardTests(TestCase):
         self.client.get(reverse("store:cart"))  # warm caches
         with self.assertNumQueries(7):
             self.client.get(reverse("store:cart"))
+
+
+@override_settings(
+    DEBUG=True,
+    MEDIA_ROOT=tempfile.gettempdir(),
+    DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+)
+class AIDraftAutomationTests(TestCase):
+    """Conservative taxonomy resolution + automatic product creation from drafts."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="0911700000", password="test-pass-123", is_staff=True
+        )
+        self.category = Category.objects.create(
+            title="Dresses", slug="dresses", is_active=True, is_featured=False
+        )
+        self.brand = Brand.objects.create(
+            title="Zentanee Basics", slug="zentanee-basics", is_active=True, is_featured=False
+        )
+        BackgroundTask.objects.all().delete()
+
+    def _image(self, name="ref.jpg", color="navy"):
+        image_bytes = BytesIO()
+        Image.new("RGB", (40, 40), color=color).save(image_bytes, format="JPEG")
+        image_bytes.seek(0)
+        return SimpleUploadedFile(name, image_bytes.read(), content_type="image/jpeg")
+
+    def _payload(
+        self,
+        *,
+        title="Flowy Evening Dress",
+        collection_slug="dresses",
+        collection_proposal=None,
+        collection_confidence="high",
+        brand_slug=None,
+        brand_proposal=None,
+        brand_confidence="low",
+    ):
+        return {
+            "catalog_fields": {
+                "title": title,
+                "slug_hint": "flowy-evening-dress",
+                "short_description": "A flowing evening dress with soft drape.",
+                "detail_description": "Full-length dress in a breathable fabric.",
+                "material": "Chiffon",
+                "color": "Emerald",
+                "fit_notes": "Relaxed fit.",
+                "care_notes": "Hand wash cold.",
+                "suggested_category": "",
+                "suggested_brand": "",
+                "product_type": "Dress",
+            },
+            "classification": {
+                "collection": {
+                    "matched_slug": collection_slug,
+                    "proposed_new_title": collection_proposal,
+                    "confidence": collection_confidence,
+                    "reason": "test",
+                },
+                "brand": {
+                    "matched_slug": brand_slug,
+                    "proposed_new_title": brand_proposal,
+                    "confidence": brand_confidence,
+                    "reason": "test",
+                },
+            },
+            "seo": {
+                "seo_title": "Flowy Evening Dress | Zentanee",
+                "meta_description": "A flowing evening dress.",
+                "image_alt_text": "Flowy evening dress",
+            },
+            "confidence": {"overall": "high", "reasoning_notes": [], "needs_manual_review": []},
+        }
+
+    def _draft(self, sku="AI-AUTO-1", payload=None, **kwargs):
+        defaults = dict(
+            created_by=self.staff_user,
+            sku=sku,
+            price=Decimal("199.00"),
+            reference_image=self._image(name=f"{sku}-ref.jpg"),
+            status=ProductAIDraft.STATUS_SUCCEEDED,
+            pipeline_state=ProductAIDraft.PIPELINE_READY,
+            response_payload=payload if payload is not None else self._payload(),
+        )
+        defaults.update(kwargs)
+        return ProductAIDraft.objects.create(**defaults)
+
+    def test_matched_slug_assigns_existing_collection(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft()
+        product, created, notes = create_product_from_draft(draft)
+
+        self.assertTrue(created)
+        self.assertFalse(product.is_active)
+        self.assertEqual(product.category, self.category)
+        self.assertIsNone(product.brand)
+        self.assertEqual(Category.objects.count(), 1)
+        draft.refresh_from_db()
+        self.assertEqual(draft.product_id, product.id)
+
+    def test_no_confident_match_does_not_create_collection(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(
+            sku="AI-AUTO-2",
+            payload=self._payload(
+                collection_slug=None,
+                collection_proposal="Evening Gowns",
+                collection_confidence="medium",
+            ),
+        )
+        product, created, notes = create_product_from_draft(draft)
+
+        self.assertIsNone(product)
+        self.assertFalse(created)
+        self.assertEqual(Category.objects.count(), 1)
+        self.assertTrue(any("collection" in note.lower() for note in notes))
+
+    def test_high_confidence_proposal_creates_collection_once(self):
+        from store.services.enrichment import create_product_from_draft
+
+        first = self._draft(
+            sku="AI-AUTO-3",
+            payload=self._payload(
+                collection_slug=None,
+                collection_proposal="Handbags",
+                collection_confidence="high",
+            ),
+        )
+        product, created, notes = create_product_from_draft(first)
+        self.assertTrue(created)
+        handbags = Category.objects.get(slug="handbags")
+        self.assertTrue(handbags.is_active)
+        self.assertEqual(product.category, handbags)
+
+        # A second draft proposing the same collection reuses it instead of duplicating.
+        second = self._draft(
+            sku="AI-AUTO-4",
+            payload=self._payload(
+                collection_slug=None,
+                collection_proposal="Handbags",
+                collection_confidence="high",
+            ),
+        )
+        second_product, second_created, _ = create_product_from_draft(second)
+        self.assertTrue(second_created)
+        self.assertEqual(second_product.category, handbags)
+        self.assertEqual(Category.objects.filter(title__iexact="handbags").count(), 1)
+
+    def test_brand_guess_without_high_confidence_stays_empty(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(
+            sku="AI-AUTO-5",
+            payload=self._payload(brand_proposal="Guchy", brand_confidence="medium"),
+        )
+        product, created, _ = create_product_from_draft(draft)
+
+        self.assertTrue(created)
+        self.assertIsNone(product.brand)
+        self.assertEqual(Brand.objects.count(), 1)
+
+    def test_high_confidence_brand_proposal_creates_brand(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(
+            sku="AI-AUTO-6",
+            payload=self._payload(brand_proposal="Mercato Studio", brand_confidence="high"),
+        )
+        product, created, _ = create_product_from_draft(draft)
+
+        self.assertTrue(created)
+        self.assertEqual(product.brand.title, "Mercato Studio")
+        self.assertTrue(product.brand.is_active)
+
+    def test_cover_and_gallery_uploads_are_copied_to_product(self):
+        from store.models import ProductImages
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(sku="AI-AUTO-7", cover_image=self._image(name="cover-shot.jpg", color="black"))
+        draft.gallery_uploads.create(image=self._image(name="gallery-1.jpg", color="red"), sort_order=1)
+        draft.gallery_uploads.create(image=self._image(name="gallery-2.jpg", color="green"), sort_order=2)
+
+        product, created, _ = create_product_from_draft(draft)
+
+        self.assertTrue(created)
+        self.assertIn("cover-shot", product.product_image.name)
+        self.assertEqual(ProductImages.objects.filter(product=product).count(), 2)
+
+    def test_existing_sku_blocks_product_creation(self):
+        from store.services.enrichment import create_product_from_draft
+
+        Product.objects.create(
+            title="Existing",
+            slug="existing",
+            sku="AI-AUTO-8",
+            short_description="Existing product",
+            product_image="product/test.jpg",
+            price=Decimal("50.00"),
+            category=self.category,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+        draft = self._draft(sku="AI-AUTO-8")
+
+        product, created, notes = create_product_from_draft(draft)
+
+        self.assertIsNone(product)
+        self.assertFalse(created)
+        self.assertTrue(any("already exists" in note for note in notes))
+
+    @override_settings(TASKS_EAGER=False)
+    def test_publish_endpoint_activates_product_and_queues_telegram_post(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(sku="AI-AUTO-9")
+        product, _, _ = create_product_from_draft(draft)
+        BackgroundTask.objects.all().delete()
+        self.client.login(username="0911700000", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-publish", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        product.refresh_from_db()
+        self.assertTrue(product.is_active)
+        task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST)
+        self.assertEqual(task.payload["product_id"], product.id)
+        self.assertTrue(task.payload["force"])
+
+    def test_publish_endpoint_requires_created_product(self):
+        draft = self._draft(sku="AI-AUTO-10", pipeline_state=ProductAIDraft.PIPELINE_QUEUED, response_payload={})
+        self.client.login(username="0911700000", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-publish", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+
+    @override_settings(
+        STORE_DELIVERY_NOTE="Test delivery promise.",
+        STORE_RETURN_NOTE="Check the item with the driver present - on-the-spot returns only.",
+    )
+    def test_detail_page_falls_back_to_store_policy_notes(self):
+        product = Product.objects.create(
+            title="Policy Dress",
+            slug="policy-dress",
+            sku="POLICY-1",
+            short_description="A dress",
+            product_image="product/test.jpg",
+            price=Decimal("120.00"),
+            category=self.category,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+
+        response = self.client.get(reverse("store:product-detail", args=[product.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test delivery promise.")
+        self.assertContains(response, "on-the-spot returns only")
+
+    def test_draft_initial_carries_no_policy_fields(self):
+        draft = self._draft(sku="AI-AUTO-11")
+        initial = ai_enrichment.draft_to_product_initial(
+            draft, categories=[self.category], brands=[self.brand]
+        )
+
+        self.assertNotIn("delivery_note", initial)
+        self.assertNotIn("return_note", initial)
+        self.assertEqual(initial["category"], self.category.pk)
+

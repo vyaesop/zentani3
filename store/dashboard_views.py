@@ -121,6 +121,21 @@ def _save_bulk_gallery_images(product, uploaded_files):
     return created
 
 
+def _store_draft_gallery_uploads(draft, uploaded_files):
+    """Keep intake gallery photos on the draft; they are copied to the product
+    when the draft is turned into one. Non-image uploads are skipped."""
+    created = 0
+    for index, uploaded in enumerate(uploaded_files or [], start=1):
+        if not uploaded:
+            continue
+        content_type = getattr(uploaded, "content_type", "") or ""
+        if content_type and not content_type.startswith("image/"):
+            continue
+        draft.gallery_uploads.create(image=uploaded, sort_order=index)
+        created += 1
+    return created
+
+
 def _ai_draft_redirect_url(product, draft):
     if product:
         base_url = reverse("store:dashboard-product-edit", args=[product.id])
@@ -182,13 +197,14 @@ def _active_ai_queue_queryset(user):
 
 
 def _queueable_drafts_queryset(user):
-    return ProductAIDraft.objects.filter(created_by=user).order_by(
+    return ProductAIDraft.objects.filter(created_by=user).select_related("product").order_by(
         "-updated_at",
         "-created_at",
     )
 
 
 def _queue_draft_json(draft):
+    automation = (draft.response_payload or {}).get("automation") or {}
     return {
         "id": draft.id,
         "sku": draft.sku,
@@ -201,6 +217,12 @@ def _queue_draft_json(draft):
         "error_message": draft.error_message,
         "attempt_count": draft.attempt_count,
         "edit_url": _ai_draft_redirect_url(draft.product, draft),
+        "product_id": draft.product_id,
+        "product_is_active": bool(draft.product_id and draft.product.is_active),
+        "publish_url": (
+            reverse("store:dashboard-ai-draft-publish", args=[draft.id]) if draft.product_id else ""
+        ),
+        "automation_notes": automation.get("notes") or [],
     }
 
 
@@ -577,9 +599,10 @@ def dashboard_ai_queue(request):
             draft.error_message = ""
             draft.last_error_stage = ""
             draft.save()
+            _store_draft_gallery_uploads(draft, request.FILES.getlist("gallery_images"))
             messages.success(
                 request,
-                f"{draft.sku} was added to the Gemini queue. Copy generation will run without image generation.",
+                f"{draft.sku} was added to the Gemini queue. When it is ready it becomes an unpublished product you can publish in one click.",
             )
             return redirect("store:dashboard-ai-queue")
         else:
@@ -614,6 +637,13 @@ def dashboard_product_edit(request, product_id=None):
 
     ai_draft = _get_ai_draft_for_request(request, product=product)
 
+    if product is None and ai_draft is not None and ai_draft.product_id:
+        # The draft already became a product — continue in that product's editor
+        # instead of offering a stale "new product" form that would duplicate it.
+        request.session.pop(AI_DRAFT_SESSION_KEY, None)
+        if request.method == "GET":
+            return redirect(_ai_draft_redirect_url(ai_draft.product, ai_draft))
+
     if request.method == "POST":
         if "generate_ai_draft" in request.POST:
             ai_draft_form = ProductAIDraftForm(request.POST, request.FILES)
@@ -630,6 +660,7 @@ def dashboard_product_edit(request, product_id=None):
                 draft.created_by = request.user
                 draft.product = product
                 draft.save()
+                _store_draft_gallery_uploads(draft, request.FILES.getlist("gallery_images"))
 
                 draft = _queue_draft_for_enrichment(draft)
                 if draft.pipeline_state == ProductAIDraft.PIPELINE_MANUAL_REVIEW:
@@ -638,11 +669,20 @@ def dashboard_product_edit(request, product_id=None):
                 else:
                     if product is None:
                         request.session[AI_DRAFT_SESSION_KEY] = draft.id
+                    automation = (draft.response_payload or {}).get("automation") or {}
                     if draft.pipeline_state == ProductAIDraft.PIPELINE_READY:
-                        messages.success(request, "AI draft generated. Review the copy suggestions, then save the product when it looks right.")
+                        if automation.get("product_created"):
+                            messages.success(
+                                request,
+                                "Product created from the AI draft. Review the summary below, then publish when it looks right.",
+                            )
+                        else:
+                            messages.success(request, "AI draft generated. Review the copy suggestions, then save the product when it looks right.")
+                        for note in automation.get("notes") or []:
+                            messages.info(request, note)
                     else:
                         messages.info(request, "AI draft queued. Gemini is drafting the copy in the background — this page refreshes when it is ready.")
-                    return redirect(_ai_draft_redirect_url(product, draft))
+                    return redirect(_ai_draft_redirect_url(product or draft.product, draft))
             else:
                 messages.error(request, "Add a reference image, SKU, and price to generate an AI draft.")
         else:
@@ -663,7 +703,7 @@ def dashboard_product_edit(request, product_id=None):
                         _save_bulk_gallery_images(saved_product, request.FILES.getlist("bulk_gallery_images"))
                         set_product_sizes(saved_product, size_list)
 
-                        if ai_draft and ai_draft.product_id != saved_product.id:
+                        if ai_draft and ai_draft.product_id is None:
                             ai_draft.product = saved_product
                             ai_draft.save(update_fields=["product", "updated_at"])
                             request.session.pop(AI_DRAFT_SESSION_KEY, None)
@@ -750,6 +790,35 @@ def dashboard_ai_draft_process(request, draft_id):
 def dashboard_ai_draft_status(request, draft_id):
     """Read-only polling endpoint for draft pipeline state."""
     draft = get_object_or_404(ProductAIDraft.objects.filter(created_by=request.user), pk=draft_id)
+    return _draft_state_response(draft)
+
+
+@staff_required
+@require_POST
+def dashboard_ai_draft_publish(request, draft_id):
+    """One-click publish for a draft whose product was auto-created: flip it
+    active and queue the Telegram channel post."""
+    draft = get_object_or_404(
+        ProductAIDraft.objects.filter(created_by=request.user).select_related("product"),
+        pk=draft_id,
+    )
+    product = draft.product
+    if product is None:
+        return JsonResponse(
+            {"ok": False, "error": "This draft has no product yet — open it in the editor first."},
+            status=400,
+        )
+    if product.is_sold_out:
+        return JsonResponse(
+            {"ok": False, "error": f"{product.title} is marked sold out — restock it before publishing."},
+            status=400,
+        )
+
+    if not product.is_active:
+        product.is_active = True
+        with suspend_telegram_autopublish():
+            product.save(update_fields=["is_active", "updated_at"])
+    enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": product.id, "force": True})
     return _draft_state_response(draft)
 
 

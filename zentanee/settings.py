@@ -43,6 +43,23 @@ AI_IMAGE_GENERATOR_RETRIES = int(os.getenv('AI_IMAGE_GENERATOR_RETRIES', '2'))
 AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST = int(os.getenv('AI_IMAGE_GENERATOR_SHOTS_PER_REQUEST', '1'))
 AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL = os.getenv('AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL', 'False').lower() == 'true'
 
+# Conservative AI taxonomy: auto-create a collection/brand only when Gemini says
+# nothing existing fits AND is highly confident. Flip off to require manual picks.
+AI_AUTO_CREATE_COLLECTIONS = os.getenv('AI_AUTO_CREATE_COLLECTIONS', 'True').lower() == 'true'
+AI_AUTO_CREATE_BRANDS = os.getenv('AI_AUTO_CREATE_BRANDS', 'True').lower() == 'true'
+
+# Store-wide policy copy shown on product pages when a product has no override.
+# Returns are on-the-spot only: the customer inspects the item with the delivery
+# driver present and can only hand it back before the driver leaves.
+STORE_DELIVERY_NOTE = os.getenv(
+    'STORE_DELIVERY_NOTE',
+    'Delivery in Addis Ababa usually lands within 1-3 days after confirmation. Pay cash on delivery.',
+)
+STORE_RETURN_NOTE = os.getenv(
+    'STORE_RETURN_NOTE',
+    'Check your item with the delivery driver present — returns are accepted only on the spot, before the driver leaves.',
+)
+
 
 # Application definition
 
@@ -74,7 +91,7 @@ MIDDLEWARE = [
 if importlib.util.find_spec('whitenoise'):
     MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
-ROOT_URLCONF = 'jewelryshop.urls'
+ROOT_URLCONF = 'zentanee.urls'
 
 TEMPLATES = [
     {
@@ -96,7 +113,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'jewelryshop.wsgi.application'
+WSGI_APPLICATION = 'zentanee.wsgi.application'
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 IS_VERCEL = os.getenv('VERCEL') == '1'
@@ -161,7 +178,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'jewelryshop/static')]
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'zentanee/static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles', 'static') # Automatically Created on Production
 
 if importlib.util.find_spec('whitenoise'):

@@ -46,22 +46,36 @@ def infer_vendor_hint_from_sku(sku):
     return ""
 
 
-def _prompt_for_product_enrichment(sku, price, vendor_hint):
+def _format_taxonomy_options(options):
+    lines = []
+    for option in options:
+        title = getattr(option, "title", "") or ""
+        slug = getattr(option, "slug", "") or ""
+        if slug:
+            lines.append(f'- "{slug}" ({title})')
+    return "\n".join(lines) if lines else "- (none exist yet)"
+
+
+def _prompt_for_product_enrichment(sku, price, vendor_hint, collection_options=(), brand_options=()):
     vendor_text = vendor_hint or "unknown"
     price_text = str(price) if price not in (None, "") else "unknown"
+    collections_text = _format_taxonomy_options(collection_options)
+    brands_text = _format_taxonomy_options(brand_options)
     return f"""
 You are helping a local e-commerce merchandising team called Zentanee create a product draft from a single identifier image.
+
+Zentanee is primarily a clothing and modest-fashion store (dresses, abayas, sets, and everyday wear). It occasionally carries accessories, jewelry, or gift items — classify by what you actually see in the image, not by assumption in either direction.
 
 The uploaded image is a private reference image used only to identify the item and guide future image generation briefs.
 Do not assume the image itself will be used as the storefront hero image.
 The vendor hint is manually provided by the merchandiser and may refer to a local Ethiopian supplier that is not visible on the public web.
 Treat sizes as manual business data owned by the merchandiser. Do not infer or fabricate sizes.
-The store may carry jewelry, accessories, gift items, collectibles, and fashion products. Do not assume every product is clothing.
+Do not write delivery or return policy text — the store applies its own store-wide policy.
 
 Storefront image style references:
-- A dark luxury hero image for a single object on a black background with controlled reflections and dramatic lighting.
-- A bright clean macro jewelry image on a white background with subtle reflections and close detail visibility.
 - A modest-fashion dress and abaya product page with clear color fidelity, drape visibility, and full-length framing when the source image allows it.
+- A bright clean catalog hero on a white background with subtle reflections and close detail visibility.
+- A dark luxury hero image for a single object on a black background with controlled reflections and dramatic lighting.
 - A secondary gallery image can be used only as visual inspiration for alternative framing or detail emphasis, never as a source of factual copy.
 Use those as stylistic directions only when appropriate for the detected product type.
 
@@ -70,17 +84,29 @@ Known inputs:
 - Manual vendor hint: {vendor_text}
 - Price: {price_text}
 
+Existing store collections (slug and title):
+{collections_text}
+
+Existing store brands (slug and title):
+{brands_text}
+
 Tasks:
 1. Identify the product from the image as accurately as possible.
 2. Use Google Search grounding to look for exact SKU matches first, then strong same-vendor or highly similar matches when the vendor hint appears useful. If the vendor hint is a local sourcing label with no public footprint, say that clearly instead of pretending to match it online.
 3. Draft original store copy that is inspired by grounded facts but does not copy competitor wording.
 4. If a detail is uncertain, say so in the confidence notes instead of inventing facts.
-5. Create image-generation briefs for a free reference-guided generator. The briefs must preserve the exact product, while improving only lighting, background, crop, and presentation.
-6. Tailor the shot plan to the detected product type:
-   - For jewelry and rings, prioritize macro detail, gemstone clarity, metal finish, and balanced reflections.
-   - For coins, medallions, and collectible metal items, prioritize edge definition, engraved detail, and premium dark-background hero compositions.
+5. Classify the product into a collection and brand using the "classification" rules below.
+6. Create image-generation briefs for a free reference-guided generator. The briefs must preserve the exact product, while improving only lighting, background, crop, and presentation.
+7. Tailor the shot plan to the detected product type:
    - For dresses, abayas, and modest fashion products, prioritize silhouette, drape, sleeve detail, and clean luxury framing with true-to-product color.
    - For fashion products more broadly, prioritize silhouette, texture, and clean e-commerce framing.
+   - For jewelry and accessories, prioritize macro detail, material finish, and balanced reflections.
+   - For collectibles and gift items, prioritize edge definition, engraved detail, and premium dark-background hero compositions.
+
+Classification rules (be conservative):
+- Collection: choose an existing collection slug whenever one reasonably represents the product, even if the wording is not a perfect match ("Dresses" is a valid match for an evening gown). Set "matched_slug" to that exact slug from the list above.
+- Only when NO existing collection reasonably fits, set "matched_slug" to null and put a short, broad merchandising name in "proposed_new_title" (like "Dresses" or "Handbags", never something hyper-specific like "Emerald Puff-Sleeve Evening Dresses"). Only propose with "confidence": "high" if a store would clearly need this collection.
+- Brand: only match or propose a brand you can actually verify from a visible label, the SKU, the vendor hint, or grounded search results. Never guess a well-known brand from visual similarity alone. When unsure, set both "matched_slug" and "proposed_new_title" to null — an empty brand is better than a wrong one.
 
 Return strict JSON only with this shape:
 {{
@@ -93,11 +119,23 @@ Return strict JSON only with this shape:
     "color": "string",
     "fit_notes": "string",
     "care_notes": "string",
-    "delivery_note": "string",
-    "return_note": "string",
     "suggested_category": "string",
     "suggested_brand": "string",
     "product_type": "string"
+  }},
+  "classification": {{
+    "collection": {{
+      "matched_slug": "existing-collection-slug or null",
+      "proposed_new_title": "string or null",
+      "confidence": "high|medium|low",
+      "reason": "string"
+    }},
+    "brand": {{
+      "matched_slug": "existing-brand-slug or null",
+      "proposed_new_title": "string or null",
+      "confidence": "high|medium|low",
+      "reason": "string"
+    }}
   }},
   "seo": {{
     "seo_title": "string",
@@ -214,6 +252,7 @@ def _safe_json_loads(text):
 def _normalize_payload(payload):
     normalized = {
         "catalog_fields": payload.get("catalog_fields") or {},
+        "classification": payload.get("classification") or {},
         "seo": payload.get("seo") or {},
         "search_strategy": payload.get("search_strategy") or {},
         "confidence": payload.get("confidence") or {},
@@ -655,7 +694,7 @@ def generate_free_image_candidates(draft):
     return _generate_local_image_candidates(draft)
 
 
-def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor_hint=""):
+def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor_hint="", collection_options=(), brand_options=()):
     api_key = getattr(settings, "GEMINI_API_KEY", "").strip()
     if not api_key:
         raise ProductAIError("GEMINI_API_KEY is not configured.")
@@ -667,7 +706,15 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
         "contents": [
             {
                 "parts": [
-                    {"text": _prompt_for_product_enrichment(sku=sku, price=price, vendor_hint=resolved_vendor_hint)},
+                    {
+                        "text": _prompt_for_product_enrichment(
+                            sku=sku,
+                            price=price,
+                            vendor_hint=resolved_vendor_hint,
+                            collection_options=collection_options,
+                            brand_options=brand_options,
+                        )
+                    },
                     {
                         "inlineData": {
                             "mimeType": mime_type or "image/jpeg",
@@ -737,6 +784,8 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
 
 
 def generate_product_ai_payload_for_draft(draft):
+    from store.models import Brand, Category
+
     if not draft.reference_image:
         raise ProductAIError("Add a reference image before generating an AI draft.")
 
@@ -753,6 +802,8 @@ def generate_product_ai_payload_for_draft(draft):
         sku=draft.sku,
         price=format_price_for_prompt(draft.price),
         vendor_hint=draft.vendor_hint,
+        collection_options=list(Category.objects.filter(is_active=True).order_by("title")),
+        brand_options=list(Brand.objects.filter(is_active=True).order_by("title")),
     )
 
 
@@ -796,6 +847,65 @@ def apply_ai_draft_result(
     return draft
 
 
+def _normalize_taxonomy_label(value):
+    return " ".join((value or "").strip().casefold().split())
+
+
+def _classification_block(payload, kind):
+    classification = (payload or {}).get("classification") or {}
+    return classification.get(kind) or {}
+
+
+def match_taxonomy(payload, kind, candidates):
+    """Match Gemini's classification to an existing Category/Brand, never creating.
+
+    Prefers the closed-vocabulary slug Gemini chose from the provided list, then
+    falls back to normalized title matching (also covering legacy payloads that
+    only carry suggested_category/suggested_brand free text).
+    """
+    candidates = list(candidates)
+    block = _classification_block(payload, kind)
+
+    matched_slug = (block.get("matched_slug") or "").strip().casefold()
+    if matched_slug:
+        for candidate in candidates:
+            if (candidate.slug or "").strip().casefold() == matched_slug:
+                return candidate
+
+    catalog_fields = (payload or {}).get("catalog_fields") or {}
+    legacy_key = "suggested_category" if kind == "collection" else "suggested_brand"
+    wanted = {
+        _normalize_taxonomy_label((block.get("matched_slug") or "").replace("-", " ")),
+        _normalize_taxonomy_label(catalog_fields.get(legacy_key)),
+    }
+    wanted.discard("")
+    if not wanted:
+        return None
+
+    for candidate in candidates:
+        title_label = _normalize_taxonomy_label(candidate.title)
+        slug_label = _normalize_taxonomy_label((candidate.slug or "").replace("-", " "))
+        variants = {title_label, title_label.rstrip("s"), slug_label, slug_label.rstrip("s")}
+        variants.discard("")
+        for want in wanted:
+            if want in variants or want.rstrip("s") in variants:
+                return candidate
+    return None
+
+
+def taxonomy_creation_proposal(payload, kind):
+    """Return the proposed new collection/brand title only when it clears the
+    conservative bar: Gemini matched nothing existing AND is highly confident."""
+    block = _classification_block(payload, kind)
+    if (block.get("matched_slug") or "").strip():
+        return ""
+    proposed = (block.get("proposed_new_title") or "").strip()
+    confidence = (block.get("confidence") or "").strip().casefold()
+    if proposed and confidence == "high":
+        return proposed
+    return ""
+
+
 def draft_to_product_initial(draft, *, categories=(), brands=()):
     payload = draft.response_payload or {}
     catalog_fields = payload.get("catalog_fields") or {}
@@ -807,6 +917,8 @@ def draft_to_product_initial(draft, *, categories=(), brands=()):
     if generated_slug and draft.sku:
         generated_slug = slugify(f"{generated_slug}-{draft.sku}")[:160]
 
+    # Delivery/return notes are store-wide policy (settings.STORE_DELIVERY_NOTE /
+    # STORE_RETURN_NOTE) — Gemini never writes policy, so they stay blank here.
     initial = {
         "title": title,
         "slug": generated_slug,
@@ -820,22 +932,16 @@ def draft_to_product_initial(draft, *, categories=(), brands=()):
         "color": (catalog_fields.get("color") or "").strip(),
         "fit_notes": (catalog_fields.get("fit_notes") or "").strip(),
         "care_notes": (catalog_fields.get("care_notes") or "").strip(),
-        "delivery_note": (catalog_fields.get("delivery_note") or "").strip(),
-        "return_note": (catalog_fields.get("return_note") or "").strip(),
         "price": draft.price if draft.price is not None else "",
     }
 
-    suggested_category = (catalog_fields.get("suggested_category") or "").strip().lower()
-    for category in categories:
-        if category.title.strip().lower() == suggested_category:
-            initial["category"] = category.pk
-            break
+    matched_category = match_taxonomy(payload, "collection", categories)
+    if matched_category is not None:
+        initial["category"] = matched_category.pk
 
-    suggested_brand = (catalog_fields.get("suggested_brand") or "").strip().lower()
-    for brand in brands:
-        if brand.title.strip().lower() == suggested_brand:
-            initial["brand"] = brand.pk
-            break
+    matched_brand = match_taxonomy(payload, "brand", brands)
+    if matched_brand is not None:
+        initial["brand"] = matched_brand.pk
 
     return initial
 
