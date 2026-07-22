@@ -7,8 +7,8 @@
 <div class="zd-panel">
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
-      <p class="zd-panel-head-title">Gemini copy queue</p>
-      <p class="zd-panel-head-sub">Upload a reference image to generate product copy &amp; SEO via AI</p>
+      <p class="zd-panel-head-title">Gemini product queue</p>
+      <p class="zd-panel-head-sub">Reference image, SKU and price per product — each ready draft becomes an unpublished product you can publish in one click</p>
     </div>
     <div class="zd-panel-head-right">
       {% if gemini_is_configured %}
@@ -41,7 +41,7 @@
   <!-- Intake form -->
   <div class="zd-panel-body" style="border-top:1px solid var(--z-border)">
     <p style="font-size:13px;color:var(--z-text-2);margin:0 0 16px">
-      No image generation runs here — Gemini drafts product text and SEO only.
+      Gemini identifies the product from the reference image, drafts the copy and SEO, and assigns the collection and brand conservatively — reusing existing ones whenever they fit.
     </p>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
@@ -56,21 +56,39 @@
           {{ ai_draft_form.price }}
           {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
-        <div class="zd-field">
-          <span class="zd-field-label">Vendor hint</span>
-          {{ ai_draft_form.vendor_hint }}
-          {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
         <div class="zd-field zd-field-wide">
           <span class="zd-field-label">Reference image</span>
           {{ ai_draft_form.reference_image }}
+          <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
           {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
-        <div class="zd-field zd-field-wide">
-          <span class="zd-field-label">Secondary image (optional)</span>
-          {{ ai_draft_form.secondary_reference_image }}
-          {% for e in ai_draft_form.secondary_reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        <div class="zd-field">
+          <span class="zd-field-label">Main product image (cover)</span>
+          {{ ai_draft_form.cover_image }}
+          <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
+          {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
+        <div class="zd-field">
+          <span class="zd-field-label">Gallery images</span>
+          <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file">
+          <span class="zd-field-hint">Attached to the product automatically when the draft is ready.</span>
+        </div>
+        <details class="zd-field zd-field-wide">
+          <summary class="zd-field-label" style="cursor:pointer">Advanced</summary>
+          <div class="zd-form-grid zd-form-grid-col2" style="margin-top:10px">
+            <div class="zd-field">
+              <span class="zd-field-label">Vendor hint</span>
+              {{ ai_draft_form.vendor_hint }}
+              <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
+              {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Secondary image (optional)</span>
+              {{ ai_draft_form.secondary_reference_image }}
+              {% for e in ai_draft_form.secondary_reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </details>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button type="submit" class="zd-btn zd-btn--primary">Add to queue</button>
@@ -134,6 +152,8 @@
 
       <div class="zd-queue-card-message" data-ai-queue-message>
         {% if draft.error_message %}{{ draft.error_message }}
+        {% elif draft.pipeline_state == "ready" and draft.product and draft.product.is_active %}Published — live on the storefront.
+        {% elif draft.pipeline_state == "ready" and draft.product %}Product ready — publish in one click or open to adjust.
         {% elif draft.pipeline_state == "ready" %}Draft ready — open in the product editor.
         {% elif draft.pipeline_state == "manual_review" %}Needs manual review before publishing.
         {% elif draft.pipeline_state == "analyzing" %}Gemini is generating copy now…
@@ -141,8 +161,14 @@
       </div>
 
       <div class="zd-queue-card-foot">
+        {% if draft.product and not draft.product.is_active %}
+        <button type="button" class="zd-btn zd-btn--primary zd-btn--sm"
+          data-ai-publish data-publish-url="{% url 'store:dashboard-ai-draft-publish' draft.id %}">
+          Publish to Telegram
+        </button>
+        {% endif %}
         <a href="{% if draft.product %}{% url 'store:dashboard-product-edit' draft.product.id %}?ai_draft={{ draft.id }}{% else %}{% url 'store:dashboard-product-create' %}?ai_draft={{ draft.id }}{% endif %}"
-          class="zd-btn zd-btn--primary zd-btn--sm">Open draft</a>
+          class="zd-btn {% if draft.product and not draft.product.is_active %}zd-btn--ghost{% else %}zd-btn--primary{% endif %} zd-btn--sm">Open draft</a>
         {% if draft.pipeline_state != "manual_review" and draft.pipeline_state != "ready" %}
         <button type="button" class="zd-btn zd-btn--ghost zd-btn--sm" data-ai-manual-review>
           Send to review
@@ -197,11 +223,52 @@ document.addEventListener('DOMContentLoaded', function () {
     const att = card.querySelector('[data-ai-queue-attempts]');
     if (att && d.attempt_count !== undefined) att.textContent = d.attempt_count;
     const message = card.querySelector('[data-ai-queue-message]');
-    if (message) message.textContent = msg || d.error_message || 'Updated.';
+    if (message) {
+      let text = msg || d.error_message || 'Updated.';
+      if (d.automation_notes && d.automation_notes.length) text += ' ' + d.automation_notes.join(' ');
+      message.textContent = text;
+    }
     if (d.pipeline_state === 'manual_review' || d.pipeline_state === 'ready') {
       const btn = card.querySelector('[data-ai-manual-review]');
       if (btn) btn.remove();
     }
+    syncPublishButton(card, d);
+  }
+
+  /* Show the one-click publish button as soon as the draft has an unpublished
+     product; swap it for a "live" note once published. */
+  function syncPublishButton(card, d) {
+    const foot = card.querySelector('.zd-queue-card-foot');
+    if (!foot) return;
+    let btn = card.querySelector('[data-ai-publish]');
+    if (d.product_id && d.publish_url && !d.product_is_active) {
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'zd-btn zd-btn--primary zd-btn--sm';
+        btn.setAttribute('data-ai-publish', '');
+        btn.textContent = 'Publish to Telegram';
+        foot.prepend(btn);
+      }
+      btn.dataset.publishUrl = d.publish_url;
+    } else if (btn && d.product_is_active) {
+      btn.remove();
+    }
+    if (d.edit_url) {
+      const openLink = foot.querySelector('a');
+      if (openLink) openLink.href = d.edit_url;
+    }
+  }
+
+  async function publishCard(card, btn) {
+    const res  = await fetch(btn.dataset.publishUrl, { method:'POST', headers:{ 'X-CSRFToken':csrf() } });
+    const body = await parseJson(res);
+    if (!res.ok || body.ok === false) {
+      const message = card.querySelector('[data-ai-queue-message]');
+      if (message) message.textContent = body.error || 'Publishing failed — open the draft to check.';
+      return;
+    }
+    if (body.draft) updateCard(card, body.draft, 'Published — Telegram post queued.');
   }
 
   async function toManualReview(card, msg) {
@@ -234,6 +301,14 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   root.addEventListener('click', async function(e) {
+    const publishBtn = e.target.closest('[data-ai-publish]');
+    if (publishBtn) {
+      const card = publishBtn.closest('[data-ai-queue-item]');
+      if (!card) return;
+      publishBtn.disabled = true;
+      try { await publishCard(card, publishBtn); } finally { publishBtn.disabled = false; }
+      return;
+    }
     const btn = e.target.closest('[data-ai-manual-review]');
     if (!btn) return;
     const card = btn.closest('[data-ai-queue-item]');

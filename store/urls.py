@@ -18,6 +18,7 @@ urlpatterns = [
     path('dashboard/ai-drafts/<int:draft_id>/process/', dashboard_views.dashboard_ai_draft_process, name="dashboard-ai-draft-process"),
     path('dashboard/ai-drafts/<int:draft_id>/status/', dashboard_views.dashboard_ai_draft_status, name="dashboard-ai-draft-status"),
     path('dashboard/ai-drafts/<int:draft_id>/manual-review/', dashboard_views.dashboard_ai_draft_manual_review, name="dashboard-ai-draft-manual-review"),
+    path('dashboard/ai-drafts/<int:draft_id>/publish/', dashboard_views.dashboard_ai_draft_publish, name="dashboard-ai-draft-publish"),
     path('dashboard/ai-drafts/<int:draft_id>/generated-images/', dashboard_views.dashboard_ai_draft_generated_images, name="dashboard-ai-draft-generated-images"),
     path('dashboard/tasks/', dashboard_views.dashboard_tasks, name="dashboard-tasks"),
     path('dashboard/tasks/<int:task_id>/retry/', dashboard_views.dashboard_task_retry, name="dashboard-task-retry"),

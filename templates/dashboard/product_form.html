@@ -18,8 +18,8 @@
 <div class="zd-panel">
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
-      <p class="zd-panel-head-title">AI copy assist</p>
-      <p class="zd-panel-head-sub">Generate title, description and SEO from a reference image</p>
+      <p class="zd-panel-head-title">Create with AI</p>
+      <p class="zd-panel-head-sub">Reference image, SKU and price — Gemini drafts the copy, picks the collection and brand conservatively, and creates the product ready to publish</p>
     </div>
     <span class="zd-pill zd-pill--gemini-ready">Gemini ready</span>
   </div>
@@ -33,24 +33,40 @@
           {% for e in ai_draft_form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field">
-          <span class="zd-field-label">Price</span>
+          <span class="zd-field-label">Price (ETB)</span>
           {{ ai_draft_form.price }}
           {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
-        </div>
-        <div class="zd-field">
-          <span class="zd-field-label">Vendor hint</span>
-          {{ ai_draft_form.vendor_hint }}
-          {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field zd-field-wide">
           <span class="zd-field-label">Reference image</span>
           {{ ai_draft_form.reference_image }}
+          <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
           {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
+        <div class="zd-field">
+          <span class="zd-field-label">Main product image (cover)</span>
+          {{ ai_draft_form.cover_image }}
+          <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
+          {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="zd-field">
+          <span class="zd-field-label">Gallery images</span>
+          <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file">
+          <span class="zd-field-hint">Select several photos at once — attached to the product automatically.</span>
+        </div>
+        <details class="zd-field zd-field-wide">
+          <summary class="zd-field-label" style="cursor:pointer">Advanced</summary>
+          <div class="zd-field" style="margin-top:10px">
+            <span class="zd-field-label">Vendor hint</span>
+            {{ ai_draft_form.vendor_hint }}
+            <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
+            {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+          </div>
+        </details>
       </div>
       <div class="zd-form-actions">
-        <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--ghost">
-          Generate copy from image
+        <button type="submit" name="generate_ai_draft" value="1" class="zd-btn zd-btn--primary">
+          Create product with AI
         </button>
       </div>
     </form>
@@ -75,16 +91,16 @@
 {% if ai_draft and ai_draft.status == "succeeded" %}
 <div class="zd-ai-summary">
   <div class="zd-ai-summary-field zd-ai-summary-field--wide">
-    <span>AI draft ready</span>
+    <span>{% if ai_draft.response_payload.automation.product_created %}Product created from AI draft — review below, then publish{% else %}AI draft ready{% endif %}</span>
     <strong>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</strong>
   </div>
   <div class="zd-ai-summary-field">
-    <span>Suggested category</span>
-    <strong>{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"—" }}</strong>
+    <span>Collection</span>
+    <strong>{% if ai_draft.product %}{{ ai_draft.product.category.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"—" }}{% endif %}</strong>
   </div>
   <div class="zd-ai-summary-field">
-    <span>Suggested brand</span>
-    <strong>{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"—" }}</strong>
+    <span>Brand</span>
+    <strong>{% if ai_draft.product.brand %}{{ ai_draft.product.brand.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"—" }}{% endif %}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Material</span>
@@ -94,6 +110,19 @@
     <span>Color</span>
     <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"—" }}</strong>
   </div>
+  <div class="zd-ai-summary-field">
+    <span>Confidence</span>
+    <strong>{{ ai_draft.response_payload.confidence.overall|default:"—"|title }}</strong>
+  </div>
+  {% if ai_draft.response_payload.automation.notes or ai_draft.response_payload.confidence.needs_manual_review %}
+  <div class="zd-ai-summary-field zd-ai-summary-field--wide">
+    <span>Needs a look</span>
+    <strong>
+      {% for note in ai_draft.response_payload.automation.notes %}{{ note }} {% endfor %}
+      {% for note in ai_draft.response_payload.confidence.needs_manual_review %}{{ note }} {% endfor %}
+    </strong>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 

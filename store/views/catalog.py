@@ -1,6 +1,7 @@
 """Product pages: home, detail, wishlist, reviews, and restock requests."""
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -115,8 +116,8 @@ def _build_product_detail_context(request, product):
         "is_saved_product": product.id in saved_product_ids,
         "recently_viewed_products": _recently_viewed_products(request, exclude_id=product.id),
         "product_stock_message": _product_stock_message(product, size_value=default_selected_size or None),
-        "product_delivery_note": product.delivery_note or "Addis delivery usually lands within 1-3 days after confirmation.",
-        "product_return_note": product.return_note or "If there is an issue with the order, contact support quickly so we can help.",
+        "product_delivery_note": product.delivery_note or settings.STORE_DELIVERY_NOTE,
+        "product_return_note": product.return_note or settings.STORE_RETURN_NOTE,
         "is_cash_on_delivery_only": True,
         "seo_title": _product_seo_title(product),
         "seo_description": _product_seo_description(product),

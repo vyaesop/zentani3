@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "jewelryshop/wsgi.py",
+      "src": "zentanee/wsgi.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "15mb", "runtime": "python3.11" }
     },
@@ -27,7 +27,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "jewelryshop/wsgi.py"
+      "dest": "zentanee/wsgi.py"
     }
   ]
 }
