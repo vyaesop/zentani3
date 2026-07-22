@@ -93,6 +93,7 @@ class ProductAIDraftForm(forms.ModelForm):
             "sku",
             "vendor_hint",
             "price",
+            "sizes",
             "reference_image",
             "secondary_reference_image",
             "cover_image",
@@ -101,6 +102,13 @@ class ProductAIDraftForm(forms.ModelForm):
             "sku": forms.TextInput(attrs={"placeholder": "Vendor SKU / source code"}),
             "vendor_hint": forms.TextInput(attrs={"placeholder": "Manual local vendor name"}),
             "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+            "sizes": forms.TextInput(
+                attrs={
+                    "placeholder": "e.g. S, M, L, XL",
+                    "list": "zd-size-presets",
+                    "autocomplete": "off",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -110,6 +118,11 @@ class ProductAIDraftForm(forms.ModelForm):
         # price) — without it the ready draft can't become a product.
         self.fields["price"].required = True
         _decorate_dashboard_fields(self.fields)
+
+    def clean_sizes(self):
+        from store.services.inventory import parse_size_list
+
+        return ", ".join(parse_size_list(self.cleaned_data.get("sizes") or ""))
 
 
 ProductImageFormSet = inlineformset_factory(

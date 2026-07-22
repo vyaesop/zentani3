@@ -21,6 +21,15 @@ Shared by the create-page hero and the edit-page "Regenerate" disclosure.
       {{ ai_draft_form.price }}
       {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
     </div>
+    <div class="zd-field zd-field-wide">
+      <span class="zd-field-label">Sizes</span>
+      {{ ai_draft_form.sizes }}
+      <datalist id="zd-size-presets">
+        {% for preset in size_presets %}<option value="{{ preset }}"></option>{% endfor %}
+      </datalist>
+      <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one — each size stocks at 10 automatically.</span>
+      {% for e in ai_draft_form.sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+    </div>
     <div class="zd-field">
       <span class="zd-field-label">Main product image (cover)</span>
       {{ ai_draft_form.cover_image }}

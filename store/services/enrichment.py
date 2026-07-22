@@ -17,6 +17,7 @@ from store.ai_enrichment import (
     _normalize_taxonomy_label,
 )
 from store.models import Brand, Category, Product, ProductAIDraft, ProductImages
+from store.services.inventory import parse_size_list, set_product_sizes
 
 
 def mark_draft_manual_review(draft, *, error_message, stage):
@@ -177,6 +178,10 @@ def create_product_from_draft(draft):
                 gallery_image = ProductImages(product=product)
                 gallery_image.image.save(gallery_file.name, gallery_file, save=False)
                 gallery_image.save()
+
+            size_list = parse_size_list(draft.sizes)
+            if size_list:
+                set_product_sizes(product, size_list)
 
             draft.product = product
             draft.save(update_fields=["product", "updated_at"])

@@ -191,6 +191,13 @@ class ProductAIDraft(models.Model):
     sku = models.CharField(max_length=255, verbose_name="Source SKU")
     vendor_hint = models.CharField(max_length=120, blank=True, verbose_name="Vendor Hint")
     price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    sizes = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Sizes",
+        help_text="Comma-separated; applied to the product when the draft becomes one.",
+    )
     reference_image = models.ImageField(
         upload_to="ai-reference",
         blank=True,

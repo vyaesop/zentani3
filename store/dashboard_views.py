@@ -36,12 +36,13 @@ from .models import (
     ProductAIDraft,
     ProductImages,
     ProductReview,
+    ProductSizeStock,
     RestockRequest,
     TelegramBotOrder,
 )
 from .services.enrichment import mark_draft_manual_review
 from .services.inventory import parse_size_list, set_product_sizes
-from .tasks import enqueue, has_active_task, retry_task
+from .tasks import enqueue, execute as execute_task, has_active_task, retry_task
 from .telegram_notify import (
     notify_customer_delivery_status,
     suspend_telegram_autopublish,
@@ -119,6 +120,38 @@ def _save_bulk_gallery_images(product, uploaded_files):
         ProductImages.objects.create(product=product, image=uploaded)
         created += 1
     return created
+
+
+def _size_preset_options(limit=12):
+    """Size sets the merchandiser has used before, newest first — offered as
+    datalist suggestions on the AI intake so common sets are one tap."""
+    from store.constants import size_sort_key
+
+    presets = []
+    seen = set()
+
+    def _add(value):
+        cleaned = (value or "").strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            presets.append(cleaned)
+
+    for value in (
+        ProductAIDraft.objects.exclude(sizes="")
+        .order_by("-updated_at")
+        .values_list("sizes", flat=True)[:60]
+    ):
+        _add(value)
+
+    grouped = {}
+    for product_id, size in ProductSizeStock.objects.values_list("product_id", "size"):
+        if size and size.strip():
+            grouped.setdefault(product_id, []).append(size)
+    for sizes in grouped.values():
+        _add(", ".join(sorted(sizes, key=size_sort_key)))
+
+    return presets[:limit]
 
 
 def _store_draft_gallery_uploads(draft, uploaded_files):
@@ -622,6 +655,7 @@ def dashboard_ai_queue(request):
         queue_count=queue_count,
         queue_remaining=max(0, AI_QUEUE_LIMIT - queue_count),
         gemini_is_configured=gemini_is_configured(),
+        size_presets=_size_preset_options(),
     )
     return render(request, "dashboard/ai_queue.html", context)
 
@@ -764,6 +798,7 @@ def dashboard_product_edit(request, product_id=None):
         ai_draft_form=ai_draft_form,
         gemini_is_configured=gemini_is_configured(),
         editor_collapsed=editor_collapsed,
+        size_presets=_size_preset_options(),
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
         size_tokens=size_tokens,
@@ -794,6 +829,30 @@ def dashboard_ai_draft_process(request, draft_id):
 
     if not has_active_task(BackgroundTask.TYPE_AI_ENRICH_DRAFT, draft_id=draft.id):
         draft = _queue_draft_for_enrichment(draft)
+
+    # Serverless has no resident worker, so a merchant watching the queue page
+    # would otherwise wait for the external cron tick. Claim this draft's
+    # pending task and run it inside this request instead (Gemini answers well
+    # within the function budget); the cron remains the sweeper for drafts
+    # queued while nobody is looking.
+    pending_task = (
+        BackgroundTask.objects.filter(
+            task_type=BackgroundTask.TYPE_AI_ENRICH_DRAFT,
+            status=BackgroundTask.STATUS_PENDING,
+            payload__draft_id=draft.id,
+        )
+        .order_by("id")
+        .first()
+    )
+    if pending_task is not None:
+        claimed = BackgroundTask.objects.filter(
+            pk=pending_task.pk, status=BackgroundTask.STATUS_PENDING
+        ).update(status=BackgroundTask.STATUS_RUNNING)
+        if claimed:
+            pending_task.refresh_from_db()
+            execute_task(pending_task)
+            draft.refresh_from_db()
+
     return _draft_state_response(draft)
 
 

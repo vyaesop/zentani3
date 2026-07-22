@@ -57,6 +57,15 @@
           {% for e in ai_draft_form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field zd-field-wide">
+          <span class="zd-field-label">Sizes</span>
+          {{ ai_draft_form.sizes }}
+          <datalist id="zd-size-presets">
+            {% for preset in size_presets %}<option value="{{ preset }}"></option>{% endfor %}
+          </datalist>
+          <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one — each size stocks at 10 automatically.</span>
+          {% for e in ai_draft_form.sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+        </div>
+        <div class="zd-field zd-field-wide">
           <span class="zd-field-label">Reference image</span>
           {{ ai_draft_form.reference_image }}
           <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
@@ -170,6 +179,11 @@
         {% endif %}
         <a href="{% if draft.product %}{% url 'store:dashboard-product-edit' draft.product.id %}?ai_draft={{ draft.id }}{% else %}{% url 'store:dashboard-product-create' %}?ai_draft={{ draft.id }}{% endif %}"
           class="zd-btn {% if draft.product and not draft.product.is_active %}zd-btn--ghost{% else %}zd-btn--primary{% endif %} zd-btn--sm">Open draft</a>
+        {% if draft.pipeline_state == "manual_review" %}
+        <button type="button" class="zd-btn zd-btn--ghost zd-btn--sm" data-ai-retry>
+          Retry
+        </button>
+        {% endif %}
         {% if draft.pipeline_state != "manual_review" and draft.pipeline_state != "ready" %}
         <button type="button" class="zd-btn zd-btn--ghost zd-btn--sm" data-ai-manual-review>
           Send to review
@@ -308,6 +322,20 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!card) return;
       publishBtn.disabled = true;
       try { await publishCard(card, publishBtn); } finally { publishBtn.disabled = false; }
+      return;
+    }
+    const retryBtn = e.target.closest('[data-ai-retry]');
+    if (retryBtn) {
+      const card = retryBtn.closest('[data-ai-queue-item]');
+      if (!card) return;
+      retryBtn.disabled = true;
+      retryBtn.textContent = 'Retrying…';
+      try {
+        await processCard(card);
+        if (card.dataset.state !== 'manual_review') retryBtn.remove();
+      } finally {
+        if (retryBtn.isConnected) { retryBtn.disabled = false; retryBtn.textContent = 'Retry'; }
+      }
       return;
     }
     const btn = e.target.closest('[data-ai-manual-review]');

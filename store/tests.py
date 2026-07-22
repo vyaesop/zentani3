@@ -690,6 +690,7 @@ class StoreFlowTests(TestCase):
                 "sku": "QUEUE-1",
                 "vendor_hint": "Mercato Studio",
                 "price": "249.99",
+                "sizes": "s, m ,L, s",
                 "reference_image": self._make_uploaded_image(name="queue-1.jpg", color="purple"),
             },
             follow=True,
@@ -699,6 +700,7 @@ class StoreFlowTests(TestCase):
         draft = ProductAIDraft.objects.get(sku="QUEUE-1")
         self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_QUEUED)
         self.assertEqual(draft.status, ProductAIDraft.STATUS_PENDING)
+        self.assertEqual(draft.sizes, "s, m, L")
         self.assertContains(response, "QUEUE-1")
 
     @override_settings(
@@ -1350,6 +1352,49 @@ class AIDraftAutomationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test delivery promise.")
         self.assertContains(response, "on-the-spot returns only")
+
+    def test_sizes_from_draft_are_applied_to_created_product(self):
+        from store.services.enrichment import create_product_from_draft
+
+        draft = self._draft(sku="AI-AUTO-13", sizes="S, M, L")
+        product, created, _ = create_product_from_draft(draft)
+
+        self.assertTrue(created)
+        self.assertEqual(product.size_inventory.count(), 3)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 30)
+
+    def test_size_preset_options_offer_previous_inputs_once(self):
+        from store.dashboard_views import _size_preset_options
+
+        self._draft(sku="AI-AUTO-14", sizes="XS, S, M")
+        self._draft(sku="AI-AUTO-15", sizes="xs, s, m")
+
+        presets = _size_preset_options()
+
+        matches = [p for p in presets if p.casefold() == "xs, s, m"]
+        self.assertEqual(len(matches), 1)
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key", TASKS_EAGER=False)
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
+    def test_process_endpoint_executes_inline_without_worker(self, generate_mock):
+        generate_mock.return_value = self._payload(title="Inline Dress")
+        draft = self._draft(
+            sku="AI-AUTO-16",
+            response_payload={},
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+        self.client.login(username="0911700000", password="test-pass-123")
+
+        response = self.client.post(reverse("store:dashboard-ai-draft-process", args=[draft.id]))
+
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_READY)
+        self.assertIsNotNone(draft.product_id)
+        task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_AI_ENRICH_DRAFT)
+        self.assertEqual(task.status, BackgroundTask.STATUS_DONE)
 
     @override_settings(GEMINI_API_KEY="test-gemini-key")
     @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
