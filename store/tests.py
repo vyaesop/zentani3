@@ -29,6 +29,7 @@ from .models import (
     ProductAIDraft,
     ProductAIDraftImage,
     ProductEvent,
+    ProductImages,
     ProductReview,
     ProductSizeStock,
     RestockRequest,
@@ -1019,6 +1020,75 @@ class BehavioralEventsAndRecsTests(TestCase):
         self.assertFalse(ProductEvent.objects.exists())
 
 
+class StorefrontRefinementTests(TestCase):
+    """Marine Serre-inspired UI: editorial bands, edit chips, quick-add,
+    hover imagery, brand mini-storefronts, and the policy page."""
+
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Refine")
+        self.category.category_image = "category/refine.jpg"
+        self.category.description = "Softly draped pieces for every day."
+        self.category.save()
+        self.brand.brand_image = "brand/refine.jpg"
+        self.brand.description = "An Addis atelier."
+        self.brand.save()
+
+    def test_home_shows_edit_chips_and_rails(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "spring-edit-chips")
+        self.assertContains(response, "Under 1,000 ETB")
+        self.assertContains(response, "zent-rail")
+
+    def test_home_renders_story_and_brand_spotlight_bands(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "spring-story-band")
+        self.assertContains(response, "Brand spotlight")
+        self.assertContains(response, self.brand.title)
+
+    def test_cards_carry_quick_add_chips(self):
+        response = self.client.get(reverse("store:all-products"))
+        self.assertContains(response, "spring-size-chip--quick")
+        self.assertContains(response, reverse("store:add-to-cart"))
+
+    def test_quick_add_posts_to_cart_and_returns_toast(self):
+        user = User.objects.create_user(username="0912100000", password="test-pass-123")
+        self.client.login(username="0912100000", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:add-to-cart"),
+            {"prod_id": self.product.id, "size": "M"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "zent-alert")
+        self.assertContains(response, "cart-count-bottomnav")
+        self.assertTrue(Cart.objects.filter(user=user, product=self.product, size="M").exists())
+
+    def test_card_renders_hover_alt_image_when_gallery_exists(self):
+        ProductImages.objects.create(product=self.product, image="product-images/alt.jpg")
+        # Distinct query string dodges the anonymous fragment cache.
+        response = self.client.get(reverse("store:all-products"), {"fresh": "1"})
+        self.assertContains(response, "spring-product-card__alt")
+
+    def test_brand_page_renders_mini_storefront_hero(self):
+        response = self.client.get(reverse("store:brand-products", args=[self.brand.slug]))
+        self.assertContains(response, "spring-story-band--brand")
+        self.assertContains(response, self.brand.title)
+
+    def test_delivery_returns_page_renders_policy(self):
+        response = self.client.get(reverse("store:delivery-returns"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cash on delivery")
+        self.assertContains(response, "3,500")
+        self.assertContains(response, "on the spot")
+
+    def test_nav_carries_new_in_edit(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "New In")
+        self.assertContains(response, "Delivery &amp; returns")
+
+
 class PwaShellTests(TestCase):
     def test_service_worker_served_at_root_scope(self):
         response = self.client.get("/sw.js")
@@ -1518,8 +1588,9 @@ class QueryCountGuardTests(TestCase):
     def test_detail_view_query_count(self):
         url = reverse("store:product-detail", args=[self.product.slug])
         self.client.get(url)  # warm menu caches + session
-        # 13 baseline + 1 fit-feedback aggregate + 1 behavioral view-event insert.
-        with self.assertNumQueries(15):
+        # 13 baseline + 1 fit-feedback aggregate + 1 behavioral view-event
+        # insert + 1 gallery prefetch for card hover imagery.
+        with self.assertNumQueries(16):
             self.client.get(url)
 
     def test_collection_view_query_count_anonymous(self):

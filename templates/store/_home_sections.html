@@ -6,16 +6,23 @@
           <h2>Latest Drops</h2>
           <a href="{% url 'store:all-products' %}?sort=newest">See all new arrivals</a>
       </div>
-      <div class="spring-product-grid">
-          {% for product in latest_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product img_loading=forloop.first|yesno:"eager,lazy" img_fetchpriority=forloop.first|yesno:"high," %}
-          </div>
-          {% empty %}
-          <p class="text-muted mb-0">New arrivals will appear here as soon as products go live.</p>
-          {% endfor %}
+      {% include 'store/_product_rail.html' with rail_products=latest_products rail_empty_message="New arrivals will appear here as soon as products go live." %}
+  </section>
+
+  {% if story_category %}
+  <section class="spring-story-band">
+      {% cld_url story_category.category_image 1600 as story_image_url %}
+      <div class="spring-story-band__media" style="background-image:url('{{ story_image_url }}')" role="img" aria-label="{{ story_category.title }}"></div>
+      <div class="spring-story-band__overlay">
+          <p class="spring-story-band__kicker">The edit</p>
+          <h2 class="spring-story-band__title">{{ story_category.title }}</h2>
+          {% if story_category.description %}
+          <p class="spring-story-band__copy">{{ story_category.description|truncatechars:140 }}</p>
+          {% endif %}
+          <a href="{% url 'store:category-products' story_category.slug %}" class="btn btn-light spring-story-band__cta">Shop the edit</a>
       </div>
   </section>
+  {% endif %}
 
   <section class="spring-section spring-container">
       <div class="spring-section__head">
@@ -50,13 +57,7 @@
           <h2>Most Wanted</h2>
           <span class="spring-section__meta">The products Zentanee shoppers order most</span>
       </div>
-      <div class="spring-product-grid">
-          {% for product in top_selling_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
-          {% endfor %}
-      </div>
+      {% include 'store/_product_rail.html' with rail_products=top_selling_products %}
   </section>
   {% endif %}
 
@@ -75,6 +76,22 @@
           {% endfor %}
       </div>
   </section>
+
+  {% if spotlight_brand %}
+  <section class="spring-brand-hero spring-container">
+      <div class="spring-brand-hero__media">
+          {% cld_img spotlight_brand.brand_image width=900 alt=spotlight_brand.title %}
+      </div>
+      <div class="spring-brand-hero__body">
+          <p class="spring-directory-header__eyebrow">Brand spotlight</p>
+          <h2 class="spring-brand-hero__title">{{ spotlight_brand.title }}</h2>
+          {% if spotlight_brand.description %}
+          <p>{{ spotlight_brand.description|truncatechars:220 }}</p>
+          {% endif %}
+          <a href="{% url 'store:brand-products' spotlight_brand.slug %}" class="btn btn-dark">Explore {{ spotlight_brand.title }}</a>
+      </div>
+  </section>
+  {% endif %}
 
   <section class="spring-section spring-container">
       <div class="spring-section__head">

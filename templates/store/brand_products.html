@@ -1,13 +1,34 @@
 {% extends 'base.html' %}
+{% load image_optim %}
 
 {% block title %}Zentanee | {{ brand.title }}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
+  {% if brand.brand_image %}
+  <section class="spring-brand-storefront">
+      {% cld_url brand.brand_image 1600 as brand_hero_url %}
+      <div class="spring-story-band spring-story-band--brand">
+          <div class="spring-story-band__media" style="background-image:url('{{ brand_hero_url }}')" role="img" aria-label="{{ brand.title }}"></div>
+          <div class="spring-story-band__overlay">
+              <p class="spring-story-band__kicker">Brand</p>
+              <h1 class="spring-story-band__title">{{ brand.title }}</h1>
+              {% if brand.description %}
+              <p class="spring-story-band__copy">{{ brand.description|truncatechars:180 }}</p>
+              {% endif %}
+          </div>
+      </div>
+  </section>
+  {% endif %}
+
   <div class="spring-container spring-directory zent-busy-region" id="collection-page"
        hx-target="#collection-page" hx-select="#collection-page" hx-swap="outerHTML show:window:top"
        hx-push-url="true" hx-indicator="#collection-page">
+      {% if brand.brand_image %}
+      {% include 'store/_collection_header.html' with kicker='Shop' title='All '|add:brand.title description='' count=product_count browse_state=browse_state %}
+      {% else %}
       {% include 'store/_collection_header.html' with kicker='Brand' title=brand.title description=brand.description|default:'Browse everything currently available from this brand.' count=product_count browse_state=browse_state %}
+      {% endif %}
 
       <div class="spring-directory__layout">
           {% include 'store/_collection_results.html' with cache_collection=True empty_message='No products are available for this brand yet.' pagination_label='Brand product pages' %}

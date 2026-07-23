@@ -23,6 +23,9 @@
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
     <link rel="apple-touch-icon" href="{% static 'asset/images/icons/pwa-192.png' %}">
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
@@ -100,6 +103,7 @@
                 <div class="spring-container">
                     <ul class="spring-nav__list">
                         <li><a href="{% url 'store:home' %}">Home</a></li>
+                        <li><a href="{% url 'store:all-products' %}?sort=newest">New In</a></li>
                         <li><a href="{% url 'store:all-products' %}">Shop All</a></li>
                         <li><a href="{% url 'store:sale-products' %}" class="spring-nav__sale">Sale</a></li>
                         <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
@@ -115,6 +119,16 @@
 
         <footer class="spring-footer">
             <div class="spring-container">
+                <div class="spring-footer__telegram">
+                    <div>
+                        <h3>Zentanee on Telegram</h3>
+                        <p>New drops, sale alerts, and order updates — where Addis actually is.</p>
+                    </div>
+                    <a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener" class="btn btn-light">
+                        <i class="fab fa-telegram-plane"></i> Join us on Telegram
+                    </a>
+                </div>
+
                 <div class="spring-footer__grid">
                     <div class="spring-footer__brand">
                         <a href="{% url 'store:home' %}" class="spring-logo spring-logo--footer">Zentanee</a>
@@ -124,6 +138,7 @@
                     <div>
                         <h3>Shop</h3>
                         <ul>
+                            <li><a href="{% url 'store:all-products' %}?sort=newest">New in</a></li>
                             <li><a href="{% url 'store:all-products' %}">All products</a></li>
                             <li><a href="{% url 'store:sale-products' %}">Sale</a></li>
                             <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
@@ -132,11 +147,12 @@
                     </div>
 
                     <div>
-                        <h3>Information</h3>
+                        <h3>Customer care</h3>
                         <ul>
+                            <li><a href="{% url 'store:delivery-returns' %}">Delivery &amp; returns</a></li>
+                            <li><a href="{% url 'store:orders' %}">Track your orders</a></li>
                             <li><a href="{% url 'store:about' %}">About</a></li>
                             <li><a href="{% url 'store:contact' %}">Contact</a></li>
-                            <li><a href="{% url 'store:orders' %}">Orders</a></li>
                         </ul>
                     </div>
 
@@ -183,8 +199,10 @@
 
             <ul class="spring-mobile-menu">
                 <li><a href="{% url 'store:home' %}">Home</a></li>
+                <li><a href="{% url 'store:all-products' %}?sort=newest">New In</a></li>
                 <li><a href="{% url 'store:all-products' %}">Shop All</a></li>
                 <li><a href="{% url 'store:sale-products' %}" class="spring-nav__sale">Sale</a></li>
+                <li><a href="{% url 'store:all-products' %}?max_price=1000">Under 1,000 ETB</a></li>
                 <li><a href="{% url 'store:all-categories' %}">Collections</a></li>
                 <li><a href="{% url 'store:all-brands' %}">Brands</a></li>
                 <li><a href="{% url 'store:about' %}">About</a></li>
@@ -216,7 +234,7 @@
         <a href="{% url 'store:cart' %}" class="spring-bottom-nav__item {% if url_name == 'cart' %}is-active{% endif %}">
             <span class="spring-bottom-nav__icon-wrap">
                 <i class="fas fa-shopping-bag"></i>
-                {% if cart_items_count %}<span class="spring-bottom-nav__badge">{{ cart_items_count }}</span>{% endif %}
+                <span class="spring-bottom-nav__badge {% if not cart_items_count %}is-zero{% endif %}" id="cart-count-bottomnav">{{ cart_items_count }}</span>
             </span>
             <span>Cart</span>
         </a>
@@ -231,6 +249,8 @@
         {% endif %}
     </nav>
     {% endwith %}
+
+    <div id="zent-toast" class="zent-toast" aria-live="polite"></div>
 
     <script src="{% static 'asset/vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'asset/vendor/jquery/jquery.min.js' %}" defer></script>
@@ -247,6 +267,18 @@
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.zent-search-suggest').forEach(function (panel) { panel.innerHTML = ''; });
+        }
+    });
+    // Quick-add toast: clear a few seconds after each swap into it.
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        var toast = document.getElementById('zent-toast');
+        if (e.target === toast && toast.innerHTML.trim()) {
+            clearTimeout(toast._hideTimer);
+            toast.classList.add('is-visible');
+            toast._hideTimer = setTimeout(function () {
+                toast.classList.remove('is-visible');
+                toast.innerHTML = '';
+            }, 3500);
         }
     });
     if ('serviceWorker' in navigator) {

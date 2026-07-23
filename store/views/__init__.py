@@ -9,6 +9,7 @@ from .cart import AddCoupon, add_to_cart, cart, minus_cart, plus_cart, remove_ca
 from .catalog import (
     about,
     contact,
+    delivery_returns,
     detail,
     home,
     request_restock,
@@ -35,7 +36,7 @@ __all__ = [
     "AddCoupon", "AddressView", "RegistrationView",
     "about", "add_to_cart", "admin_telegram_webhook", "affiliate_dashboard",
     "all_brands", "all_categories", "brand_products", "cancel_order", "cart",
-    "category_products", "checkout", "contact", "customer_telegram_webhook",
+    "category_products", "checkout", "contact", "customer_telegram_webhook", "delivery_returns",
     "detail", "home", "minus_cart", "orders", "plus_cart", "products",
     "profile", "remove_address", "remove_cart", "request_restock", "sale_products",
     "search_suggestions", "search_view", "service_worker", "shop", "submit_review",

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Zentanee | Delivery & Returns{% endblock %}
+{% block meta_description %}How Zentanee delivery works in Addis Ababa and across Ethiopia — fees, timing, cash on delivery, and our on-the-spot return policy.{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-policy-page">
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">Customer care</p>
+          <h1>Delivery &amp; Returns</h1>
+          <p>Everything about how your order reaches you — and what to do if it isn't right.</p>
+      </section>
+
+      <section class="spring-policy-grid">
+          <article class="spring-policy-card">
+              <h2><i class="fas fa-truck"></i> Delivery</h2>
+              <p>{{ delivery_note }}</p>
+              <ul>
+                  <li>Addis Ababa: <strong>{{ addis_fee }} ETB</strong> flat fee — <strong>free</strong> on orders over {{ free_threshold }} ETB.</li>
+                  <li>Outside Addis Ababa: <strong>{{ outside_fee }} ETB</strong> flat fee.</li>
+              </ul>
+          </article>
+
+          <article class="spring-policy-card">
+              <h2><i class="fas fa-money-bill-wave"></i> Cash on delivery</h2>
+              <p>No online payment, ever. You pay in cash when your order arrives — inspect it first, then pay. That's how we keep every order risk-free for you.</p>
+          </article>
+
+          <article class="spring-policy-card">
+              <h2><i class="fas fa-undo"></i> Returns</h2>
+              <p>{{ return_note }}</p>
+              <p>Try the item on or check it carefully while the driver waits. If it isn't right, hand it back on the spot — no payment, no questions.</p>
+          </article>
+
+          <article class="spring-policy-card">
+              <h2><i class="fab fa-telegram-plane"></i> Order updates</h2>
+              <p>Link your Telegram from the cart or orders page and we'll message you the moment your order is confirmed, on the way, and delivered.</p>
+              <a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener" class="btn btn-outline-dark">Open our Telegram bot</a>
+          </article>
+      </section>
+  </div>
+</main>
+{% endblock content %}
