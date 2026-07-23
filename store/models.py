@@ -782,6 +782,8 @@ class BackgroundTask(models.Model):
     TYPE_CUSTOMER_ORDER_STATUS = "customer_order_status"
     TYPE_CUSTOMER_RESTOCK_NOTIFY = "customer_restock_notify"
     TYPE_CUSTOMER_ABANDONED_CART = "customer_abandoned_cart"
+    TYPE_CUSTOMER_BROADCAST = "customer_broadcast"
+    TYPE_WISHLIST_SALE_NOTIFY = "wishlist_sale_notify"
     TASK_TYPE_CHOICES = (
         (TYPE_TELEGRAM_PRODUCT_POST, "Telegram product post"),
         (TYPE_TELEGRAM_ORDER_NOTIFY, "Telegram order notification"),
@@ -791,6 +793,8 @@ class BackgroundTask(models.Model):
         (TYPE_CUSTOMER_ORDER_STATUS, "Customer order status update"),
         (TYPE_CUSTOMER_RESTOCK_NOTIFY, "Customer restock alert"),
         (TYPE_CUSTOMER_ABANDONED_CART, "Customer abandoned-cart nudge"),
+        (TYPE_CUSTOMER_BROADCAST, "Customer broadcast message"),
+        (TYPE_WISHLIST_SALE_NOTIFY, "Wishlist sale alert"),
     )
 
     STATUS_PENDING = "pending"

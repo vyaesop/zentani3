@@ -5102,3 +5102,74 @@ body.spring-body {
 .spring-policy-card h2 i { color: #7f5f2e; margin-right: 6px; }
 .spring-policy-card p, .spring-policy-card li { font-size: 14px; color: #555; }
 .spring-policy-card ul { padding-left: 18px; margin: 8px 0 0; }
+
+/* ─── .btn-light (used on dark bands; theme never defined it) ────── */
+.btn-light,
+a.btn-light {
+    background: #fff;
+    color: #111 !important;
+    border: 1px solid #fff;
+}
+.btn-light:hover,
+a.btn-light:hover {
+    background: transparent;
+    color: #fff !important;
+    border-color: #fff;
+}
+
+/* ─── "Share your review" form layout ────────────────────────────── */
+.spring-review-form { display: flex; flex-direction: column; gap: 14px; }
+.spring-review-form .spring-auth__field { margin: 0; }
+.spring-review-form label {
+    display: block;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #555;
+    margin: 0 0 5px;
+}
+.spring-review-form select,
+.spring-review-form input[type="text"],
+.spring-review-form textarea {
+    width: 100%;
+    border: 1px solid #d8d4cd;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 14px;
+    background: #fff;
+}
+/* Fit feedback renders as a radio list — turn it into selectable pills. */
+.spring-review-form div[id^="id_fit_feedback"] { display: flex; gap: 8px; flex-wrap: wrap; }
+.spring-review-form div[id^="id_fit_feedback"] div { margin: 0; }
+.spring-review-form div[id^="id_fit_feedback"] label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: .45rem .8rem;
+    border: 1px solid #d8d4cd;
+    border-radius: 999px;
+    font-size: 12px;
+    text-transform: none;
+    letter-spacing: normal;
+    color: #333;
+    cursor: pointer;
+    background: #fff;
+}
+.spring-review-form div[id^="id_fit_feedback"] label:has(input:checked) {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+}
+.spring-review-form div[id^="id_fit_feedback"] input[type="radio"] { accent-color: #111; margin: 0; }
+/* Django's ClearableFileInput mixes text nodes and links — box it. */
+.spring-review-form .spring-auth__field:has(input[type="file"]) {
+    border: 1px dashed #d8d4cd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12.5px;
+    color: #666;
+    background: #faf9f7;
+}
+.spring-review-form input[type="file"] { width: 100%; font-size: 12.5px; }
+.spring-review-form .text-danger:empty { display: none; }

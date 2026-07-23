@@ -5,7 +5,7 @@ from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
-from .models import Address, Category, Product, Cart, Order, ProductImages, ProductSizeStock, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder, Wishlist, ProductReview, RestockRequest
+from .models import Address, Category, Product, Cart, Order, ProductImages, ProductSizeStock, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder, TelegramLink, Wishlist, ProductReview, RestockRequest
 from .telegram_notify import notify_customer_delivery_status, post_product_to_channel, suspend_telegram_autopublish
 
 # Register your models here.
@@ -373,3 +373,13 @@ admin.site.register(TelegramBotOrder, TelegramBotOrderAdmin)
 admin.site.register(Wishlist, WishlistAdmin)
 admin.site.register(ProductReview, ProductReviewAdmin)
 admin.site.register(RestockRequest, RestockRequestAdmin)
+
+
+class TelegramLinkAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "session_key", "telegram_username", "chat_id", "linked_at", "last_abandoned_nudge_at")
+    list_filter = (("linked_at", admin.EmptyFieldListFilter),)
+    search_fields = ("user__username", "telegram_username", "chat_id", "session_key")
+    readonly_fields = ("token", "created_at", "updated_at")
+
+
+admin.site.register(TelegramLink, TelegramLinkAdmin)

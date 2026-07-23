@@ -1089,6 +1089,131 @@ class StorefrontRefinementTests(TestCase):
         self.assertContains(response, "Delivery &amp; returns")
 
 
+class BotAudienceAndBroadcastTests(TestCase):
+    """Control Room subscriber panel, broadcast fan-out, wishlist sale alerts."""
+
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Audience")
+        self.staff = User.objects.create_user(username="0912200000", password="test-pass-123", is_staff=True)
+        self.customer = User.objects.create_user(username="0912200001", password="test-pass-123")
+        self.link = TelegramLink.objects.create(
+            user=self.customer, token="tok-aud-1", chat_id="700001", linked_at=timezone.now()
+        )
+        self.guest_link = TelegramLink.objects.create(
+            session_key="guest-session-1", token="tok-aud-2", chat_id="700002", linked_at=timezone.now()
+        )
+        BackgroundTask.objects.all().delete()
+        self.client.login(username="0912200000", password="test-pass-123")
+
+    def test_audience_page_lists_subscribers(self):
+        response = self.client.get(reverse("store:dashboard-telegram-audience"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bot Audience")
+        self.assertContains(response, self.customer.username)
+        self.assertContains(response, "Guest (")
+
+    @override_settings(TASKS_EAGER=False)
+    def test_broadcast_requires_confirmation(self):
+        response = self.client.post(
+            reverse("store:dashboard-telegram-audience"),
+            {"message": "Flash sale!", "confirm": ""},
+            follow=True,
+        )
+        self.assertContains(response, "confirmation box")
+        self.assertEqual(BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_CUSTOMER_BROADCAST).count(), 0)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_broadcast_queues_one_task_per_unique_chat(self):
+        # A duplicate chat (same person linked as user AND guest) sends once.
+        TelegramLink.objects.create(session_key="dup-session", token="tok-aud-3", chat_id="700001", linked_at=timezone.now())
+
+        response = self.client.post(
+            reverse("store:dashboard-telegram-audience"),
+            {"message": "New drops landed 🔥", "confirm": "yes"},
+            follow=True,
+        )
+
+        self.assertContains(response, "Broadcast queued for 2 subscribers")
+        tasks = BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_CUSTOMER_BROADCAST)
+        self.assertEqual(tasks.count(), 2)
+        for task in tasks:
+            self.assertEqual(task.payload["text"], "New drops landed 🔥")
+
+    @override_settings(TASKS_EAGER=False)
+    @patch("store.telegram_notify.send_customer_bot_message", return_value=True)
+    def test_broadcast_handler_prefixes_megaphone(self, send_mock):
+        task = task_queue.enqueue(
+            BackgroundTask.TYPE_CUSTOMER_BROADCAST,
+            {"link_id": self.link.id, "text": "Sale ends tonight"},
+        )
+        task_queue.execute(task)
+        send_mock.assert_called_once()
+        sent_text, sent_chat = send_mock.call_args.args[0], send_mock.call_args.args[1]
+        self.assertTrue(sent_text.startswith("📣"))
+        self.assertIn("Sale ends tonight", sent_text)
+        self.assertEqual(sent_chat, "700001")
+
+    @override_settings(TASKS_EAGER=True)
+    @patch("store.telegram_notify.notify_customer_wishlist_sale", return_value=True)
+    def test_marking_down_a_wishlisted_product_alerts_saver(self, notify_mock):
+        Wishlist.objects.create(user=self.customer, product=self.product)
+
+        response = self.client.post(
+            reverse("store:dashboard-product-edit", args=[self.product.id]),
+            {
+                "title": self.product.title,
+                "slug": self.product.slug,
+                "sku": self.product.sku,
+                "short_description": self.product.short_description,
+                "price": "70.00",
+                "compare_at_price": "100.00",
+                "category": str(self.category.id),
+                "brand": str(self.brand.id),
+                "is_active": "on",
+                "available_sizes": "S, M, L",
+                "images-TOTAL_FORMS": "0",
+                "images-INITIAL_FORMS": "0",
+                "images-MIN_NUM_FORMS": "0",
+                "images-MAX_NUM_FORMS": "1000",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.product.refresh_from_db()
+        self.assertTrue(self.product.is_on_sale)
+        notify_mock.assert_called_once()
+        self.assertEqual(notify_mock.call_args.args[0], "700001")
+
+        # Saving again while already on sale does not re-alert.
+        notify_mock.reset_mock()
+        self.client.post(
+            reverse("store:dashboard-product-edit", args=[self.product.id]),
+            {
+                "title": self.product.title,
+                "slug": self.product.slug,
+                "sku": self.product.sku,
+                "short_description": self.product.short_description,
+                "price": "70.00",
+                "compare_at_price": "100.00",
+                "category": str(self.category.id),
+                "brand": str(self.brand.id),
+                "is_active": "on",
+                "available_sizes": "S, M, L",
+                "images-TOTAL_FORMS": "0",
+                "images-INITIAL_FORMS": "0",
+                "images-MIN_NUM_FORMS": "0",
+                "images-MAX_NUM_FORMS": "1000",
+            },
+        )
+        notify_mock.assert_not_called()
+
+    def test_gallery_thumbs_carry_srcset_for_switching(self):
+        ProductImages.objects.create(product=self.product, image="product-images/alt.jpg")
+        response = self.client.get(reverse("store:product-detail", args=[self.product.slug]))
+        self.assertContains(response, "data-srcset")
+
+
 class PwaShellTests(TestCase):
     def test_service_worker_served_at_root_scope(self):
         response = self.client.get("/sw.js")

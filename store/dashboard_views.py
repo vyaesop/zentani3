@@ -39,6 +39,7 @@ from .models import (
     ProductSizeStock,
     RestockRequest,
     TelegramBotOrder,
+    TelegramLink,
 )
 from .services.enrichment import mark_draft_manual_review
 from .services.inventory import parse_size_list, set_product_sizes
@@ -746,6 +747,17 @@ def dashboard_product_edit(request, product_id=None):
 
             if form.is_valid() and image_formset.is_valid():
                 size_list = parse_size_list(form.cleaned_data.get("available_sizes", ""))
+                # Sale-transition detection must read the DB, not the form
+                # instance — is_valid() already stamped the new values on it.
+                was_on_sale = False
+                if product is not None and product.pk:
+                    previous = Product.objects.filter(pk=product.pk).values("price", "compare_at_price").first()
+                    was_on_sale = bool(
+                        previous
+                        and previous["compare_at_price"]
+                        and previous["price"]
+                        and previous["compare_at_price"] > previous["price"]
+                    )
                 with transaction.atomic():
                     with suspend_telegram_autopublish():
                         saved_product = form.save()
@@ -758,6 +770,13 @@ def dashboard_product_edit(request, product_id=None):
                             ai_draft.product = saved_product
                             ai_draft.save(update_fields=["product", "updated_at"])
                             request.session.pop(AI_DRAFT_SESSION_KEY, None)
+
+                # A markdown just went live: tell linked customers who saved it.
+                if product is not None and not was_on_sale and saved_product.is_on_sale and saved_product.is_active:
+                    enqueue(
+                        BackgroundTask.TYPE_WISHLIST_SALE_NOTIFY,
+                        {"product_id": saved_product.id},
+                    )
 
                 should_publish = "save_and_publish" in request.POST
                 if should_publish and not saved_product.is_active:
@@ -985,3 +1004,63 @@ def dashboard_task_retry(request, task_id):
     retry_task(task)
     messages.success(request, f"Task #{task.id} ({task.get_task_type_display()}) was queued for retry.")
     return redirect(next_url)
+
+
+BROADCAST_MAX_LENGTH = 3500
+
+
+@staff_required
+def dashboard_telegram_audience(request):
+    """Subscribers list + broadcast composer for the customer bot."""
+    linked_links = list(
+        TelegramLink.objects.exclude(chat_id="").select_related("user").order_by("-linked_at")
+    )
+
+    if request.method == "POST":
+        message_text = (request.POST.get("message") or "").strip()
+        if not message_text:
+            messages.error(request, "Write a message before sending a broadcast.")
+        elif len(message_text) > BROADCAST_MAX_LENGTH:
+            messages.error(request, f"Broadcast messages are limited to {BROADCAST_MAX_LENGTH} characters.")
+        elif request.POST.get("confirm") != "yes":
+            messages.error(request, "Tick the confirmation box to send the broadcast.")
+        elif not linked_links:
+            messages.warning(request, "No customers have linked Telegram yet — nothing to send.")
+        else:
+            # One task per chat: retries stay per-recipient and a partial
+            # failure never re-sends to people who already got it.
+            seen_chat_ids = set()
+            queued = 0
+            for link in linked_links:
+                if link.chat_id in seen_chat_ids:
+                    continue
+                seen_chat_ids.add(link.chat_id)
+                enqueue(
+                    BackgroundTask.TYPE_CUSTOMER_BROADCAST,
+                    {"link_id": link.id, "text": message_text},
+                )
+                queued += 1
+            messages.success(
+                request,
+                f"Broadcast queued for {queued} subscriber{'s' if queued != 1 else ''}. "
+                "Watch progress under Background Tasks.",
+            )
+            return redirect("store:dashboard-telegram-audience")
+
+    unique_chat_count = len({link.chat_id for link in linked_links})
+    recent_broadcasts = BackgroundTask.objects.filter(
+        task_type=BackgroundTask.TYPE_CUSTOMER_BROADCAST
+    ).order_by("-created_at")[:10]
+
+    context = _dashboard_context(
+        request,
+        section="telegram-audience",
+        title="Bot Audience",
+        intro="Everyone who linked Telegram for notifications, and a broadcast composer for announcements.",
+        linked_links=linked_links,
+        unique_chat_count=unique_chat_count,
+        pending_link_count=TelegramLink.objects.filter(chat_id="").count(),
+        recent_broadcasts=recent_broadcasts,
+        broadcast_max_length=BROADCAST_MAX_LENGTH,
+    )
+    return render(request, "dashboard/telegram_audience.html", context)

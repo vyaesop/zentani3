@@ -184,3 +184,43 @@ def send_customer_abandoned_cart_nudge(payload):
         return
     link.last_abandoned_nudge_at = timezone.now()
     link.save(update_fields=["last_abandoned_nudge_at", "updated_at"])
+
+
+def send_customer_broadcast(payload):
+    from store.telegram_notify import send_customer_broadcast_message
+
+    link = TelegramLink.objects.filter(pk=payload.get("link_id")).exclude(chat_id="").first()
+    if link is None:
+        return
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return
+    sent = send_customer_broadcast_message(link.chat_id, text)
+    if not sent and customer_bot_configured():
+        raise TelegramSendError(f"Broadcast failed for link {link.id}.")
+
+
+def send_wishlist_sale_notifications(payload):
+    """Alert every linked customer whose wishlist contains this newly
+    discounted product. Enqueued only on the not-on-sale -> on-sale
+    transition, so each markdown notifies once."""
+    from store.models import Wishlist
+    from store.telegram_notify import notify_customer_wishlist_sale
+
+    product = Product.objects.filter(pk=payload.get("product_id"), is_active=True).first()
+    if product is None or not product.is_on_sale:
+        return
+
+    failures = 0
+    notified_chat_ids = set()
+    for entry in Wishlist.objects.filter(product=product).select_related("user"):
+        chat_id = TelegramLink.linked_chat_id_for(user_id=entry.user_id)
+        if not chat_id or chat_id in notified_chat_ids:
+            continue
+        if notify_customer_wishlist_sale(chat_id, product=product):
+            notified_chat_ids.add(chat_id)
+        else:
+            failures += 1
+
+    if failures and customer_bot_configured():
+        raise TelegramSendError(f"{failures} wishlist sale alert(s) failed for product {product.id}.")

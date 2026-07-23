@@ -12,6 +12,7 @@ urlpatterns = [
     path('dashboard/ai-queue/', dashboard_views.dashboard_ai_queue, name="dashboard-ai-queue"),
     path('dashboard/orders/', dashboard_views.dashboard_orders, name="dashboard-orders"),
     path('dashboard/telegram-orders/', dashboard_views.dashboard_telegram_orders, name="dashboard-telegram-orders"),
+    path('dashboard/telegram-audience/', dashboard_views.dashboard_telegram_audience, name="dashboard-telegram-audience"),
     path('dashboard/products/', dashboard_views.dashboard_products, name="dashboard-products"),
     path('dashboard/products/new/', dashboard_views.dashboard_product_edit, name="dashboard-product-create"),
     path('dashboard/products/<int:product_id>/', dashboard_views.dashboard_product_edit, name="dashboard-product-edit"),
