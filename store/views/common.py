@@ -83,3 +83,26 @@ def _ensure_session_key(request):
 
 def _is_htmx(request):
     return request.headers.get("HX-Request") == "true"
+
+
+def _telegram_optin_context(request):
+    """Deep-link context for the "get updates on Telegram" banner.
+
+    Returns {} when the customer bot isn't configured, so templates simply
+    hide the banner.
+    """
+    from store.models import TelegramLink
+    from store.telegram_notify import customer_notify_deep_link
+
+    user = request.user if request.user.is_authenticated else None
+    session_key = request.session.session_key or ""
+    link = TelegramLink.for_owner(user=user, session_key=session_key)
+    if link is None:
+        return {}
+    deep_link = customer_notify_deep_link(link.token)
+    if not deep_link:
+        return {}
+    return {
+        "telegram_optin_url": deep_link,
+        "telegram_optin_linked": link.is_linked,
+    }

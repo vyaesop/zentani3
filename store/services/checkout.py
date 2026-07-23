@@ -15,6 +15,7 @@ from store.models import (
     Coupon,
     Order,
     Product,
+    ProductEvent,
     ProductSizeStock,
 )
 from store.telegram_notify import suspend_telegram_autopublish
@@ -114,6 +115,12 @@ def place_order(user, cart_items, *, guest_contact=None, session_key="", affilia
                 placement.order_count += 1
                 placement.order_total += line_total_for_order
                 placement.order_ids.append(order.id)
+                ProductEvent.log(
+                    ProductEvent.EVENT_PURCHASE,
+                    locked_product,
+                    user=user,
+                    session_key=session_key if user is None else "",
+                )
                 placement.order_lines.append(
                     {
                         "title": cart_item.product.title,

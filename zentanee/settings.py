@@ -108,6 +108,7 @@ TEMPLATES = [
                 'store.context_preprocessors.brand_menu',
                 'store.context_preprocessors.cart_menu',
                 'store.context_preprocessors.cache_versions',
+                'store.context_preprocessors.merch_badges',
             ],
         },
     },

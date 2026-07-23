@@ -1,0 +1,13 @@
+{% if telegram_optin_url and not telegram_optin_linked %}
+<div class="spring-telegram-optin">
+    <div class="spring-telegram-optin__copy">
+        <strong>Get order updates on Telegram</strong>
+        <p>Order confirmations, delivery updates, and back-in-stock alerts — straight to your Telegram.</p>
+    </div>
+    <a class="btn btn-dark spring-telegram-optin__cta" href="{{ telegram_optin_url }}" target="_blank" rel="noopener">
+        <i class="fab fa-telegram-plane"></i> Enable updates
+    </a>
+</div>
+{% elif telegram_optin_linked %}
+<p class="spring-telegram-optin__linked"><i class="fab fa-telegram-plane"></i> Telegram updates are on — we'll message you about your orders.</p>
+{% endif %}

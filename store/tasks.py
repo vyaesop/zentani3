@@ -46,6 +46,30 @@ def _handle_telegram_signup_notify(payload):
     telegram_service.send_signup_notification(payload)
 
 
+def _handle_customer_order_confirm(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_customer_order_confirmation(payload)
+
+
+def _handle_customer_order_status(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_customer_order_status(payload)
+
+
+def _handle_customer_restock_notify(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_customer_restock_notifications(payload)
+
+
+def _handle_customer_abandoned_cart(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_customer_abandoned_cart_nudge(payload)
+
+
 def _handle_ai_enrich_draft(payload):
     from store.models import ProductAIDraft
     from store.services.enrichment import run_draft_enrichment
@@ -77,6 +101,10 @@ def _registry():
         BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY: _handle_telegram_order_notify,
         BackgroundTask.TYPE_TELEGRAM_SIGNUP_NOTIFY: _handle_telegram_signup_notify,
         BackgroundTask.TYPE_AI_ENRICH_DRAFT: _handle_ai_enrich_draft,
+        BackgroundTask.TYPE_CUSTOMER_ORDER_CONFIRM: _handle_customer_order_confirm,
+        BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS: _handle_customer_order_status,
+        BackgroundTask.TYPE_CUSTOMER_RESTOCK_NOTIFY: _handle_customer_restock_notify,
+        BackgroundTask.TYPE_CUSTOMER_ABANDONED_CART: _handle_customer_abandoned_cart,
     }
 
 
@@ -156,7 +184,10 @@ def execute(task):
     return True
 
 
-STALE_RUNNING_MINUTES = 5
+# Must comfortably exceed the longest legitimate handler run (enrichment can
+# spend ~6 minutes across Gemini model fallbacks and retries), or the sweeper
+# steals live tasks and double-executes them.
+STALE_RUNNING_MINUTES = 15
 
 
 def _requeue_stale_running():
@@ -171,11 +202,93 @@ def _requeue_stale_running():
     ).update(status=BackgroundTask.STATUS_PENDING, run_after=timezone.now())
 
 
+ORPHAN_DRAFT_GRACE_MINUTES = 2
+
+
+def _enqueue_orphaned_ai_drafts():
+    """Create tasks for queued AI drafts that have none.
+
+    The queue page creates drafts in the "queued" state and relies on its own
+    polling to start processing; if the tab closes before the first poll the
+    draft would otherwise sit queued forever, because the cron drain only sees
+    BackgroundTask rows.
+    """
+    from store.models import BackgroundTask, ProductAIDraft
+
+    cutoff = timezone.now() - timedelta(minutes=ORPHAN_DRAFT_GRACE_MINUTES)
+    created = 0
+    orphan_candidates = ProductAIDraft.objects.filter(
+        pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        updated_at__lt=cutoff,
+    ).values_list("id", flat=True)
+    for draft_id in orphan_candidates:
+        if has_active_task(BackgroundTask.TYPE_AI_ENRICH_DRAFT, draft_id=draft_id):
+            continue
+        BackgroundTask.objects.create(
+            task_type=BackgroundTask.TYPE_AI_ENRICH_DRAFT,
+            payload={"draft_id": draft_id},
+            run_after=timezone.now(),
+        )
+        created += 1
+    return created
+
+
+ABANDONED_CART_HOURS = 4
+
+
+def _enqueue_abandoned_cart_nudges():
+    """Queue one nudge per linked customer whose cart went quiet.
+
+    A cart batch is "abandoned" when its newest row hasn't changed for
+    ABANDONED_CART_HOURS. The handler re-checks state and stamps
+    last_abandoned_nudge_at, so each cart state is nudged at most once.
+    """
+    from store.models import BackgroundTask, Cart, TelegramLink
+
+    cutoff = timezone.now() - timedelta(hours=ABANDONED_CART_HOURS)
+    created = 0
+    for link in TelegramLink.objects.exclude(chat_id="").iterator():
+        if link.user_id:
+            cart_activity = Cart.objects.filter(user_id=link.user_id)
+        else:
+            cart_activity = Cart.objects.filter(user=None, session_key=link.session_key)
+        latest = cart_activity.order_by("-updated_at").values_list("updated_at", flat=True).first()
+        if latest is None or latest > cutoff:
+            continue  # No cart, or still being edited.
+        if link.last_abandoned_nudge_at and link.last_abandoned_nudge_at >= latest:
+            continue  # This cart state was already nudged.
+        if has_active_task(BackgroundTask.TYPE_CUSTOMER_ABANDONED_CART, link_id=link.id):
+            continue
+        BackgroundTask.objects.create(
+            task_type=BackgroundTask.TYPE_CUSTOMER_ABANDONED_CART,
+            payload={"link_id": link.id},
+            run_after=timezone.now(),
+        )
+        created += 1
+    return created
+
+
+EVENT_RETENTION_DAYS = 90
+
+
+def _purge_stale_product_events():
+    """Keep the behavioral-event table bounded (recommendations only need
+    recent history)."""
+    from store.models import ProductEvent
+
+    cutoff = timezone.now() - timedelta(days=EVENT_RETENTION_DAYS)
+    deleted, _ = ProductEvent.objects.filter(created_at__lt=cutoff).delete()
+    return deleted
+
+
 def run_pending(limit=10):
     """Claim and execute due tasks; returns the number of tasks executed."""
     from store.models import BackgroundTask
 
     _requeue_stale_running()
+    _enqueue_orphaned_ai_drafts()
+    _enqueue_abandoned_cart_nudges()
+    _purge_stale_product_events()
 
     claim_kwargs = {}
     if connection.features.has_select_for_update_skip_locked:
@@ -188,8 +301,13 @@ def run_pending(limit=10):
             .order_by("run_after", "id")[:limit]
         )
         if claimed:
+            # .update() bypasses auto_now, so stamp updated_at explicitly —
+            # the stale-RUNNING sweeper measures staleness from it, and a
+            # claimed-but-not-yet-executed task (later in this batch) must not
+            # look abandoned to a concurrent drain.
             BackgroundTask.objects.filter(pk__in=[task.pk for task in claimed]).update(
-                status=BackgroundTask.STATUS_RUNNING
+                status=BackgroundTask.STATUS_RUNNING,
+                updated_at=timezone.now(),
             )
 
     for task in claimed:

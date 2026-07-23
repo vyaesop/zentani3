@@ -16,6 +16,8 @@
           <p>Track current and previous orders from one place.</p>
       </section>
 
+      {% include 'store/_telegram_optin.html' %}
+
       {% if orders %}
       <section class="spring-orders-summary">
           {% for item in order_status_summary %}

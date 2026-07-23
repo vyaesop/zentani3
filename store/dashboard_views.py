@@ -386,7 +386,15 @@ def dashboard_orders(request):
             if new_status not in STATUS_VALUES:
                 messages.error(request, "Invalid status selected for bulk update.")
                 return redirect(next_url)
-            updated = Order.objects.filter(pk__in=order_ids).exclude(status=new_status).update(status=new_status)
+            changed_ids = list(
+                Order.objects.filter(pk__in=order_ids).exclude(status=new_status).values_list("id", flat=True)
+            )
+            updated = Order.objects.filter(pk__in=changed_ids).update(status=new_status)
+            for order_id in changed_ids:
+                enqueue(
+                    BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS,
+                    {"order_id": order_id, "status": new_status},
+                )
             messages.success(request, f"{updated} order{'s' if updated != 1 else ''} moved to {new_status}.")
             return redirect(next_url)
 
@@ -400,7 +408,8 @@ def dashboard_orders(request):
             return redirect(next_url)
 
         update_fields = []
-        if order.status != new_status:
+        status_changed = order.status != new_status
+        if status_changed:
             order.status = new_status
             update_fields.append("status")
         if staff_notes != order.staff_notes:
@@ -408,6 +417,11 @@ def dashboard_orders(request):
             update_fields.append("staff_notes")
         if update_fields:
             order.save(update_fields=update_fields)
+        if status_changed:
+            enqueue(
+                BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS,
+                {"order_id": order.id, "status": new_status},
+            )
             messages.success(request, f"Order #{order.id} updated.")
         else:
             messages.info(request, f"Order #{order.id} — no changes detected.")
@@ -633,6 +647,9 @@ def dashboard_ai_queue(request):
             draft.last_error_stage = ""
             draft.save()
             _store_draft_gallery_uploads(draft, request.FILES.getlist("gallery_images"))
+            # No task is enqueued here on purpose: the queue page's polling
+            # starts (and accelerates) processing, and the cron drain's orphan
+            # sweep picks up drafts queued from a tab that closed right away.
             messages.success(
                 request,
                 f"{draft.sku} was added to the Gemini queue. When it is ready it becomes an unpublished product you can publish in one click.",
@@ -847,7 +864,7 @@ def dashboard_ai_draft_process(request, draft_id):
     if pending_task is not None:
         claimed = BackgroundTask.objects.filter(
             pk=pending_task.pk, status=BackgroundTask.STATUS_PENDING
-        ).update(status=BackgroundTask.STATUS_RUNNING)
+        ).update(status=BackgroundTask.STATUS_RUNNING, updated_at=timezone.now())
         if claimed:
             pending_task.refresh_from_db()
             execute_task(pending_task)

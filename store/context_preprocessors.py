@@ -1,10 +1,32 @@
 from django.core.cache import cache
+from django.db.models import Sum
 
-from .cache_utils import MENU_BRAND_CACHE_KEY, MENU_CATEGORY_CACHE_KEY, catalog_version
-from .models import Brand, Cart, Category, Wishlist
+from .cache_utils import HOME_TOP_SELLING_TTL, MENU_BRAND_CACHE_KEY, MENU_CATEGORY_CACHE_KEY, catalog_version
+from .models import Brand, Cart, Category, Order, Wishlist
 
 
 MENU_CACHE_TTL = 60 * 10
+
+TOP_SELLING_IDS_CACHE_KEY = "home_top_selling_ids"
+
+
+def top_selling_product_ids():
+    """Cached ids of the best-selling products (shared by home + card badges)."""
+    return cache.get_or_set(
+        TOP_SELLING_IDS_CACHE_KEY,
+        lambda: list(
+            Order.objects.values("product_id")
+            .annotate(total_quantity=Sum("quantity"))
+            .order_by("-total_quantity", "-product_id")
+            .values_list("product_id", flat=True)[:8]
+        ),
+        HOME_TOP_SELLING_TTL,
+    )
+
+
+def merch_badges(request):
+    """Bestseller ids for product-card badges, available on every page."""
+    return {"bestseller_product_ids": set(top_selling_product_ids())}
 
 
 def store_menu(request):

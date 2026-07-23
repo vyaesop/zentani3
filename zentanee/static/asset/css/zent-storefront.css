@@ -4731,6 +4731,129 @@ body.spring-body {
     letter-spacing: .04em;
 }
 .spring-product-card__badge--soldout { background: #111; color: #fff; }
+.spring-product-card__badge--sale { background: #b3261e; color: #fff; }
+.spring-product-card__badge--bestseller { background: #7f5f2e; color: #fff; }
+.spring-product-card__badge--new { background: #fff; color: #111; border: 1px solid #111; }
+
+.spring-nav__sale { color: #b3261e !important; font-weight: 600; }
+
+/* ─── Fit feedback + review photos ───────────────────────────────── */
+.spring-fit-summary {
+    margin: 8px 0 0;
+    font-size: 13.5px;
+    color: #444;
+}
+.spring-fit-summary i { color: #7f5f2e; margin-right: 4px; }
+.spring-fit-chip {
+    display: inline-block;
+    padding: .1rem .45rem;
+    font-size: .72rem;
+    font-weight: 600;
+    border: 1px solid #d8d4cd;
+    border-radius: 999px;
+    color: #555;
+    background: #faf9f7;
+}
+.spring-review-card__photo img {
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e6e3de;
+}
+.spring-review-form input[type="file"] { font-size: 12.5px; }
+.spring-review-form ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 12px; flex-wrap: wrap; }
+.spring-review-form ul li label { display: flex; align-items: center; gap: 5px; font-size: 13px; margin: 0; }
+
+/* ─── Mobile bottom navigation (app-style tabs) ──────────────────── */
+.spring-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1040;
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    background: #fff;
+    border-top: 1px solid #e6e3de;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, .05);
+}
+.spring-bottom-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 0 7px;
+    font-size: 10.5px;
+    letter-spacing: .02em;
+    color: #767370;
+    text-decoration: none;
+}
+.spring-bottom-nav__item i { font-size: 17px; line-height: 1.2; }
+.spring-bottom-nav__item.is-active { color: #111; font-weight: 600; }
+.spring-bottom-nav__item--sale { color: #b3261e; }
+.spring-bottom-nav__icon-wrap { position: relative; display: inline-block; }
+.spring-bottom-nav__badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #b3261e;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 15px;
+    text-align: center;
+}
+@media (max-width: 991.98px) {
+    body.spring-body { padding-bottom: 62px; }
+}
+
+/* ─── Load-more (infinite scroll) sentinel ───────────────────────── */
+.spring-load-more {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    padding: 18px 0 6px;
+}
+.spring-load-more__btn.htmx-request { opacity: .5; pointer-events: none; }
+.spring-load-more__hint { color: #999; font-size: .8em; margin-left: .4rem; }
+
+/* ─── Telegram opt-in banner ─────────────────────────────────────── */
+.spring-telegram-optin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border: 1px solid #e3e0da;
+    border-radius: 10px;
+    background: #f9f8f6;
+}
+.spring-telegram-optin__copy p { margin: 2px 0 0; font-size: 13px; color: #777; }
+.spring-telegram-optin__cta { white-space: nowrap; }
+.spring-telegram-optin__linked { font-size: 13px; color: #2b7a3f; margin: 12px 0; }
+
+/* ─── Anchored (compare-at) pricing ──────────────────────────────── */
+.spring-price-now { color: #b3261e; font-weight: 600; }
+.spring-price-was { color: #999; font-size: .85em; margin-left: .35rem; }
+.spring-price-chip {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    margin-left: .45rem;
+    vertical-align: middle;
+}
 .spring-product-card__notify { font-size: .75rem; margin-left: .4rem; text-decoration: underline; }
 
 /* ─── Star ratings ────────────────────────────────────────────────── */

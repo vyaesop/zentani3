@@ -12,6 +12,7 @@ from .catalog import (
     detail,
     home,
     request_restock,
+    service_worker,
     shop,
     submit_review,
     test,
@@ -23,6 +24,7 @@ from .collections import (
     brand_products,
     category_products,
     products,
+    sale_products,
     search_suggestions,
     search_view,
 )
@@ -35,7 +37,7 @@ __all__ = [
     "all_brands", "all_categories", "brand_products", "cancel_order", "cart",
     "category_products", "checkout", "contact", "customer_telegram_webhook",
     "detail", "home", "minus_cart", "orders", "plus_cart", "products",
-    "profile", "remove_address", "remove_cart", "request_restock",
-    "search_suggestions", "search_view", "shop", "submit_review",
+    "profile", "remove_address", "remove_cart", "request_restock", "sale_products",
+    "search_suggestions", "search_view", "service_worker", "shop", "submit_review",
     "telegram_webhook", "test", "toggle_wishlist", "track_affiliate_link",
 ]
