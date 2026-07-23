@@ -70,6 +70,18 @@ def _handle_customer_abandoned_cart(payload):
     telegram_service.send_customer_abandoned_cart_nudge(payload)
 
 
+def _handle_customer_broadcast(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_customer_broadcast(payload)
+
+
+def _handle_wishlist_sale_notify(payload):
+    from store.services import telegram as telegram_service
+
+    telegram_service.send_wishlist_sale_notifications(payload)
+
+
 def _handle_ai_enrich_draft(payload):
     from store.models import ProductAIDraft
     from store.services.enrichment import run_draft_enrichment
@@ -105,6 +117,8 @@ def _registry():
         BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS: _handle_customer_order_status,
         BackgroundTask.TYPE_CUSTOMER_RESTOCK_NOTIFY: _handle_customer_restock_notify,
         BackgroundTask.TYPE_CUSTOMER_ABANDONED_CART: _handle_customer_abandoned_cart,
+        BackgroundTask.TYPE_CUSTOMER_BROADCAST: _handle_customer_broadcast,
+        BackgroundTask.TYPE_WISHLIST_SALE_NOTIFY: _handle_wishlist_sale_notify,
     }
 
 

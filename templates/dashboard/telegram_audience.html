@@ -1,0 +1,135 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_content %}
+
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Audience</p>
+      <p class="zd-panel-head-sub">Customers who linked Telegram for notifications</p>
+    </div>
+  </div>
+  <div class="zd-mini-stats">
+    <div class="zd-mini-stat">
+      <span>Subscribers</span>
+      <strong>{{ unique_chat_count }}</strong>
+      <p>Reachable right now</p>
+    </div>
+    <div class="zd-mini-stat">
+      <span>Linked accounts</span>
+      <strong>{{ linked_links|length }}</strong>
+      <p>User + guest links</p>
+    </div>
+    <div class="zd-mini-stat">
+      <span>Pending links</span>
+      <strong>{{ pending_link_count }}</strong>
+      <p>Saw the banner, never tapped /start</p>
+    </div>
+  </div>
+</div>
+
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Send a broadcast</p>
+      <p class="zd-panel-head-sub">Goes to every subscriber via the order bot, prefixed with 📣. Sends drain through Background Tasks with automatic retries.</p>
+    </div>
+  </div>
+  <div class="zd-panel-body">
+    <form method="post" class="zd-form-grid">
+      {% csrf_token %}
+      <div class="zd-field zd-field-wide">
+        <span class="zd-field-label">Message</span>
+        <textarea name="message" rows="5" maxlength="{{ broadcast_max_length }}"
+                  placeholder="⚡ Flash sale this Friday — up to 30% off dresses. Free delivery in Addis over 3,500 ETB."></textarea>
+        <span class="zd-field-hint">Plain text, up to {{ broadcast_max_length }} characters. Emojis welcome.</span>
+      </div>
+      <div class="zd-field zd-field-wide">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <input type="checkbox" name="confirm" value="yes">
+          Yes, send this to {{ unique_chat_count }} subscriber{{ unique_chat_count|pluralize }} — this cannot be recalled.
+        </label>
+      </div>
+      <div class="zd-field zd-field-wide">
+        <button type="submit" class="zd-btn zd-btn--primary">Queue broadcast</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if recent_broadcasts %}
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Recent broadcast sends</p>
+      <p class="zd-panel-head-sub">Last 10 queued messages (one row per recipient)</p>
+    </div>
+  </div>
+  <div class="zd-table-wrap">
+    <table class="zd-table">
+      <thead>
+        <tr><th>ID</th><th>Status</th><th>Message</th><th>Queued</th></tr>
+      </thead>
+      <tbody>
+        {% for task in recent_broadcasts %}
+        <tr>
+          <td>#{{ task.id }}</td>
+          <td><span class="zd-pill zd-pill--{{ task.status }}">{{ task.get_status_display }}</span></td>
+          <td style="max-width:360px;overflow-wrap:anywhere">{{ task.payload.text|truncatechars:90 }}</td>
+          <td>{{ task.created_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Subscribers</p>
+      <p class="zd-panel-head-sub">Most recently linked first</p>
+    </div>
+  </div>
+  {% if linked_links %}
+  <div class="zd-table-wrap">
+    <table class="zd-table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Telegram</th>
+          <th>Type</th>
+          <th>Linked</th>
+          <th>Last cart nudge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in linked_links %}
+        <tr>
+          <td>
+            {% if link.user %}
+            {{ link.user.get_full_name|default:link.user.username }}
+            {% else %}
+            Guest ({{ link.session_key|truncatechars:12 }})
+            {% endif %}
+          </td>
+          <td>{% if link.telegram_username %}@{{ link.telegram_username }}{% else %}—{% endif %}</td>
+          <td>{% if link.user %}Account{% else %}Guest{% endif %}</td>
+          <td>{{ link.linked_at|date:"M d, Y H:i" }}</td>
+          <td>{% if link.last_abandoned_nudge_at %}{{ link.last_abandoned_nudge_at|date:"M d, H:i" }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="zd-empty">
+    <div class="zd-empty-icon">📡</div>
+    <div class="zd-empty-title">No subscribers yet</div>
+    <p class="zd-empty-sub">Customers link Telegram from the "Enable updates" banner on the cart and orders pages.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

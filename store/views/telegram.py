@@ -68,9 +68,9 @@ def _start_order_flow(chat_id, product, telegram_username):
     _send_customer_bot_text(
         chat_id,
         (
-            f"Order started for: {product.title}\n"
-            f"Available sizes: {sizes_text}\n\n"
-            "Please reply with your size."
+            f"🛍 Order started: {product.title}\n"
+            f"📏 Available sizes: {sizes_text}\n\n"
+            "Reply with your size to continue."
         ),
     )
 
@@ -80,18 +80,18 @@ def _format_order_confirmation(product, state_data):
     unit_price = product.price
     total = unit_price * qty
     return (
-        "Please confirm your order details:\n\n"
-        f"Product: {product.title}\n"
-        f"SKU: {product.sku}\n"
-        f"Size: {state_data.get('size')}\n"
-        f"Quantity: {qty}\n"
-        f"Unit price: {unit_price:.2f} ETB\n"
-        f"Estimated total: {total:.2f} ETB\n\n"
-        f"Full name: {state_data.get('full_name')}\n"
-        f"Phone: {state_data.get('phone')}\n"
-        f"City: {state_data.get('city')}\n"
-        f"Address: {state_data.get('address')}\n\n"
-        "Reply YES to submit or NO to cancel."
+        "🧾 Please confirm your order details:\n\n"
+        f"👗 Product: {product.title}\n"
+        f"🏷 SKU: {product.sku}\n"
+        f"📏 Size: {state_data.get('size')}\n"
+        f"🔢 Quantity: {qty}\n"
+        f"💵 Unit price: {unit_price:.2f} ETB\n"
+        f"💰 Estimated total: {total:.2f} ETB\n\n"
+        f"👤 Full name: {state_data.get('full_name')}\n"
+        f"📞 Phone: {state_data.get('phone')}\n"
+        f"🏙 City: {state_data.get('city')}\n"
+        f"📍 Address: {state_data.get('address')}\n\n"
+        "✅ Reply YES to submit or ❌ NO to cancel."
     )
 
 
@@ -103,7 +103,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
     product = Product.objects.filter(id=state.get("product_id"), is_active=True).first()
     if not product:
         _clear_telegram_order_state(chat_id)
-        _send_customer_bot_text(chat_id, "Sorry, this product is no longer available.")
+        _send_customer_bot_text(chat_id, "⚠️ Sorry, this product is no longer available.")
         return True
 
     step = state.get("step")
@@ -113,29 +113,29 @@ def _handle_telegram_order_reply(chat_id, message_text):
         size = message_text.strip()
         allowed_sizes = state.get("sizes") or []
         if allowed_sizes and size not in allowed_sizes:
-            _send_customer_bot_text(chat_id, f"Please choose one of: {', '.join(allowed_sizes)}")
+            _send_customer_bot_text(chat_id, f"📏 Please choose one of: {', '.join(allowed_sizes)}")
             return True
         data["size"] = size
         state["step"] = "quantity"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "Great. Reply with quantity (number).")
+        _send_customer_bot_text(chat_id, "🔢 Great choice! How many would you like? Reply with a number.")
         return True
 
     if step == "quantity":
         try:
             quantity = int(message_text.strip())
         except ValueError:
-            _send_customer_bot_text(chat_id, "Quantity must be a number. Please try again.")
+            _send_customer_bot_text(chat_id, "⚠️ Quantity must be a number. Please try again.")
             return True
         if quantity <= 0 or quantity > 50:
-            _send_customer_bot_text(chat_id, "Please enter a quantity between 1 and 50.")
+            _send_customer_bot_text(chat_id, "⚠️ Please enter a quantity between 1 and 50.")
             return True
         data["quantity"] = quantity
         state["step"] = "full_name"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "Please enter your full name.")
+        _send_customer_bot_text(chat_id, "👤 Please enter your full name.")
         return True
 
     if step == "full_name":
@@ -143,7 +143,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "phone"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "Please enter your phone number.")
+        _send_customer_bot_text(chat_id, "📞 Please enter your phone number.")
         return True
 
     if step == "phone":
@@ -151,7 +151,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "city"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "Please enter your city.")
+        _send_customer_bot_text(chat_id, "🏙 Which city should we deliver to?")
         return True
 
     if step == "city":
@@ -159,7 +159,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
         state["step"] = "address"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "Please enter your delivery address.")
+        _send_customer_bot_text(chat_id, "📍 Please enter your delivery address.")
         return True
 
     if step == "address":
@@ -210,16 +210,20 @@ def _handle_telegram_order_reply(chat_id, message_text):
             _clear_telegram_order_state(chat_id)
             _send_customer_bot_text(
                 chat_id,
-                f"Thanks. Your order request was sent. Reference: TG-{bot_order.id}. We will contact you shortly.",
+                (
+                    "✅ Thank you! Your order request was sent.\n"
+                    f"🧾 Reference: TG-{bot_order.id}\n"
+                    "📞 We will contact you shortly to confirm delivery."
+                ),
             )
             return True
 
         if normalized in {"no", "n", "cancel"}:
             _clear_telegram_order_state(chat_id)
-            _send_customer_bot_text(chat_id, "Order cancelled. You can start again from the channel post button.")
+            _send_customer_bot_text(chat_id, "❌ Order cancelled. You can start again anytime from the channel post button.")
             return True
 
-        _send_customer_bot_text(chat_id, "Please reply YES to submit or NO to cancel.")
+        _send_customer_bot_text(chat_id, "✅ Reply YES to submit or ❌ NO to cancel.")
         return True
 
     return False
@@ -266,14 +270,15 @@ def _telegram_message_context(payload):
 
 def _customer_bot_welcome_text():
     return (
-        "Welcome to Zentanee Orders.\n\n"
-        "Use the Choose Size button from our Telegram channel post to start an order."
+        "👋 Welcome to Zentanee Orders!\n\n"
+        "🛍 Tap the Choose Size button on any of our channel posts to start an order.\n"
+        "🔔 Order updates from the website also arrive here once you link your account."
     )
 
 
 def _admin_bot_welcome_text():
     return (
-        "This is the Zentanee admin alert bot.\n\n"
+        "🛠 This is the Zentanee admin alert bot.\n\n"
         "It is used for internal signup and order notifications, not customer shopping.\n"
         "For product orders, use @zentanee_order_bot."
     )
@@ -288,7 +293,7 @@ def _handle_customer_bot_start(chat_id, start_payload, username):
         token = start_payload.replace("notify_", "", 1).strip()
         link = TelegramLink.objects.filter(token=token).first()
         if link is None:
-            _send_customer_bot_text(chat_id, "This notification link is no longer valid — open the store and tap the Telegram button again.")
+            _send_customer_bot_text(chat_id, "⚠️ This notification link is no longer valid — open the store and tap the Telegram button again.")
             return
         link.chat_id = str(chat_id)
         link.telegram_username = username or ""
@@ -305,12 +310,12 @@ def _handle_customer_bot_start(chat_id, start_payload, username):
         try:
             product_id = int(product_id)
         except ValueError:
-            _send_customer_bot_text(chat_id, "Invalid product link.")
+            _send_customer_bot_text(chat_id, "⚠️ Invalid product link.")
             return
 
         product = Product.objects.filter(id=product_id, is_active=True, is_sold_out=False).first()
         if not product:
-            _send_customer_bot_text(chat_id, "Sorry, this product is unavailable right now.")
+            _send_customer_bot_text(chat_id, "⚠️ Sorry, this product is unavailable right now.")
             return
 
         _start_order_flow(chat_id, product, username)
@@ -357,7 +362,7 @@ def customer_telegram_webhook(request):
 
     _send_customer_bot_text(
         chat_id,
-        "Please use the channel's Choose Size button to start an order.",
+        "🛍 Please use the channel's Choose Size button to start an order.",
     )
     return JsonResponse({"ok": True})
 

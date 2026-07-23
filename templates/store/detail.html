@@ -51,7 +51,9 @@
               </figure>
 
               <div class="spring-product-gallery__thumbs">
-                  <button type="button" class="spring-thumb is-active" data-image="{% if product.product_image %}{% cld_url product.product_image 900 %}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}">
+                  <button type="button" class="spring-thumb is-active"
+                          data-image="{% if product.product_image %}{% cld_url product.product_image 900 %}{% else %}{% static 'asset/images/default-product.webp' %}{% endif %}"
+                          {% if product.product_image %}data-srcset="{% cld_url product.product_image 900 %} 1x, {% cld_url product.product_image 1800 %} 2x" data-zoom="{% cld_url product.product_image 1600 %}"{% endif %}>
                       {% if product.product_image %}
                       {% cld_img product.product_image width=160 alt=seo_image_alt_text %}
                       {% else %}
@@ -59,7 +61,10 @@
                       {% endif %}
                   </button>
                   {% for image in p_image %}
-                  <button type="button" class="spring-thumb" data-image="{% cld_url image.image 900 %}">
+                  <button type="button" class="spring-thumb"
+                          data-image="{% cld_url image.image 900 %}"
+                          data-srcset="{% cld_url image.image 900 %} 1x, {% cld_url image.image 1800 %} 2x"
+                          data-zoom="{% cld_url image.image 1600 %}">
                       {% cld_img image.image width=160 alt=seo_image_alt_text %}
                   </button>
                   {% endfor %}
@@ -389,13 +394,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const lightboxClose = document.getElementById('gallery-lightbox-close');
     const zoomBtn = document.getElementById('gallery-zoom-btn');
 
-    // Thumbnail switcher
+    // Thumbnail switcher. The main image carries a srcset, and browsers
+    // prefer srcset over src — swapping src alone changes nothing visibly,
+    // so srcset must be swapped (or dropped) together with it.
     thumbButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             const newImage = button.getAttribute('data-image');
             if (!newImage || !mainImage) return;
             mainImage.setAttribute('src', newImage);
-            mainImage.setAttribute('data-zoom', newImage);
+            const newSrcset = button.getAttribute('data-srcset');
+            if (newSrcset) {
+                mainImage.setAttribute('srcset', newSrcset);
+            } else {
+                mainImage.removeAttribute('srcset');
+            }
+            mainImage.setAttribute('data-zoom', button.getAttribute('data-zoom') || newImage);
             thumbButtons.forEach(function (item) { item.classList.remove('is-active'); });
             button.classList.add('is-active');
         });

@@ -356,14 +356,14 @@ def _product_caption(product):
     brand = getattr(getattr(product, "brand", None), "title", "N/A")
     sizes = product.available_sizes or "Ask in bot"
     if getattr(product, "is_on_sale", False):
-        header = f"<b>SALE — {product.discount_percent}% OFF</b>\n"
+        header = f"⚡ <b>SALE — {product.discount_percent}% OFF</b>\n"
         price_line = (
-            f"<b>Price</b>: {_format_money(product.price)} ETB "
+            f"💰 <b>Price</b>: {_format_money(product.price)} ETB "
             f"(was <s>{_format_money(product.compare_at_price)} ETB</s>)\n"
         )
     else:
-        header = "<b>NEW DROP JUST LANDED</b>\n"
-        price_line = f"<b>Price</b>: {_format_money(product.price)} ETB\n"
+        header = "🔥 <b>NEW DROP JUST LANDED</b>\n"
+        price_line = f"💰 <b>Price</b>: {_format_money(product.price)} ETB\n"
     return _trim_message(
         (
             f"{header}"
@@ -371,11 +371,11 @@ def _product_caption(product):
             f"<b>{html.escape(_safe_text(product.title))}</b>\n"
             "\n"
             f"{price_line}"
-            f"<b>Category</b>: {html.escape(_safe_text(category))}\n"
-            f"<b>Brand</b>: {html.escape(_safe_text(brand))}\n"
-            f"<b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
+            f"🗂 <b>Category</b>: {html.escape(_safe_text(category))}\n"
+            f"🏷 <b>Brand</b>: {html.escape(_safe_text(brand))}\n"
+            f"📏 <b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
             "\n"
-            "Tap <b>Choose Size</b> below to order in chat.\n"
+            "👇 Tap <b>Choose Size</b> below to order in chat.\n"
             "\n"
             f"{html.escape(_safe_text(product.short_description, fallback='No description yet.'))}"
         )
@@ -608,12 +608,12 @@ def post_product_to_channel(product, force=False):
             return True
 
     fallback_text = (
-        "NEW DROP JUST LANDED\n"
+        "🔥 NEW DROP JUST LANDED\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"{_safe_text(product.title)}\n"
-        f"Price: {_format_money(product.price)} ETB\n"
-        f"Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
-        f"Order here: {deep_link}"
+        f"💰 Price: {_format_money(product.price)} ETB\n"
+        f"📏 Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
+        f"👇 Order here: {deep_link}"
     )
     sent = send_customer_bot_message(
         text=fallback_text,
@@ -636,23 +636,23 @@ def notify_bot_order_lead(lead):
 
     message = _trim_message(
         (
-            "ORDER REQUEST FROM TELEGRAM BOT\n"
+            "📬 ORDER REQUEST FROM TELEGRAM BOT\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Ref: {_safe_text(lead.get('order_ref'))}\n"
-            f"Customer: {_safe_text(lead.get('full_name'))}\n"
-            f"Phone: {_safe_text(lead.get('phone'))}\n"
-            f"Telegram: {_safe_text(lead.get('telegram_username'))}\n"
-            f"Address: {_safe_text(lead.get('address'))}\n"
-            f"City: {_safe_text(lead.get('city'))}\n"
+            f"🧾 Ref: {_safe_text(lead.get('order_ref'))}\n"
+            f"👤 Customer: {_safe_text(lead.get('full_name'))}\n"
+            f"📞 Phone: {_safe_text(lead.get('phone'))}\n"
+            f"💬 Telegram: {_safe_text(lead.get('telegram_username'))}\n"
+            f"📍 Address: {_safe_text(lead.get('address'))}\n"
+            f"🏙 City: {_safe_text(lead.get('city'))}\n"
             "\n"
-            f"Product: {_safe_text(lead.get('product_title'))}\n"
-            f"SKU: {_safe_text(lead.get('product_sku'))}\n"
-            f"Size: {_safe_text(lead.get('size'))}\n"
-            f"Quantity: {_safe_text(lead.get('quantity'))}\n"
-            f"Unit Price: {_format_money(lead.get('unit_price'))} ETB\n"
-            f"Estimated Total: {_format_money(lead.get('estimated_total'))} ETB\n"
+            f"👗 Product: {_safe_text(lead.get('product_title'))}\n"
+            f"🏷 SKU: {_safe_text(lead.get('product_sku'))}\n"
+            f"📏 Size: {_safe_text(lead.get('size'))}\n"
+            f"🔢 Quantity: {_safe_text(lead.get('quantity'))}\n"
+            f"💵 Unit Price: {_format_money(lead.get('unit_price'))} ETB\n"
+            f"💰 Estimated Total: {_format_money(lead.get('estimated_total'))} ETB\n"
             "\n"
-            f"Requested at: {_safe_text(lead.get('requested_at'))}"
+            f"⏰ Requested at: {_safe_text(lead.get('requested_at'))}"
         )
     )
     return send_admin_alert_message(message)
@@ -668,16 +668,16 @@ def notify_customer_delivery_status(bot_order):
 
     message = _trim_message(
         (
-            "DELIVERY STATUS UPDATE\n"
+            "🚚 DELIVERY STATUS UPDATE\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Order Ref: TG-{bot_order.id}\n"
-            f"Product: {_safe_text(bot_order.product_title)}\n"
-            f"SKU: {_safe_text(bot_order.product_sku)}\n"
-            f"Size: {_safe_text(bot_order.size)}\n"
-            f"Quantity: {_safe_text(bot_order.quantity)}\n"
-            f"Status: {_safe_text(bot_order.status)}\n"
+            f"🧾 Order Ref: TG-{bot_order.id}\n"
+            f"👗 Product: {_safe_text(bot_order.product_title)}\n"
+            f"🏷 SKU: {_safe_text(bot_order.product_sku)}\n"
+            f"📏 Size: {_safe_text(bot_order.size)}\n"
+            f"🔢 Quantity: {_safe_text(bot_order.quantity)}\n"
+            f"📦 Status: {_safe_text(bot_order.status)}\n"
             "\n"
-            "We will continue to notify you as your order progresses."
+            "🔔 We will continue to notify you as your order progresses."
         )
     )
     return send_customer_bot_message(text=message, chat_id=chat_id)
@@ -852,3 +852,24 @@ def notify_customer_abandoned_cart(chat_id, *, cart_lines, cart_total):
         f"<b>Total</b>: {_format_money(cart_total)} ETB — cash on delivery, no online payment.{link_line}"
     )
     return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
+
+
+def notify_customer_wishlist_sale(chat_id, *, product):
+    title = html.escape(_safe_text(product.title))
+    product_url = ""
+    base_url = _base_site_url()
+    if base_url:
+        product_url = f"{base_url}/product/{product.slug}/"
+    link_line = f"\n{product_url}" if product_url else ""
+    message = (
+        f"⚡ <b>Price drop on something you saved</b>\n"
+        f"{title} is now <b>-{product.discount_percent}%</b> — "
+        f"{_format_money(product.price)} ETB (was <s>{_format_money(product.compare_at_price)} ETB</s>).\n"
+        "🏃 Sale prices last while stock does.{}".format(link_line)
+    )
+    return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
+
+
+def send_customer_broadcast_message(chat_id, text):
+    """Admin-composed broadcast; sent as plain text so admin copy is verbatim."""
+    return send_customer_bot_message(_trim_message(f"📣 {text}"), chat_id)
