@@ -11,6 +11,18 @@ from django.db import models
 from store.models import Product, ProductSizeStock
 
 
+def _notify_restock_watchers(product):
+    """Queue back-in-stock alerts when a sold-out product becomes available."""
+    from store.models import BackgroundTask, RestockRequest
+    from store.tasks import enqueue, has_active_task
+
+    if not RestockRequest.objects.filter(product=product).exists():
+        return
+    if has_active_task(BackgroundTask.TYPE_CUSTOMER_RESTOCK_NOTIFY, product_id=product.pk):
+        return
+    enqueue(BackgroundTask.TYPE_CUSTOMER_RESTOCK_NOTIFY, {"product_id": product.pk})
+
+
 def parse_size_list(value):
     """Normalize free text (commas/newlines) into a deduped list of sizes."""
     normalized_sizes = []
@@ -69,12 +81,15 @@ def set_product_sizes(product, sizes, default_stock=Product.DEFAULT_STOCK_PER_SI
         total_quantity = sum(kept_quantities)
         sold_out = total_quantity <= 0
         if product.stock_quantity != total_quantity or product.is_sold_out != sold_out:
+            was_sold_out = product.is_sold_out
             product.stock_quantity = total_quantity
             product.is_sold_out = sold_out
             Product.objects.filter(pk=product.pk).update(
                 stock_quantity=total_quantity,
                 is_sold_out=sold_out,
             )
+            if was_sold_out and not sold_out:
+                _notify_restock_watchers(product)
     elif product.stock_quantity < 0:
         product.stock_quantity = 0
         Product.objects.filter(pk=product.pk).update(stock_quantity=0)
@@ -95,6 +110,9 @@ def reconcile_sold_out(product):
         sold_out = product.stock_quantity <= 0
 
     if product.is_sold_out != sold_out:
+        was_sold_out = product.is_sold_out
         product.is_sold_out = sold_out
         Product.objects.filter(pk=product.pk).update(is_sold_out=sold_out)
+        if was_sold_out and not sold_out:
+            _notify_restock_watchers(product)
     return sold_out

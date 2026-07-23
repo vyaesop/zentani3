@@ -88,7 +88,7 @@ class AddressForm(forms.ModelForm):
 class ProductReviewForm(forms.ModelForm):
     class Meta:
         model = ProductReview
-        fields = ["rating", "title", "comment"]
+        fields = ["rating", "title", "comment", "fit_feedback", "image"]
         widgets = {
             "rating": forms.Select(
                 choices=[(value, f"{value} star{'s' if value != 1 else ''}") for value in range(5, 0, -1)],
@@ -98,6 +98,8 @@ class ProductReviewForm(forms.ModelForm):
             "comment": forms.Textarea(
                 attrs={"class": "form-control", "placeholder": "Share fit, quality, and overall impression", "rows": 5}
             ),
+            "fit_feedback": forms.RadioSelect,
+            "image": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
         }
 
     def clean_title(self):

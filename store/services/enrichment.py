@@ -39,6 +39,24 @@ def mark_draft_manual_review(draft, *, error_message, stage):
     return draft
 
 
+def _requeue_draft_after_transient_failure(draft, exc):
+    """Put a draft back in the queued state while the task queue backs off."""
+    draft.pipeline_state = ProductAIDraft.PIPELINE_QUEUED
+    draft.error_message = str(exc)[:250]
+    draft.last_error_stage = "content-transient"
+    draft.processing_finished_at = timezone.now()
+    draft.save(
+        update_fields=[
+            "pipeline_state",
+            "error_message",
+            "last_error_stage",
+            "processing_finished_at",
+            "updated_at",
+        ]
+    )
+    return draft
+
+
 def _unique_taxonomy_slug(model, base):
     slug_base = slugify(base)[:50] or "collection"
     candidate = slug_base
@@ -142,6 +160,12 @@ def create_product_from_draft(draft):
     initial = draft_to_product_initial(draft, categories=[category], brands=[brand] if brand else [])
     title = (initial.get("title") or draft.sku)[:150]
     slug = (initial.get("slug") or slugify(f"{title}-{draft.sku}"))[:160] or slugify(draft.sku)[:160]
+    if Product.objects.filter(slug=slug).exists():
+        base = slug[:150]
+        suffix = 2
+        while Product.objects.filter(slug=f"{base}-{suffix}").exists():
+            suffix += 1
+        slug = f"{base}-{suffix}"
 
     cover_source = draft.cover_image or draft.reference_image
     cover_file = _copy_field_file(cover_source)
@@ -229,6 +253,13 @@ def run_draft_enrichment(draft):
         result = generate_product_ai_payload_for_draft(draft)
     except ProductAIError as exc:
         return mark_draft_manual_review(draft, error_message=exc, stage="content")
+    except Exception as exc:  # noqa: BLE001 — includes ProductAITransientError.
+        # Transient (or unexpected) failure: put the draft back in "queued" so
+        # the queue card tells the truth during the task queue's backoff, then
+        # re-raise so the task retries. If the queue eventually gives up, its
+        # permanent-failure hook moves the draft to manual review.
+        _requeue_draft_after_transient_failure(draft, exc)
+        raise
 
     apply_ai_draft_result(
         draft,

@@ -93,6 +93,10 @@
               <p class="spring-product-info__price">
                   {% if product.is_sold_out %}
                   Sold out
+                  {% elif product.is_on_sale %}
+                  <span class="spring-price-now">{{ product.price }} ETB</span>
+                  <s class="spring-price-was">{{ product.compare_at_price }} ETB</s>
+                  <span class="spring-product-card__badge--sale spring-price-chip">-{{ product.discount_percent }}%</span>
                   {% else %}
                   {{ product.price }} ETB
                   {% endif %}
@@ -275,6 +279,13 @@
               </span>
           </div>
 
+          {% if fit_summary %}
+          <p class="spring-fit-summary">
+              <i class="fas fa-ruler-horizontal"></i>
+              <strong>{{ fit_summary.true_to_size_percent }}%</strong> of {{ fit_summary.total }} shopper{{ fit_summary.total|pluralize }} say this fits true to size.
+          </p>
+          {% endif %}
+
           <div class="spring-review-layout">
               <div class="spring-review-list">
                   {% for review in reviews %}
@@ -286,8 +297,16 @@
                       <p class="spring-review-card__byline">
                           {% firstof review.user.first_name review.user.username %}
                           · {{ review.created_at|date:"M d, Y" }}
+                          {% if review.fit_feedback %}
+                          · <span class="spring-fit-chip">{{ review.get_fit_feedback_display }}</span>
+                          {% endif %}
                       </p>
                       <p>{{ review.comment }}</p>
+                      {% if review.image %}
+                      <a href="{{ review.image.url }}" target="_blank" rel="noopener" class="spring-review-card__photo">
+                          <img src="{{ review.image.url }}" alt="Customer photo for {{ product.title }}" loading="lazy" width="96" height="96">
+                      </a>
+                      {% endif %}
                   </article>
                   {% empty %}
                   <p class="text-muted mb-0">No reviews yet. The first review helps the next shopper decide faster.</p>
@@ -297,7 +316,7 @@
               <div class="spring-review-form-card">
                   <h3>Share your review</h3>
                   {% if request.user.is_authenticated %}
-                  <form action="{% url 'store:submit-review' product.slug %}" method="POST" class="spring-review-form">
+                  <form action="{% url 'store:submit-review' product.slug %}" method="POST" enctype="multipart/form-data" class="spring-review-form">
                       {% csrf_token %}
                       {% for fm in review_form %}
                       <div class="spring-auth__field">

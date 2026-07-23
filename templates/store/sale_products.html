@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Zentanee | Sale{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-directory zent-busy-region" id="collection-page"
+       hx-target="#collection-page" hx-select="#collection-page" hx-swap="outerHTML show:window:top"
+       hx-push-url="true" hx-indicator="#collection-page">
+      {% include 'store/_collection_header.html' with kicker='Limited time' title='Sale' description='Marked-down pieces while they last — prices shown against their original tags.' count=product_count browse_state=browse_state %}
+
+      <div class="spring-directory__layout">
+          {% include 'store/_collection_results.html' with cache_collection=True pagination_label='Sale pages' %}
+
+          {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
+      </div>
+  </div>
+</main>
+{% endblock content %}

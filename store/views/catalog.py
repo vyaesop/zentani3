@@ -4,12 +4,10 @@ import json
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from store.cache_utils import HOME_TOP_SELLING_TTL
 from store.constants import RECENTLY_VIEWED_SESSION_KEY, size_sort_key as _size_sort_key
 from store.forms import ProductReviewForm, RestockRequestForm
 from store.models import (
@@ -17,6 +15,7 @@ from store.models import (
     Category,
     Order,
     Product,
+    ProductEvent,
     ProductReview,
     ProductSizeStock,
     RestockRequest,
@@ -30,6 +29,8 @@ PRODUCT_LIST_FIELDS = (
     "slug",
     "title",
     "price",
+    "compare_at_price",
+    "created_at",
     "product_image",
     "is_sold_out",
     "category__title",
@@ -71,14 +72,70 @@ def _saved_product_ids_for_user(user):
     return set(Wishlist.objects.filter(user=user).values_list("product_id", flat=True))
 
 
-def _build_product_detail_context(request, product):
-    related_products = (
-        Product.objects.filter(is_active=True, category=product.category)
-        .exclude(id=product.id)
+CO_PURCHASE_CACHE_TTL = 6 * 60 * 60
+
+
+def _co_purchase_product_ids(product, limit=4):
+    """Ids of products most often bought by the same customers, cached."""
+    from django.core.cache import cache
+    from django.db.models import Count as _Count, Q as _Q
+
+    cache_key = f"co_purchase_ids:{product.id}"
+    product_ids = cache.get(cache_key)
+    if product_ids is None:
+        buyer_users = list(
+            Order.objects.filter(product=product, user__isnull=False).values_list("user_id", flat=True).distinct()
+        )
+        buyer_sessions = list(
+            Order.objects.filter(product=product, user=None)
+            .exclude(session_key="")
+            .values_list("session_key", flat=True)
+            .distinct()
+        )
+        if not buyer_users and not buyer_sessions:
+            product_ids = []
+        else:
+            buyer_query = _Q(user_id__in=buyer_users)
+            if buyer_sessions:
+                buyer_query |= _Q(session_key__in=buyer_sessions)
+            product_ids = list(
+                Order.objects.filter(buyer_query)
+                .exclude(product=product)
+                .filter(product__is_active=True)
+                .values("product_id")
+                .annotate(n=_Count("id"))
+                .order_by("-n", "-product_id")
+                .values_list("product_id", flat=True)[:limit]
+            )
+        cache.set(cache_key, product_ids, CO_PURCHASE_CACHE_TTL)
+    return product_ids
+
+
+def _related_products_for(product, limit=4):
+    """Co-purchase picks first ("customers also bought"), same-category fill."""
+    co_purchase_ids = _co_purchase_product_ids(product, limit=limit)
+    products_by_id = {
+        candidate.id: candidate
+        for candidate in Product.objects.filter(id__in=co_purchase_ids, is_active=True)
         .select_related("category", "brand")
         .prefetch_related("size_inventory")
-        .only(*PRODUCT_LIST_FIELDS)[:4]
-    )
+        .only(*PRODUCT_LIST_FIELDS)
+    }
+    related = [products_by_id[pid] for pid in co_purchase_ids if pid in products_by_id]
+    if len(related) < limit:
+        fill = (
+            Product.objects.filter(is_active=True, category=product.category)
+            .exclude(id__in=[product.id, *[item.id for item in related]])
+            .select_related("category", "brand")
+            .prefetch_related("size_inventory")
+            .only(*PRODUCT_LIST_FIELDS)[: limit - len(related)]
+        )
+        related.extend(fill)
+    return related
+
+
+def _build_product_detail_context(request, product):
+    related_products = _related_products_for(product)
     p_image = product.p_images.only("id", "image").all()
     size_options = _product_size_options(product)
     available_sizes_list = [option["size"] for option in size_options]
@@ -86,12 +143,30 @@ def _build_product_detail_context(request, product):
     reviews = list(
         ProductReview.objects.filter(product=product)
         .select_related("user")
-        .only("id", "rating", "title", "comment", "created_at", "user__first_name", "user__last_name", "user__username")[:6]
+        .only(
+            "id", "rating", "title", "comment", "fit_feedback", "image", "created_at",
+            "user__first_name", "user__last_name", "user__username",
+        )[:6]
     )
     review_summary = ProductReview.objects.filter(product=product).aggregate(
         average_rating=Avg("rating"),
         review_count=Count("id"),
     )
+    fit_counts = dict(
+        ProductReview.objects.filter(product=product)
+        .exclude(fit_feedback="")
+        .values_list("fit_feedback")
+        .annotate(n=Count("id"))
+        .values_list("fit_feedback", "n")
+    )
+    fit_total = sum(fit_counts.values())
+    fit_summary = None
+    if fit_total:
+        true_to_size = fit_counts.get(ProductReview.FIT_TRUE_TO_SIZE, 0)
+        fit_summary = {
+            "total": fit_total,
+            "true_to_size_percent": int(round(true_to_size * 100 / fit_total)),
+        }
     saved_product_ids = _saved_product_ids_for_user(request.user)
     existing_restock_request = None
     restock_initial = {}
@@ -109,6 +184,7 @@ def _build_product_detail_context(request, product):
         "default_selected_size": default_selected_size,
         "reviews": reviews,
         "review_summary": review_summary,
+        "fit_summary": fit_summary,
         "review_form": ProductReviewForm(),
         "restock_form": RestockRequestForm(initial=restock_initial),
         "existing_restock_request": existing_restock_request,
@@ -309,16 +385,9 @@ def home(request):
     brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image").order_by("-created_at")[:12]
     products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)[:24]
     latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
-    top_selling_ids = cache.get_or_set(
-        "home_top_selling_ids",
-        lambda: list(
-            Order.objects.values("product_id")
-            .annotate(total_quantity=Sum("quantity"))
-            .order_by("-total_quantity", "-product_id")
-            .values_list("product_id", flat=True)[:8]
-        ),
-        HOME_TOP_SELLING_TTL,
-    )
+    from store.context_preprocessors import top_selling_product_ids
+
+    top_selling_ids = top_selling_product_ids()
     top_selling_lookup = {
         product.id: product
         for product in Product.objects.filter(id__in=top_selling_ids, is_active=True)
@@ -345,6 +414,7 @@ def detail(request, slug):
         slug=slug,
     )
     _push_recently_viewed_product(request, product)
+    ProductEvent.log(ProductEvent.EVENT_VIEW, product, request=request)
     context = _build_product_detail_context(request, product)
     return render(request, "store/detail.html", context)
 
@@ -384,16 +454,26 @@ def submit_review(request, slug):
     if request.method != "POST":
         return redirect("store:product-detail", slug=product.slug)
 
-    form = ProductReviewForm(request.POST)
+    form = ProductReviewForm(request.POST, request.FILES)
     if not form.is_valid():
         messages.error(request, "Please complete the review fields before submitting.")
         return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#reviews")
 
-    ProductReview.objects.update_or_create(
+    defaults = dict(form.cleaned_data)
+    # A re-submitted review only touches the photo when one was uploaded (or
+    # explicitly cleared via the form's clear checkbox, which yields False).
+    image_value = defaults.pop("image", None)
+    review, _ = ProductReview.objects.update_or_create(
         user=request.user,
         product=product,
-        defaults=form.cleaned_data,
+        defaults=defaults,
     )
+    if image_value is False:
+        review.image = None
+        review.save(update_fields=["image", "updated_at"])
+    elif image_value:
+        review.image = image_value
+        review.save(update_fields=["image", "updated_at"])
     messages.success(request, "Your review has been saved.")
     return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#reviews")
 
@@ -431,6 +511,11 @@ def request_restock(request, slug):
 
 def shop(request):
     return redirect("store:all-products")
+
+
+def service_worker(request):
+    """Serve the PWA service worker from the site root so its scope is '/'."""
+    return render(request, "sw.js", content_type="application/javascript")
 
 
 def about(request):

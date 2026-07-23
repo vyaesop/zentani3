@@ -19,6 +19,12 @@
 
         {% if product.is_sold_out %}
         <span class="spring-product-card__badge spring-product-card__badge--soldout">Sold out</span>
+        {% elif product.is_on_sale %}
+        <span class="spring-product-card__badge spring-product-card__badge--sale">-{{ product.discount_percent }}%</span>
+        {% elif product.id in bestseller_product_ids %}
+        <span class="spring-product-card__badge spring-product-card__badge--bestseller">Bestseller</span>
+        {% elif product.is_new %}
+        <span class="spring-product-card__badge spring-product-card__badge--new">New</span>
         {% endif %}
     </div>
 
@@ -32,6 +38,11 @@
         <p class="spring-product-card__price spring-product-card__price--soldout">
             Sold out
             <a href="{% url 'store:product-detail' product.slug %}#restock" class="spring-product-card__notify">Notify me</a>
+        </p>
+        {% elif product.is_on_sale %}
+        <p class="spring-product-card__price spring-product-card__price--sale">
+            <span class="spring-price-now">{{ product.price }} ETB</span>
+            <s class="spring-price-was">{{ product.compare_at_price }} ETB</s>
         </p>
         {% else %}
         <p class="spring-product-card__price">{{ product.price }} ETB</p>

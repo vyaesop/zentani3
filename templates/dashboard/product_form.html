@@ -321,6 +321,12 @@
               {% for e in form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
             </div>
             <div class="zd-field">
+              <span class="zd-field-label">Compare-at price (ETB) — optional</span>
+              {{ form.compare_at_price }}
+              <span class="zd-field-hint">Set higher than the price to show a struck-through “was” price and a sale badge.</span>
+              {% for e in form.compare_at_price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
               <span class="zd-field-label">Image alt text</span>
               {{ form.image_alt_text }}
               {% for e in form.image_alt_text.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}

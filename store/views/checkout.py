@@ -24,7 +24,7 @@ from .cart import (
     _latest_saved_address,
     _shipping_amount_for_city,
 )
-from .common import _querystring_without
+from .common import _querystring_without, _telegram_optin_context
 
 
 def _build_order_flow_status(orders_queryset):
@@ -158,8 +158,24 @@ def checkout(request):
         "order_lines": placement.order_lines,
         "order_ids": placement.order_ids,
     }
+    customer_name = ""
+    if user:
+        customer_name = user.get_full_name() or ""
+    elif guest_contact:
+        customer_name = guest_contact.get("full_name") or ""
+    customer_confirm_payload = {
+        "user_id": user.id if user else None,
+        "session_key": request.session.session_key or "",
+        "order_ids": placement.order_ids,
+        "order_lines": placement.order_lines,
+        "order_total": str(placement.order_total),
+        "customer_name": customer_name,
+    }
     transaction.on_commit(
-        lambda: enqueue(BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY, notify_payload)
+        lambda: (
+            enqueue(BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY, notify_payload),
+            enqueue(BackgroundTask.TYPE_CUSTOMER_ORDER_CONFIRM, customer_confirm_payload),
+        )
     )
 
     messages.success(
@@ -204,6 +220,7 @@ def orders(request):
             "page_query": _querystring_without(request, "page"),
             "flow_status": _build_order_flow_status(all_orders),
             "order_status_summary": _order_status_summary(all_orders),
+            **_telegram_optin_context(request),
         },
     )
 

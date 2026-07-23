@@ -1,7 +1,7 @@
 """Collection browsing: filtered/sorted product grids, search, directories."""
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Case, IntegerField, Max, Min, Q, Value, When
+from django.db.models import Case, F, IntegerField, Max, Min, Q, Value, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -252,6 +252,13 @@ def _build_collection_state(
     }
 
 
+def _render_collection(request, template_name, context):
+    """Full page normally; just the next page of cards for load-more requests."""
+    if request.GET.get("fragment") == "items":
+        return render(request, "store/_collection_grid_items.html", context)
+    return render(request, template_name, context)
+
+
 def search_view(request):
     base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
@@ -262,7 +269,7 @@ def search_view(request):
     )
     context["query"] = context["browse_state"]["current_query"]
     context.update(_search_discovery_context(request))
-    return render(request, "store/search.html", context)
+    return _render_collection(request, "store/search.html", context)
 
 
 def search_suggestions(request):
@@ -301,7 +308,22 @@ def products(request):
         base_products,
         form_action=reverse("store:all-products"),
     )
-    return render(request, "store/products.html", context)
+    return _render_collection(request, "store/products.html", context)
+
+
+def sale_products(request):
+    base_products = (
+        Product.objects.filter(is_active=True, compare_at_price__gt=F("price"))
+        .select_related("category", "brand")
+        .prefetch_related("size_inventory")
+        .only(*PRODUCT_LIST_FIELDS)
+    )
+    context = _build_collection_state(
+        request,
+        base_products,
+        form_action=reverse("store:sale-products"),
+    )
+    return _render_collection(request, "store/sale_products.html", context)
 
 
 def all_categories(request):
@@ -348,7 +370,7 @@ def category_products(request, slug):
         show_category_filters=False,
     )
     context["category"] = category
-    return render(request, "store/category_products.html", context)
+    return _render_collection(request, "store/category_products.html", context)
 
 
 def brand_products(request, slug):
@@ -361,4 +383,4 @@ def brand_products(request, slug):
         show_brand_filters=False,
     )
     context["brand"] = brand
-    return render(request, "store/brand_products.html", context)
+    return _render_collection(request, "store/brand_products.html", context)

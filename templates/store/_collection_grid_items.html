@@ -1,0 +1,33 @@
+{# One page of product cards + the load-more sentinel. Rendered inside the #}
+{# grid on first paint, and returned bare for ?fragment=items requests so #}
+{# htmx appends the next page in place of the sentinel. #}
+{% for product in products %}
+<div class="spring-grid-item">
+    {% if forloop.first and not products.has_previous %}
+    {% include 'store/_product_card_content.html' with product=product img_loading="eager" img_fetchpriority="high" %}
+    {% else %}
+    {% include 'store/_product_card_content.html' with product=product %}
+    {% endif %}
+</div>
+{% empty %}
+{% if empty_include %}
+{% include empty_include %}
+{% else %}
+<p class="text-muted mb-0">{{ empty_message|default:"Products will appear here once they are active in admin." }}</p>
+{% endif %}
+{% endfor %}
+
+{% if products.has_next %}
+<div class="spring-load-more" hx-disinherit="*">
+    <a class="btn btn-outline-dark spring-load-more__btn"
+       href="{{ browse_state.form_action }}?{{ browse_state.page_query }}page={{ products.next_page_number }}"
+       hx-get="{{ browse_state.form_action }}?{{ browse_state.page_query }}page={{ products.next_page_number }}&fragment=items"
+       hx-target="closest .spring-load-more"
+       hx-swap="outerHTML"
+       hx-trigger="revealed, click"
+       rel="next">
+        Load more
+        <span class="spring-load-more__hint">({{ products.end_index }} of {{ products.paginator.count }})</span>
+    </a>
+</div>
+{% endif %}

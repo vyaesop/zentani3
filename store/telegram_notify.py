@@ -339,6 +339,7 @@ def _product_post_signature(product):
             _safe_text(product.short_description, fallback=""),
             _safe_text(product.available_sizes, fallback=""),
             _safe_text(product.price, fallback=""),
+            _safe_text(getattr(product, "compare_at_price", "") or "", fallback=""),
             _safe_text(category_title, fallback=""),
             _safe_text(brand_title, fallback=""),
             _safe_text(getattr(product.product_image, "name", ""), fallback=""),
@@ -354,13 +355,22 @@ def _product_caption(product):
     category = getattr(getattr(product, "category", None), "title", "N/A")
     brand = getattr(getattr(product, "brand", None), "title", "N/A")
     sizes = product.available_sizes or "Ask in bot"
+    if getattr(product, "is_on_sale", False):
+        header = f"<b>SALE — {product.discount_percent}% OFF</b>\n"
+        price_line = (
+            f"<b>Price</b>: {_format_money(product.price)} ETB "
+            f"(was <s>{_format_money(product.compare_at_price)} ETB</s>)\n"
+        )
+    else:
+        header = "<b>NEW DROP JUST LANDED</b>\n"
+        price_line = f"<b>Price</b>: {_format_money(product.price)} ETB\n"
     return _trim_message(
         (
-            "<b>NEW DROP JUST LANDED</b>\n"
+            f"{header}"
             "━━━━━━━━━━━━━━━━━━\n"
             f"<b>{html.escape(_safe_text(product.title))}</b>\n"
             "\n"
-            f"<b>Price</b>: {_format_money(product.price)} ETB\n"
+            f"{price_line}"
             f"<b>Category</b>: {html.escape(_safe_text(category))}\n"
             f"<b>Brand</b>: {html.escape(_safe_text(brand))}\n"
             f"<b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
@@ -761,3 +771,84 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         f"⏰ Time: {timestamp}"
     )
     return send_admin_alert_message(_trim_message(message))
+
+
+# ── Customer-facing notifications (opt-in via TelegramLink deep link) ──────
+
+def customer_notify_deep_link(token):
+    """Deep link the storefront shows to opt in to order updates."""
+    _, _, bot_username = _customer_bot_settings()
+    if not bot_username or not token:
+        return ""
+    return f"https://t.me/{bot_username}?start=notify_{token}"
+
+
+def notify_customer_order_confirmation(chat_id, *, order_ids, order_lines, order_total, customer_name=""):
+    name = html.escape(_safe_text(customer_name, fallback="there"))
+    line_chunks = []
+    for line in order_lines or []:
+        title = html.escape(_safe_text(line.get("title")))
+        size = html.escape(_safe_text(line.get("size")))
+        quantity = _safe_text(line.get("quantity"), fallback="1")
+        line_total = _safe_text(line.get("line_total"))
+        line_chunks.append(f"• {title} — size {size} × {quantity} ({line_total} ETB)")
+    items_text = "\n".join(line_chunks) if line_chunks else "• (details in your account)"
+    order_ref = ", ".join(f"#{order_id}" for order_id in (order_ids or [])) or "your order"
+
+    message = (
+        f"✅ <b>Order confirmed</b>\n"
+        f"Hi {name}, we received {order_ref}.\n"
+        "\n"
+        f"{items_text}\n"
+        f"<b>Total</b>: {_format_money(order_total)} ETB — pay cash on delivery.\n"
+        "\n"
+        "We'll message you here when it's on the way. "
+        "Remember: inspect the item with the driver present."
+    )
+    return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
+
+
+def notify_customer_order_status(chat_id, *, order_id, product_title, status, status_copy=""):
+    title = html.escape(_safe_text(product_title))
+    status_text = html.escape(_safe_text(status))
+    extra = f"\n{html.escape(status_copy)}" if status_copy else ""
+    message = (
+        f"📦 <b>Order #{order_id} update</b>\n"
+        f"{title} is now <b>{status_text}</b>.{extra}"
+    )
+    return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
+
+
+def notify_customer_restock(chat_id, *, product, size=""):
+    title = html.escape(_safe_text(product.title))
+    size_text = f" in size {html.escape(size)}" if size else ""
+    product_url = ""
+    base_url = _base_site_url()
+    if base_url:
+        product_url = f"{base_url}/product/{product.slug}/"
+    link_line = f"\n{product_url}" if product_url else ""
+    message = (
+        f"🔔 <b>Back in stock</b>\n"
+        f"{title}{size_text} is available again — it went fast last time.{link_line}"
+    )
+    return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
+
+
+def notify_customer_abandoned_cart(chat_id, *, cart_lines, cart_total):
+    line_chunks = []
+    for line in cart_lines or []:
+        title = html.escape(_safe_text(line.get("title")))
+        quantity = _safe_text(line.get("quantity"), fallback="1")
+        line_chunks.append(f"• {title} × {quantity}")
+    items_text = "\n".join(line_chunks) if line_chunks else "• your picks"
+    cart_url = ""
+    base_url = _base_site_url()
+    if base_url:
+        cart_url = f"{base_url}/cart/"
+    link_line = f"\n{cart_url}" if cart_url else ""
+    message = (
+        f"🛍 <b>Your cart is waiting</b>\n"
+        f"{items_text}\n"
+        f"<b>Total</b>: {_format_money(cart_total)} ETB — cash on delivery, no online payment.{link_line}"
+    )
+    return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")

@@ -94,6 +94,14 @@ class Product(models.Model):
     stock_quantity = models.PositiveIntegerField(default=0, verbose_name="Stock Quantity")
     product_image = models.ImageField(upload_to='product', verbose_name="Product Image")
     price = models.DecimalField(max_digits=8, decimal_places=2)
+    compare_at_price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Compare-at Price",
+        help_text="Original price shown struck through; the product is on sale while this is higher than the price.",
+    )
     category = models.ForeignKey(Category, verbose_name="Product Categoy", on_delete=models.CASCADE)
     brand = models.ForeignKey(Brand, verbose_name="Product Brand", on_delete=models.CASCADE, default=None, null=True)
     is_active = models.BooleanField(verbose_name="Is Active?")
@@ -116,6 +124,24 @@ class Product(models.Model):
 
     def __str__(self):
         return self.title
+
+    NEW_BADGE_DAYS = 14
+
+    @property
+    def is_on_sale(self):
+        return bool(self.compare_at_price and self.price and self.compare_at_price > self.price)
+
+    @property
+    def discount_percent(self):
+        if not self.is_on_sale:
+            return 0
+        return int(round((self.compare_at_price - self.price) * 100 / self.compare_at_price))
+
+    @property
+    def is_new(self):
+        if not self.created_at:
+            return False
+        return self.created_at >= timezone.now() - timezone.timedelta(days=self.NEW_BADGE_DAYS)
 
     @property
     def available_sizes(self):
@@ -353,13 +379,29 @@ class Wishlist(models.Model):
 
 
 class ProductReview(models.Model):
+    FIT_TRUE_TO_SIZE = "true_to_size"
+    FIT_RUNS_SMALL = "runs_small"
+    FIT_RUNS_LARGE = "runs_large"
+    FIT_CHOICES = (
+        (FIT_TRUE_TO_SIZE, "True to size"),
+        (FIT_RUNS_SMALL, "Runs small"),
+        (FIT_RUNS_LARGE, "Runs large"),
+    )
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="product_reviews")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     title = models.CharField(max_length=120, blank=True)
     comment = models.TextField()
+    fit_feedback = models.CharField(max_length=20, choices=FIT_CHOICES, blank=True, default="", verbose_name="How did it fit?")
+    image = models.ImageField(upload_to="review-images", blank=True, null=True, verbose_name="Customer Photo")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, "name", ""):
+            self.image.name = _normalize_legacy_media_name(self.image.name)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ("-updated_at", "-created_at")
@@ -616,6 +658,115 @@ class TelegramBotOrder(models.Model):
         return f"TG-{self.id} {self.product_title} ({self.customer_full_name})"
 
 
+class ProductEvent(models.Model):
+    """First-party behavioral signal (view / add-to-cart / purchase).
+
+    Feeds co-purchase recommendations today and any future personalization.
+    Old rows are purged by the task drain after EVENT_RETENTION_DAYS.
+    """
+
+    EVENT_VIEW = "view"
+    EVENT_ADD_TO_CART = "add_to_cart"
+    EVENT_PURCHASE = "purchase"
+    EVENT_CHOICES = (
+        (EVENT_VIEW, "Viewed"),
+        (EVENT_ADD_TO_CART, "Added to cart"),
+        (EVENT_PURCHASE, "Purchased"),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="events")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name="product_events")
+    session_key = models.CharField(max_length=64, blank=True, default="")
+    event_type = models.CharField(max_length=20, choices=EVENT_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["product", "event_type", "created_at"]),
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["session_key", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type} p{self.product_id}"
+
+    @classmethod
+    def log(cls, event_type, product, request=None, user=None, session_key=""):
+        """Best-effort logging: analytics must never break a storefront request."""
+        try:
+            if request is not None:
+                if request.user.is_authenticated:
+                    user = request.user
+                session_key = session_key or (request.session.session_key or "")
+            cls.objects.create(
+                product=product,
+                user=user if (user and getattr(user, "is_authenticated", True)) else None,
+                session_key=session_key,
+                event_type=event_type,
+            )
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning("ProductEvent logging failed.", exc_info=True)
+
+
+class TelegramLink(models.Model):
+    """A customer's opt-in to Telegram notifications from the customer bot.
+
+    Created with a deep-link token when the storefront offers "get updates on
+    Telegram"; the webhook fills in chat_id when the customer taps /start with
+    that token. Owned by a user (logged in) or a session key (guest).
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name="telegram_link")
+    session_key = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    token = models.CharField(max_length=48, unique=True, db_index=True)
+    chat_id = models.CharField(max_length=40, blank=True, default="", db_index=True)
+    telegram_username = models.CharField(max_length=150, blank=True, default="")
+    linked_at = models.DateTimeField(null=True, blank=True)
+    last_abandoned_nudge_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["chat_id", "updated_at"]),
+        ]
+
+    def __str__(self):
+        owner = self.user or f"guest:{self.session_key}"
+        return f"Telegram link for {owner} ({'linked' if self.is_linked else 'pending'})"
+
+    @property
+    def is_linked(self):
+        return bool(self.chat_id)
+
+    @classmethod
+    def for_owner(cls, user=None, session_key=""):
+        """Fetch-or-create the link row for a user or guest session."""
+        if user is not None and user.is_authenticated:
+            link = cls.objects.filter(user=user).first()
+            if link is None:
+                link = cls.objects.create(user=user, token=uuid.uuid4().hex)
+            return link
+        if session_key:
+            link = cls.objects.filter(user=None, session_key=session_key).first()
+            if link is None:
+                link = cls.objects.create(session_key=session_key, token=uuid.uuid4().hex)
+            return link
+        return None
+
+    @classmethod
+    def linked_chat_id_for(cls, user_id=None, session_key=""):
+        row = None
+        if user_id:
+            row = cls.objects.filter(user_id=user_id).exclude(chat_id="").first()
+        if row is None and session_key:
+            row = cls.objects.filter(user=None, session_key=session_key).exclude(chat_id="").first()
+        return row.chat_id if row else ""
+
+
 class BackgroundTask(models.Model):
     """Outbox row for work that must not block a user-facing request.
 
@@ -627,11 +778,19 @@ class BackgroundTask(models.Model):
     TYPE_TELEGRAM_ORDER_NOTIFY = "telegram_order_notify"
     TYPE_TELEGRAM_SIGNUP_NOTIFY = "telegram_signup_notify"
     TYPE_AI_ENRICH_DRAFT = "ai_enrich_draft"
+    TYPE_CUSTOMER_ORDER_CONFIRM = "customer_order_confirm"
+    TYPE_CUSTOMER_ORDER_STATUS = "customer_order_status"
+    TYPE_CUSTOMER_RESTOCK_NOTIFY = "customer_restock_notify"
+    TYPE_CUSTOMER_ABANDONED_CART = "customer_abandoned_cart"
     TASK_TYPE_CHOICES = (
         (TYPE_TELEGRAM_PRODUCT_POST, "Telegram product post"),
         (TYPE_TELEGRAM_ORDER_NOTIFY, "Telegram order notification"),
         (TYPE_TELEGRAM_SIGNUP_NOTIFY, "Telegram signup notification"),
         (TYPE_AI_ENRICH_DRAFT, "AI draft enrichment"),
+        (TYPE_CUSTOMER_ORDER_CONFIRM, "Customer order confirmation"),
+        (TYPE_CUSTOMER_ORDER_STATUS, "Customer order status update"),
+        (TYPE_CUSTOMER_RESTOCK_NOTIFY, "Customer restock alert"),
+        (TYPE_CUSTOMER_ABANDONED_CART, "Customer abandoned-cart nudge"),
     )
 
     STATUS_PENDING = "pending"

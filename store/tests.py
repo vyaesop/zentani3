@@ -1,10 +1,13 @@
+from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 import json
 import tempfile
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.test import TestCase
@@ -25,6 +28,11 @@ from .models import (
     Product,
     ProductAIDraft,
     ProductAIDraftImage,
+    ProductEvent,
+    ProductReview,
+    ProductSizeStock,
+    RestockRequest,
+    TelegramLink,
     Wishlist,
 )
 from .services.inventory import set_product_sizes
@@ -868,6 +876,422 @@ def _make_catalog(prefix="Guard"):
     return category, brand, product
 
 
+@override_settings(
+    DEBUG=True,
+    MEDIA_ROOT=tempfile.gettempdir(),
+    DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+)
+class ReviewFitFeedbackTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Review")
+        self.user = User.objects.create_user(username="0911900000", password="test-pass-123")
+        self.client.login(username="0911900000", password="test-pass-123")
+
+    def _photo(self, name="review.jpg"):
+        image_bytes = BytesIO()
+        Image.new("RGB", (30, 30), color="teal").save(image_bytes, format="JPEG")
+        image_bytes.seek(0)
+        return SimpleUploadedFile(name, image_bytes.read(), content_type="image/jpeg")
+
+    def test_review_saves_fit_feedback_and_photo(self):
+        response = self.client.post(
+            reverse("store:submit-review", args=[self.product.slug]),
+            {
+                "rating": 5,
+                "title": "Lovely",
+                "comment": "Great drape.",
+                "fit_feedback": ProductReview.FIT_TRUE_TO_SIZE,
+                "image": self._photo(),
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        review = ProductReview.objects.get(user=self.user, product=self.product)
+        self.assertEqual(review.fit_feedback, ProductReview.FIT_TRUE_TO_SIZE)
+        self.assertTrue(review.image)
+
+        detail = self.client.get(reverse("store:product-detail", args=[self.product.slug]))
+        self.assertContains(detail, "fits true to size")
+        self.assertContains(detail, "True to size")
+
+    def test_resubmitting_without_photo_keeps_existing_photo(self):
+        self.client.post(
+            reverse("store:submit-review", args=[self.product.slug]),
+            {"rating": 4, "comment": "First take.", "fit_feedback": ProductReview.FIT_RUNS_SMALL, "image": self._photo()},
+        )
+        self.client.post(
+            reverse("store:submit-review", args=[self.product.slug]),
+            {"rating": 5, "comment": "Updated words only.", "fit_feedback": ProductReview.FIT_RUNS_SMALL},
+        )
+        review = ProductReview.objects.get(user=self.user, product=self.product)
+        self.assertEqual(review.comment, "Updated words only.")
+        self.assertTrue(review.image, "Existing photo must survive a text-only re-review.")
+
+
+class BehavioralEventsAndRecsTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Events")
+        self.other = Product.objects.create(
+            title="Events Companion Scarf",
+            slug="events-companion-scarf",
+            sku="SKU-EVENTS-2",
+            short_description="pairs well",
+            product_image="product/test.jpg",
+            price=Decimal("50.00"),
+            category=self.category,
+            brand=self.brand,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+        self.user = User.objects.create_user(username="0912000000", password="test-pass-123")
+        Address.objects.create(user=self.user, address="Bole", city="Addis Ababa", phone="0912000000")
+
+    def test_detail_view_logs_view_event(self):
+        self.client.get(reverse("store:product-detail", args=[self.product.slug]))
+        self.assertTrue(
+            ProductEvent.objects.filter(product=self.product, event_type=ProductEvent.EVENT_VIEW).exists()
+        )
+
+    def test_add_to_cart_logs_event(self):
+        self.client.login(username="0912000000", password="test-pass-123")
+        self.client.post(reverse("store:add-to-cart"), {"prod_id": self.product.id, "size": "M"})
+        self.assertTrue(
+            ProductEvent.objects.filter(product=self.product, event_type=ProductEvent.EVENT_ADD_TO_CART).exists()
+        )
+
+    def test_checkout_logs_purchase_events(self):
+        self.client.login(username="0912000000", password="test-pass-123")
+        Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
+        self.client.post(reverse("store:checkout"))
+        self.assertTrue(
+            ProductEvent.objects.filter(
+                product=self.product, user=self.user, event_type=ProductEvent.EVENT_PURCHASE
+            ).exists()
+        )
+
+    def test_co_purchase_recommendations_rank_first(self):
+        from django.core.cache import cache
+
+        from store.views.catalog import _related_products_for
+
+        # LocMem cache persists across tests while product ids repeat, so
+        # drop any co-purchase entry cached for this id by an earlier test.
+        cache.delete(f"co_purchase_ids:{self.product.id}")
+
+        # Two buyers bought both products; a third product shares the category.
+        buyer_two = User.objects.create_user(username="0912000001", password="test-pass-123")
+        for buyer in (self.user, buyer_two):
+            for product in (self.product, self.other):
+                Order.objects.create(
+                    user=buyer,
+                    product=product,
+                    quantity=1,
+                    size="M",
+                    price_at_purchase=Decimal("10.00"),
+                    line_total=Decimal("10.00"),
+                )
+        Product.objects.create(
+            title="Events Filler Dress",
+            slug="events-filler-dress",
+            sku="SKU-EVENTS-3",
+            short_description="same category",
+            product_image="product/test.jpg",
+            price=Decimal("80.00"),
+            category=self.category,
+            brand=self.brand,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+
+        related = _related_products_for(self.product)
+
+        self.assertEqual(related[0].id, self.other.id, "Co-purchased product must rank first.")
+        self.assertNotIn(self.product.id, [item.id for item in related])
+
+    def test_event_purge_removes_old_rows(self):
+        ProductEvent.log(ProductEvent.EVENT_VIEW, self.product)
+        ProductEvent.objects.update(
+            created_at=timezone.now() - timedelta(days=task_queue.EVENT_RETENTION_DAYS + 1)
+        )
+        self.assertEqual(task_queue._purge_stale_product_events(), 1)
+        self.assertFalse(ProductEvent.objects.exists())
+
+
+class PwaShellTests(TestCase):
+    def test_service_worker_served_at_root_scope(self):
+        response = self.client.get("/sw.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response["Content-Type"])
+        self.assertIn(b"addEventListener", response.content)
+
+    def test_base_template_ships_bottom_nav_and_manifest(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "spring-bottom-nav")
+        self.assertContains(response, "manifest.webmanifest")
+        self.assertContains(response, "serviceWorker")
+
+
+class LoadMoreTests(TestCase):
+    """Collections use a load-more sentinel (progressive infinite scroll)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category, cls.brand, _ = _make_catalog("Scroll")
+        for index in range(30):
+            Product.objects.create(
+                title=f"Scroll Dress {index}",
+                slug=f"scroll-dress-{index}",
+                sku=f"SKU-SCRL-PAGE-{index}",
+                short_description="d",
+                product_image="product/test.jpg",
+                price=Decimal("100.00"),
+                category=cls.category,
+                brand=cls.brand,
+                is_active=True,
+                is_featured=False,
+                is_sold_out=False,
+            )
+
+    def test_first_page_renders_load_more_sentinel(self):
+        response = self.client.get(reverse("store:all-products"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "spring-load-more")
+        self.assertContains(response, "page=2")
+        self.assertContains(response, "fragment=items")
+
+    def test_fragment_request_returns_only_cards(self):
+        response = self.client.get(reverse("store:all-products"), {"page": 2, "fragment": "items"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "spring-grid-item")
+        # Bare fragment: no page chrome, and the final page has no sentinel.
+        self.assertNotContains(response, "spring-nav")
+        self.assertNotContains(response, "spring-load-more")
+
+
+class CustomerTelegramNotificationTests(TestCase):
+    """Opt-in linking, order confirm/status, restock alerts, abandoned carts."""
+
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Notify")
+        self.user = User.objects.create_user(username="0911800000", password="test-pass-123")
+        Address.objects.create(user=self.user, address="Bole", city="Addis Ababa", phone="0911800000")
+        BackgroundTask.objects.all().delete()
+
+    def _link(self, chat_id="555001", user=None, session_key=""):
+        return TelegramLink.objects.create(
+            user=user,
+            session_key=session_key,
+            token=f"tok-{chat_id}",
+            chat_id=chat_id,
+            linked_at=timezone.now(),
+        )
+
+    @override_settings(DEBUG=True)
+    def test_webhook_start_links_chat_to_token(self):
+        link = TelegramLink.for_owner(user=self.user)
+        payload = {
+            "message": {
+                "chat": {"id": 987654},
+                "from": {"username": "abebe"},
+                "text": f"/start notify_{link.token}",
+            }
+        }
+        response = self.client.post(
+            reverse("store:telegram-customer-webhook"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        link.refresh_from_db()
+        self.assertEqual(link.chat_id, "987654")
+        self.assertEqual(link.telegram_username, "abebe")
+        self.assertIsNotNone(link.linked_at)
+
+    @override_settings(TASKS_EAGER=True)
+    def test_checkout_enqueues_customer_confirmation(self):
+        self._link(user=self.user)
+        Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
+        self.client.login(username="0911800000", password="test-pass-123")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("store:checkout"))
+
+        self.assertEqual(response.status_code, 302)
+        task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_CUSTOMER_ORDER_CONFIRM)
+        self.assertEqual(task.payload["user_id"], self.user.id)
+        self.assertTrue(task.payload["order_ids"])
+        # Customer bot unconfigured in tests -> silent no-op, task completes.
+        self.assertEqual(task.status, BackgroundTask.STATUS_DONE)
+
+    @patch("store.services.telegram.notify_customer_order_confirmation", return_value=True)
+    def test_order_confirmation_sends_to_linked_chat(self, notify_mock):
+        from store.services.telegram import send_customer_order_confirmation
+
+        self._link(chat_id="555010", user=self.user)
+        send_customer_order_confirmation(
+            {
+                "user_id": self.user.id,
+                "order_ids": [1],
+                "order_lines": [{"title": "Dress", "size": "M", "quantity": 1, "line_total": "100.00"}],
+                "order_total": "100.00",
+                "customer_name": "Sara",
+            }
+        )
+        notify_mock.assert_called_once()
+        self.assertEqual(notify_mock.call_args.args[0], "555010")
+
+    @override_settings(TASKS_EAGER=True)
+    @patch("store.services.telegram.notify_customer_order_status", return_value=True)
+    def test_staff_status_change_notifies_customer(self, notify_mock):
+        staff = User.objects.create_user(username="0911800001", password="test-pass-123", is_staff=True)
+        self._link(chat_id="555020", user=self.user)
+        order = Order.objects.create(
+            user=self.user,
+            product=self.product,
+            quantity=1,
+            size="M",
+            price_at_purchase=Decimal("100.00"),
+            line_total=Decimal("100.00"),
+        )
+        self.client.login(username="0911800001", password="test-pass-123")
+
+        response = self.client.post(
+            reverse("store:dashboard-orders"),
+            {"order_id": order.id, "status": "On The Way", "action": "single"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        notify_mock.assert_called_once()
+        self.assertEqual(notify_mock.call_args.args[0], "555020")
+        self.assertEqual(notify_mock.call_args.kwargs["status"], "On The Way")
+
+    @override_settings(TASKS_EAGER=True)
+    @patch("store.services.telegram.notify_customer_restock", return_value=True)
+    def test_restock_transition_alerts_watchers_once(self, notify_mock):
+        from store.services.inventory import set_product_sizes as set_sizes
+
+        self._link(chat_id="555030", user=self.user)
+        RestockRequest.objects.create(product=self.product, user=self.user, email="a@example.com", size="M")
+
+        # Sell out, then restock.
+        set_sizes(self.product, [])
+        ProductSizeStock.objects.filter(product=self.product).delete()
+        Product.objects.filter(pk=self.product.pk).update(is_sold_out=True, stock_quantity=0)
+        self.product.refresh_from_db()
+        set_sizes(self.product, ["M"])
+
+        notify_mock.assert_called_once()
+        self.assertEqual(notify_mock.call_args.args[0], "555030")
+        # The request is cleared after a successful alert.
+        self.assertFalse(RestockRequest.objects.filter(product=self.product).exists())
+
+    @override_settings(TASKS_EAGER=False)
+    @patch("store.services.telegram.notify_customer_abandoned_cart", return_value=True)
+    def test_abandoned_cart_sweep_nudges_once_per_cart_state(self, notify_mock):
+        link = self._link(chat_id="555040", user=self.user)
+        Cart.objects.create(user=self.user, product=self.product, quantity=2, size="M")
+        Cart.objects.filter(user=self.user).update(
+            updated_at=timezone.now() - timedelta(hours=task_queue.ABANDONED_CART_HOURS + 1)
+        )
+
+        created = task_queue._enqueue_abandoned_cart_nudges()
+        self.assertEqual(created, 1)
+        task_queue.run_pending()
+
+        notify_mock.assert_called_once()
+        link.refresh_from_db()
+        self.assertIsNotNone(link.last_abandoned_nudge_at)
+
+        # Second sweep: same cart state, no new nudge.
+        self.assertEqual(task_queue._enqueue_abandoned_cart_nudges(), 0)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_fresh_cart_is_not_nudged(self):
+        self._link(chat_id="555050", user=self.user)
+        Cart.objects.create(user=self.user, product=self.product, quantity=1, size="M")
+        self.assertEqual(task_queue._enqueue_abandoned_cart_nudges(), 0)
+
+
+class PromoPricingTests(TestCase):
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Promo")
+
+    def _put_on_sale(self, product, price="350.00", compare_at="500.00"):
+        product.price = Decimal(price)
+        product.compare_at_price = Decimal(compare_at)
+        product.save(update_fields=["price", "compare_at_price", "updated_at"])
+        return product
+
+    def test_sale_properties(self):
+        self._put_on_sale(self.product)
+        self.assertTrue(self.product.is_on_sale)
+        self.assertEqual(self.product.discount_percent, 30)
+
+    def test_not_on_sale_without_higher_compare_at(self):
+        self.assertFalse(self.product.is_on_sale)
+        self.assertEqual(self.product.discount_percent, 0)
+        self.product.compare_at_price = self.product.price
+        self.assertFalse(self.product.is_on_sale)
+
+    def test_new_badge_window(self):
+        self.assertTrue(self.product.is_new)
+        Product.objects.filter(pk=self.product.pk).update(
+            created_at=timezone.now() - timedelta(days=Product.NEW_BADGE_DAYS + 1)
+        )
+        self.product.refresh_from_db()
+        self.assertFalse(self.product.is_new)
+
+    def test_sale_page_lists_only_discounted_products(self):
+        on_sale = self._put_on_sale(self.product)
+        Product.objects.create(
+            title="Full Price Dress",
+            slug="full-price-dress",
+            sku="SKU-FULLPRICE-1",
+            short_description="Not discounted",
+            product_image="product/test.jpg",
+            price=Decimal("200.00"),
+            category=self.category,
+            brand=self.brand,
+            is_active=True,
+            is_featured=False,
+            is_sold_out=False,
+        )
+
+        response = self.client.get(reverse("store:sale-products"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, on_sale.title)
+        self.assertNotContains(response, "Full Price Dress")
+
+    def test_card_shows_discount_badge_and_struck_price(self):
+        self._put_on_sale(self.product)
+
+        response = self.client.get(reverse("store:all-products"))
+
+        self.assertContains(response, "-30%")
+        self.assertContains(response, "spring-price-was")
+        self.assertContains(response, "500.00 ETB")
+
+    def test_dashboard_form_rejects_compare_at_below_price(self):
+        from store.dashboard_forms import DashboardProductForm
+
+        form = DashboardProductForm(
+            data={
+                "title": "T",
+                "slug": "t",
+                "sku": "SKU-CMP-1",
+                "short_description": "d",
+                "price": "300.00",
+                "compare_at_price": "250.00",
+                "category": str(self.category.id),
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("compare_at_price", form.errors)
+
+
 class BackgroundTaskQueueTests(TestCase):
     def setUp(self):
         self.category, self.brand, self.product = _make_catalog("Queue")
@@ -926,6 +1350,30 @@ class BackgroundTaskQueueTests(TestCase):
         task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY)
         self.assertEqual(task.payload["user_id"], self.user.id)
         self.assertEqual(task.payload["order_count"], 1)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_stale_running_tasks_are_requeued_after_grace(self):
+        task = task_queue.enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": self.product.id})
+        BackgroundTask.objects.filter(pk=task.pk).update(
+            status=BackgroundTask.STATUS_RUNNING,
+            updated_at=timezone.now() - timedelta(minutes=task_queue.STALE_RUNNING_MINUTES + 1),
+        )
+        self.assertEqual(task_queue._requeue_stale_running(), 1)
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_freshly_claimed_running_task_is_not_stolen(self):
+        task = task_queue.enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": self.product.id})
+        # Simulate the drain's claim: bulk update must stamp updated_at so a
+        # concurrent sweeper doesn't treat the claimed task as abandoned.
+        BackgroundTask.objects.filter(pk=task.pk).update(
+            status=BackgroundTask.STATUS_RUNNING,
+            updated_at=timezone.now(),
+        )
+        self.assertEqual(task_queue._requeue_stale_running(), 0)
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_RUNNING)
 
     def test_suspension_skips_product_post_enqueue(self):
         BackgroundTask.objects.all().delete()
@@ -1070,7 +1518,8 @@ class QueryCountGuardTests(TestCase):
     def test_detail_view_query_count(self):
         url = reverse("store:product-detail", args=[self.product.slug])
         self.client.get(url)  # warm menu caches + session
-        with self.assertNumQueries(13):
+        # 13 baseline + 1 fit-feedback aggregate + 1 behavioral view-event insert.
+        with self.assertNumQueries(15):
             self.client.get(url)
 
     def test_collection_view_query_count_anonymous(self):
@@ -1085,7 +1534,8 @@ class QueryCountGuardTests(TestCase):
         Cart.objects.create(user=user, product=self.product, quantity=1, size="M")
         self.client.login(username="0911800000", password="test-pass-123")
         self.client.get(reverse("store:cart"))  # warm caches
-        with self.assertNumQueries(7):
+        # 7 baseline + 1 TelegramLink lookup for the notifications opt-in banner.
+        with self.assertNumQueries(8):
             self.client.get(reverse("store:cart"))
 
 
@@ -1440,4 +1890,110 @@ class AIDraftAutomationTests(TestCase):
         self.assertNotIn("delivery_note", initial)
         self.assertNotIn("return_note", initial)
         self.assertEqual(initial["category"], self.category.pk)
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key", TASKS_EAGER=False)
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
+    def test_transient_failure_requeues_draft_then_manual_review_on_give_up(self, generate_mock):
+        generate_mock.side_effect = ai_enrichment.ProductAITransientError(
+            "Gemini request failed: gemini-2.5-flash: 503 overloaded"
+        )
+        draft = self._draft(
+            sku="AI-TRANS-1",
+            response_payload={},
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+        task = task_queue.enqueue(BackgroundTask.TYPE_AI_ENRICH_DRAFT, {"draft_id": draft.id})
+
+        task_queue.execute(task)
+        task.refresh_from_db()
+        draft.refresh_from_db()
+
+        # The task retries with backoff while the draft honestly reads "queued"
+        # instead of sitting stuck on "generating copy".
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_QUEUED)
+        self.assertEqual(draft.last_error_stage, "content-transient")
+        self.assertIn("503", draft.error_message)
+
+        for _ in range(task_queue.MAX_ATTEMPTS - 1):
+            task_queue.execute(task)
+            task.refresh_from_db()
+
+        draft.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_FAILED)
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_MANUAL_REVIEW)
+
+    @override_settings(
+        DEBUG=True,
+        GEMINI_API_KEY="test-gemini-key",
+        TASKS_EAGER=False,
+        MEDIA_ROOT=tempfile.gettempdir(),
+        DEFAULT_FILE_STORAGE="django.core.files.storage.FileSystemStorage",
+    )
+    @patch("store.services.enrichment.generate_product_ai_payload_for_draft")
+    def test_orphaned_queued_draft_is_swept_by_task_drain(self, generate_mock):
+        generate_mock.return_value = self._payload(title="Swept Dress")
+        draft = self._draft(
+            sku="AI-ORPHAN-1",
+            response_payload={},
+            status=ProductAIDraft.STATUS_PENDING,
+            pipeline_state=ProductAIDraft.PIPELINE_QUEUED,
+        )
+        # The queue page never got to poll: no task row exists. Age the draft
+        # past the sweep grace period.
+        ProductAIDraft.objects.filter(pk=draft.pk).update(
+            updated_at=timezone.now() - timedelta(minutes=task_queue.ORPHAN_DRAFT_GRACE_MINUTES + 1)
+        )
+        self.assertFalse(BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_AI_ENRICH_DRAFT).exists())
+
+        processed = task_queue.run_pending()
+
+        self.assertEqual(processed, 1)
+        draft.refresh_from_db()
+        self.assertEqual(draft.pipeline_state, ProductAIDraft.PIPELINE_READY)
+        self.assertTrue(Product.objects.filter(sku="AI-ORPHAN-1").exists())
+        # A ready draft is not swept again.
+        self.assertEqual(task_queue.run_pending(), 0)
+
+
+class AIEnrichmentErrorClassificationTests(TestCase):
+    """Network faults retry via the queue; request faults go to manual review."""
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch("store.ai_enrichment.time.sleep")
+    @patch("store.ai_enrichment.urlopen")
+    def test_network_failure_is_transient(self, urlopen_mock, sleep_mock):
+        urlopen_mock.side_effect = URLError("connection refused")
+        with self.assertRaises(ai_enrichment.ProductAITransientError):
+            ai_enrichment.generate_product_ai_draft(image_bytes=b"x", mime_type="image/jpeg", sku="SKU-NET")
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch("store.ai_enrichment.time.sleep")
+    @patch("store.ai_enrichment.urlopen")
+    def test_read_timeout_is_transient(self, urlopen_mock, sleep_mock):
+        urlopen_mock.side_effect = TimeoutError("read timed out")
+        with self.assertRaises(ai_enrichment.ProductAITransientError):
+            ai_enrichment.generate_product_ai_draft(image_bytes=b"x", mime_type="image/jpeg", sku="SKU-TIME")
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch("store.ai_enrichment.time.sleep")
+    @patch("store.ai_enrichment.urlopen")
+    def test_http_400_is_permanent(self, urlopen_mock, sleep_mock):
+        urlopen_mock.side_effect = HTTPError(
+            "https://example.com", 400, "Bad Request", {}, BytesIO(b"API key not valid")
+        )
+        with self.assertRaises(ai_enrichment.ProductAIError):
+            ai_enrichment.generate_product_ai_draft(image_bytes=b"x", mime_type="image/jpeg", sku="SKU-KEY")
+
+    @override_settings(GEMINI_API_KEY="test-gemini-key")
+    @patch("store.ai_enrichment.time.sleep")
+    @patch("store.ai_enrichment.urlopen")
+    def test_exhausted_503_is_transient(self, urlopen_mock, sleep_mock):
+        urlopen_mock.side_effect = [
+            HTTPError("https://example.com", 503, "Overloaded", {}, BytesIO(b"overloaded"))
+            for _ in range(8)
+        ]
+        with self.assertRaises(ai_enrichment.ProductAITransientError):
+            ai_enrichment.generate_product_ai_draft(image_bytes=b"x", mime_type="image/jpeg", sku="SKU-503")
 

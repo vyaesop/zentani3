@@ -8,11 +8,16 @@ sends are silent no-ops.
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 
-from store.models import Address, Product
+from store.models import Address, Cart, Product, RestockRequest, TelegramLink
 from store.telegram_notify import (
     _admin_bot_settings,
     _customer_bot_settings,
+    notify_customer_abandoned_cart,
+    notify_customer_order_confirmation,
+    notify_customer_order_status,
+    notify_customer_restock,
     notify_new_order,
     notify_new_signup,
     post_product_to_channel,
@@ -83,3 +88,99 @@ def send_signup_notification(payload):
     sent = notify_new_signup(user=user, address=address)
     if not sent and admin_bot_configured():
         raise TelegramSendError("Telegram signup notification failed.")
+
+
+# ── Customer-facing sends (all no-ops unless the customer linked Telegram) ──
+
+def send_customer_order_confirmation(payload):
+    chat_id = TelegramLink.linked_chat_id_for(
+        user_id=payload.get("user_id"),
+        session_key=payload.get("session_key") or "",
+    )
+    if not chat_id:
+        return
+    sent = notify_customer_order_confirmation(
+        chat_id,
+        order_ids=payload.get("order_ids") or [],
+        order_lines=payload.get("order_lines") or [],
+        order_total=Decimal(str(payload.get("order_total") or "0")),
+        customer_name=payload.get("customer_name") or "",
+    )
+    if not sent and customer_bot_configured():
+        raise TelegramSendError("Customer order confirmation failed.")
+
+
+def send_customer_order_status(payload):
+    from store.models import Order
+
+    order = Order.objects.filter(pk=payload.get("order_id")).select_related("product").first()
+    if order is None:
+        return
+    chat_id = TelegramLink.linked_chat_id_for(
+        user_id=order.user_id,
+        session_key=order.session_key or "",
+    )
+    if not chat_id:
+        return
+    from store.constants import ORDER_STATUS_COPY
+
+    status = payload.get("status") or order.status
+    sent = notify_customer_order_status(
+        chat_id,
+        order_id=order.id,
+        product_title=order.product.title if order.product_id else "Your item",
+        status=status,
+        status_copy=payload.get("status_copy") or ORDER_STATUS_COPY.get(status, ""),
+    )
+    if not sent and customer_bot_configured():
+        raise TelegramSendError(f"Customer status update failed for order {order.id}.")
+
+
+def send_customer_restock_notifications(payload):
+    """Alert every linked customer waiting on this product, then clear their
+    restock requests so they are notified once per restock."""
+    product = Product.objects.filter(pk=payload.get("product_id"), is_active=True, is_sold_out=False).first()
+    if product is None:
+        return
+
+    failures = 0
+    for restock_request in RestockRequest.objects.filter(product=product).select_related("user"):
+        chat_id = ""
+        if restock_request.user_id:
+            chat_id = TelegramLink.linked_chat_id_for(user_id=restock_request.user_id)
+        if not chat_id:
+            continue  # No Telegram opt-in; the request stays for future channels.
+        if notify_customer_restock(chat_id, product=product, size=restock_request.size or ""):
+            restock_request.delete()
+        else:
+            failures += 1
+
+    if failures and customer_bot_configured():
+        raise TelegramSendError(f"{failures} restock alert(s) failed for product {product.id}.")
+
+
+def send_customer_abandoned_cart_nudge(payload):
+    link = TelegramLink.objects.filter(pk=payload.get("link_id")).exclude(chat_id="").first()
+    if link is None:
+        return
+    if link.user_id:
+        cart_rows = Cart.objects.filter(user_id=link.user_id).select_related("product")
+    else:
+        cart_rows = Cart.objects.filter(user=None, session_key=link.session_key).select_related("product")
+    cart_rows = list(cart_rows)
+    if not cart_rows:
+        return
+
+    latest_activity = max(row.updated_at for row in cart_rows)
+    if link.last_abandoned_nudge_at and link.last_abandoned_nudge_at >= latest_activity:
+        return  # Already nudged for this cart state.
+
+    cart_lines = [{"title": row.product.title, "quantity": row.quantity} for row in cart_rows]
+    cart_total = sum((row.total_price for row in cart_rows), Decimal("0.00"))
+    sent = notify_customer_abandoned_cart(link.chat_id, cart_lines=cart_lines, cart_total=cart_total)
+    if not sent:
+        if customer_bot_configured():
+            raise TelegramSendError(f"Abandoned-cart nudge failed for link {link.id}.")
+        return
+    link.last_abandoned_nudge_at = timezone.now()
+    link.save(update_fields=["last_abandoned_nudge_at", "updated_at"])

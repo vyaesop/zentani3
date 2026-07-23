@@ -12,11 +12,11 @@ from store.constants import (
     ADDIS_SHIPPING_FEE,
     OUTSIDE_ADDIS_SHIPPING_FEE,
 )
-from store.models import Address, Cart, Coupon, Product
+from store.models import Address, Cart, Coupon, Product, ProductEvent
 from store.services.checkout import coupon_issue as _coupon_issue, effective_unit_price as _effective_unit_price
 
 from .catalog import _parse_available_sizes, _product_can_fulfill_quantity, _product_size_stock
-from .common import _ensure_session_key, _is_htmx, _safe_redirect_url
+from .common import _ensure_session_key, _is_htmx, _safe_redirect_url, _telegram_optin_context
 
 
 def _latest_saved_address(user):
@@ -194,6 +194,8 @@ def add_to_cart(request):
     else:
         success_message = f"Added {product.title} (Size: {selected_size_value or 'N/A'}) to cart. Open your cart to review delivery details and place the order."
 
+    ProductEvent.log(ProductEvent.EVENT_ADD_TO_CART, product, request=request)
+
     if is_htmx:
         return _feedback(success_message, tone="success")
 
@@ -230,6 +232,7 @@ def _cart_page_context(request):
         "latest_address": latest_address,
         "flow_status": _build_cart_flow_status(request, cart_products, latest_address),
         "shipping_note": shipping_note,
+        **_telegram_optin_context(request),
     }
 
 

@@ -280,6 +280,26 @@ def _admin_bot_welcome_text():
 
 
 def _handle_customer_bot_start(chat_id, start_payload, username):
+    if start_payload.startswith("notify_"):
+        from django.utils import timezone as _tz
+
+        from store.models import TelegramLink
+
+        token = start_payload.replace("notify_", "", 1).strip()
+        link = TelegramLink.objects.filter(token=token).first()
+        if link is None:
+            _send_customer_bot_text(chat_id, "This notification link is no longer valid — open the store and tap the Telegram button again.")
+            return
+        link.chat_id = str(chat_id)
+        link.telegram_username = username or ""
+        link.linked_at = _tz.now()
+        link.save(update_fields=["chat_id", "telegram_username", "linked_at", "updated_at"])
+        _send_customer_bot_text(
+            chat_id,
+            "You're all set! 🎉 We'll message you here with order confirmations, delivery updates, and back-in-stock alerts.",
+        )
+        return
+
     if start_payload.startswith("order_"):
         product_id = start_payload.replace("order_", "", 1)
         try:

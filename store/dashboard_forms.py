@@ -54,6 +54,7 @@ class DashboardProductForm(forms.ModelForm):
             "delivery_note",
             "return_note",
             "price",
+            "compare_at_price",
             "product_image",
             "category",
             "brand",
@@ -70,6 +71,7 @@ class DashboardProductForm(forms.ModelForm):
             "delivery_note": forms.TextInput(attrs={"placeholder": "Delivery promise shown on PDP"}),
             "return_note": forms.TextInput(attrs={"placeholder": "Return/support note shown on PDP"}),
             "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+            "compare_at_price": forms.NumberInput(attrs={"min": 0, "step": "0.01", "placeholder": "Original price before markdown"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -84,6 +86,17 @@ class DashboardProductForm(forms.ModelForm):
         from store.services.inventory import parse_size_list
 
         return ", ".join(parse_size_list(self.cleaned_data.get("available_sizes") or ""))
+
+    def clean(self):
+        cleaned = super().clean()
+        price = cleaned.get("price")
+        compare_at = cleaned.get("compare_at_price")
+        if compare_at is not None and price is not None and compare_at <= price:
+            self.add_error(
+                "compare_at_price",
+                "Compare-at price must be higher than the selling price (leave it blank when the product is not on sale).",
+            )
+        return cleaned
 
 
 class ProductAIDraftForm(forms.ModelForm):

@@ -25,7 +25,16 @@ except ImportError:
 
 
 class ProductAIError(Exception):
-    pass
+    """Permanent failure: needs a human (bad key, quota policy, malformed output)."""
+
+
+class ProductAITransientError(Exception):
+    """Network/overload failure worth an automatic retry with backoff.
+
+    Deliberately NOT a ProductAIError subclass: callers that catch
+    ProductAIError route to manual review, while this one is re-raised to the
+    task queue so it retries.
+    """
 
 
 RETRYABLE_HTTP_STATUS_CODES = {429, 500, 503}
@@ -730,6 +739,7 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
     }
 
     errors = []
+    transient_only = True
     api_response = None
     models = _candidate_models()
     for model_name in models:
@@ -750,18 +760,32 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
             except HTTPError as exc:
                 details = exc.read().decode("utf-8", errors="ignore")
                 errors.append(f"{model_name}: {exc.code} {details}")
-                if exc.code in RETRYABLE_HTTP_STATUS_CODES and attempt == 0:
+                if exc.code in RETRYABLE_HTTP_STATUS_CODES:
+                    if attempt == 0:
+                        time.sleep(2)
+                        continue
+                else:
+                    # A 4xx means the request itself is wrong (key, quota
+                    # policy, prompt) — retrying or backing off won't help.
+                    transient_only = False
+                break
+            except (URLError, TimeoutError) as exc:
+                # Covers connect failures, DNS, and read timeouts (urlopen
+                # raises bare TimeoutError when the socket read times out).
+                errors.append(f"{model_name}: {getattr(exc, 'reason', exc)}")
+                if attempt == 0:
                     time.sleep(2)
                     continue
-            except URLError as exc:
-                errors.append(f"{model_name}: {exc.reason}")
-            break
+                break
 
         if api_response is not None:
             break
 
     if api_response is None:
-        raise ProductAIError(f"Gemini request failed: {' | '.join(errors)}")
+        message = f"Gemini request failed: {' | '.join(errors)}"
+        if transient_only:
+            raise ProductAITransientError(message)
+        raise ProductAIError(message)
 
     text = _extract_json_text(api_response)
     parsed = _normalize_payload(_safe_json_loads(text))
