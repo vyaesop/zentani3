@@ -1,0 +1,12 @@
+{# Swipeable product rail (Marine Serre-style carousel). Pass rail_products. #}
+<div class="zent-rail swiper">
+    <div class="swiper-wrapper">
+        {% for product in rail_products %}
+        <div class="swiper-slide">
+            {% include 'store/_product_card_content.html' with product=product %}
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0">{{ rail_empty_message|default:"Products will appear here soon." }}</p>
+        {% endfor %}
+    </div>
+</div>

@@ -4861,3 +4861,244 @@ body.spring-body {
 .spring-stars .spring-star.is-filled { color: #f5a623; }
 .spring-stars { font-size: 1rem; letter-spacing: .05em; }
 
+
+/* ════ Marine Serre-inspired refinement pass ═══════════════════════ */
+
+/* ─── Typography: one grotesque for display, uppercase micro-chrome ─ */
+:root {
+    --zent-display-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --zent-chrome-tracking: .12em;
+}
+.spring-logo,
+.spring-hero h1,
+.spring-section__head h2,
+.spring-directory-header h1,
+.spring-page-header h1,
+.spring-product-info h1,
+.spring-story-band__title,
+.spring-brand-hero__title {
+    font-family: var(--zent-display-font);
+    letter-spacing: -0.01em;
+}
+.spring-nav__list a,
+.spring-mobile-menu a,
+.spring-announcement p,
+.spring-hero__eyebrow,
+.spring-directory-header__eyebrow,
+.spring-bottom-nav__item,
+.spring-section__head > a {
+    text-transform: uppercase;
+    letter-spacing: var(--zent-chrome-tracking);
+    font-size: 11.5px;
+    font-weight: 500;
+}
+.spring-nav__list a { font-size: 12px; }
+.spring-announcement p { font-size: 11px; }
+.spring-product-card__body h3 { font-weight: 400; }
+.spring-product-card__meta {
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    font-size: 10.5px;
+}
+
+/* ─── Badges: quiet uppercase chips; red is reserved for Sale ─────── */
+.spring-product-card__badge {
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    padding: .22rem .5rem;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .94);
+    color: #111;
+    border: 1px solid #111;
+}
+.spring-product-card__badge--soldout { background: #111; color: #fff; border-color: #111; }
+.spring-product-card__badge--sale { background: #b3261e; color: #fff; border-color: #b3261e; }
+.spring-product-card__badge--bestseller { background: rgba(255, 255, 255, .94); color: #111; border-color: #111; }
+.spring-product-card__badge--new { background: rgba(255, 255, 255, .94); color: #111; border-color: #111; }
+
+/* ─── Quick-add size chips + toast ────────────────────────────────── */
+.spring-size-chip--quick {
+    cursor: pointer;
+    background: #fff;
+    transition: background .15s ease, color .15s ease;
+}
+.spring-size-chip--quick:hover { background: #111; color: #fff; border-color: #111; }
+.spring-size-chip--quick.htmx-request { opacity: .5; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) {
+    /* Desktop: chips reveal on card hover, Marine Serre-style. */
+    .spring-product-card .spring-product-card__sizes {
+        opacity: 0;
+        transform: translateY(3px);
+        transition: opacity .18s ease, transform .18s ease;
+    }
+    .spring-product-card:hover .spring-product-card__sizes,
+    .spring-product-card:focus-within .spring-product-card__sizes {
+        opacity: 1;
+        transform: none;
+    }
+}
+.zent-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 76px;
+    transform: translateX(-50%) translateY(8px);
+    z-index: 1060;
+    width: min(420px, calc(100vw - 32px));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+}
+.zent-toast.is-visible { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+.zent-toast .zent-alert { box-shadow: 0 6px 24px rgba(0, 0, 0, .14); margin: 0; }
+@media (min-width: 992px) { .zent-toast { bottom: 24px; } }
+.spring-bottom-nav__badge.is-zero { display: none; }
+
+/* ─── Second-image hover swap on cards ───────────────────────────── */
+.spring-product-card__media { position: relative; display: block; }
+.spring-product-card__alt {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .25s ease;
+    pointer-events: none;
+}
+.spring-product-card__alt img { width: 100%; height: 100%; object-fit: cover; }
+@media (hover: hover) and (pointer: fine) {
+    .spring-product-card:hover .spring-product-card__alt { opacity: 1; }
+}
+
+/* ─── Editorial story band (full-bleed collection story) ─────────── */
+.spring-story-band {
+    position: relative;
+    margin: 40px 0;
+    min-height: 420px;
+    display: flex;
+    align-items: flex-end;
+}
+.spring-story-band__media {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 25%;
+    filter: brightness(.72);
+}
+.spring-story-band__overlay {
+    position: relative;
+    padding: 48px clamp(20px, 6vw, 80px);
+    color: #fff;
+    max-width: 560px;
+}
+.spring-story-band__kicker {
+    text-transform: uppercase;
+    letter-spacing: var(--zent-chrome-tracking);
+    font-size: 11px;
+    margin: 0 0 8px;
+    opacity: .85;
+}
+.spring-story-band__title { font-size: clamp(26px, 4vw, 42px); margin: 0 0 10px; color: #fff; }
+.spring-story-band__copy { font-size: 14.5px; margin: 0 0 18px; opacity: .92; }
+.spring-story-band__cta { background: #fff; color: #111; border: none; }
+
+/* ─── Brand spotlight band ───────────────────────────────────────── */
+.spring-brand-hero {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: clamp(20px, 4vw, 56px);
+    align-items: center;
+    margin: 48px auto;
+    padding-top: 8px;
+}
+.spring-brand-hero__media img { width: 100%; height: auto; display: block; }
+.spring-brand-hero__title { font-size: clamp(24px, 3vw, 36px); margin: 4px 0 12px; }
+.spring-brand-hero__body p { color: #555; font-size: 14.5px; }
+@media (max-width: 767.98px) {
+    .spring-brand-hero { grid-template-columns: 1fr; }
+}
+
+/* ─── "Shop the edits" chip row ──────────────────────────────────── */
+.spring-edit-chips {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 14px 16px 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.spring-edit-chips::-webkit-scrollbar { display: none; }
+.spring-edit-chip {
+    flex: 0 0 auto;
+    padding: .45rem .95rem;
+    border: 1px solid #d8d4cd;
+    border-radius: 999px;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #111;
+    text-decoration: none;
+    background: #fff;
+    transition: background .15s ease, color .15s ease;
+}
+.spring-edit-chip:hover { background: #111; color: #fff; border-color: #111; }
+.spring-edit-chip--sale { color: #b3261e; border-color: #b3261e; }
+.spring-edit-chip--sale:hover { background: #b3261e; color: #fff; }
+
+/* ─── Product rails: graceful fallback when Swiper hasn't booted ─── */
+.zent-rail:not(.swiper-initialized) .swiper-wrapper {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.zent-rail:not(.swiper-initialized) .swiper-slide {
+    flex: 0 0 auto;
+    width: min(46vw, 280px);
+}
+
+/* ─── Brand mini-storefront hero ─────────────────────────────────── */
+.spring-story-band--brand { min-height: 300px; margin-top: 0; }
+@media (min-width: 992px) { .spring-story-band--brand { min-height: 380px; } }
+
+/* ─── Footer Telegram CTA + policy page ──────────────────────────── */
+.spring-footer__telegram {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 22px 24px;
+    margin-bottom: 32px;
+    background: #111;
+    color: #fff;
+    border-radius: 12px;
+}
+.spring-footer__telegram h3 {
+    margin: 0 0 4px;
+    color: #fff;
+    font-family: var(--zent-display-font);
+    font-size: 18px;
+}
+.spring-footer__telegram p { margin: 0; color: rgba(255, 255, 255, .75); font-size: 13.5px; }
+.spring-footer__telegram .btn { white-space: nowrap; }
+
+.spring-policy-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin: 24px 0 48px;
+}
+@media (max-width: 767.98px) { .spring-policy-grid { grid-template-columns: 1fr; } }
+.spring-policy-card {
+    border: 1px solid #e6e3de;
+    border-radius: 12px;
+    padding: 22px;
+    background: #fff;
+}
+.spring-policy-card h2 {
+    font-family: var(--zent-display-font);
+    font-size: 17px;
+    margin: 0 0 10px;
+}
+.spring-policy-card h2 i { color: #7f5f2e; margin-right: 6px; }
+.spring-policy-card p, .spring-policy-card li { font-size: 14px; color: #555; }
+.spring-policy-card ul { padding-left: 18px; margin: 8px 0 0; }

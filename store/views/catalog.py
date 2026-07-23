@@ -59,7 +59,7 @@ def _recently_viewed_products(request, exclude_id=None, limit=4):
         product.id: product
         for product in Product.objects.filter(id__in=product_ids, is_active=True)
         .select_related("category", "brand")
-        .prefetch_related("size_inventory")
+        .prefetch_related("size_inventory", "p_images")
         .only(*PRODUCT_LIST_FIELDS)
     }
     ordered_products = [products_by_id[product_id] for product_id in product_ids if product_id in products_by_id]
@@ -118,7 +118,7 @@ def _related_products_for(product, limit=4):
         candidate.id: candidate
         for candidate in Product.objects.filter(id__in=co_purchase_ids, is_active=True)
         .select_related("category", "brand")
-        .prefetch_related("size_inventory")
+        .prefetch_related("size_inventory", "p_images")
         .only(*PRODUCT_LIST_FIELDS)
     }
     related = [products_by_id[pid] for pid in co_purchase_ids if pid in products_by_id]
@@ -127,7 +127,7 @@ def _related_products_for(product, limit=4):
             Product.objects.filter(is_active=True, category=product.category)
             .exclude(id__in=[product.id, *[item.id for item in related]])
             .select_related("category", "brand")
-            .prefetch_related("size_inventory")
+            .prefetch_related("size_inventory", "p_images")
             .only(*PRODUCT_LIST_FIELDS)[: limit - len(related)]
         )
         related.extend(fill)
@@ -381,10 +381,10 @@ def _product_stock_message(product, size_value=None):
 
 
 def home(request):
-    categories = Category.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "category_image").order_by("-created_at")[:8]
-    brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image").order_by("-created_at")[:12]
-    products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)[:24]
-    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
+    categories = Category.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "category_image", "description").order_by("-created_at")[:8]
+    brands = Brand.objects.filter(is_active=True, is_featured=True).only("id", "title", "slug", "brand_image", "description").order_by("-created_at")[:12]
+    products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)[:24]
+    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
     from store.context_preprocessors import top_selling_product_ids
 
     top_selling_ids = top_selling_product_ids()
@@ -392,16 +392,22 @@ def home(request):
         product.id: product
         for product in Product.objects.filter(id__in=top_selling_ids, is_active=True)
         .select_related("category", "brand")
-        .prefetch_related("size_inventory")
+        .prefetch_related("size_inventory", "p_images")
         .only(*PRODUCT_LIST_FIELDS)
     }
     top_selling_products = [top_selling_lookup[product_id] for product_id in top_selling_ids if product_id in top_selling_lookup]
+    # Editorial bands: first featured collection/brand that has imagery.
+    story_category = next((category for category in categories if category.category_image), None)
+    spotlight_brand = next((brand for brand in brands if brand.brand_image), None)
+
     context = {
         "categories": categories,
         "products": products,
         "brands": brands,
         "latest_products": latest_products,
         "top_selling_products": top_selling_products,
+        "story_category": story_category,
+        "spotlight_brand": spotlight_brand,
         "recently_viewed_products": _recently_viewed_products(request, limit=4),
         "saved_product_ids": _saved_product_ids_for_user(request.user),
     }
@@ -516,6 +522,26 @@ def shop(request):
 def service_worker(request):
     """Serve the PWA service worker from the site root so its scope is '/'."""
     return render(request, "sw.js", content_type="application/javascript")
+
+
+def delivery_returns(request):
+    from store.constants import (
+        ADDIS_FREE_SHIPPING_THRESHOLD,
+        ADDIS_SHIPPING_FEE,
+        OUTSIDE_ADDIS_SHIPPING_FEE,
+    )
+
+    return render(
+        request,
+        "store/delivery-returns.html",
+        {
+            "delivery_note": settings.STORE_DELIVERY_NOTE,
+            "return_note": settings.STORE_RETURN_NOTE,
+            "addis_fee": f"{ADDIS_SHIPPING_FEE:.0f}",
+            "outside_fee": f"{OUTSIDE_ADDIS_SHIPPING_FEE:.0f}",
+            "free_threshold": f"{ADDIS_FREE_SHIPPING_THRESHOLD:,.0f}",
+        },
+    )
 
 
 def about(request):

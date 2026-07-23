@@ -6,6 +6,10 @@
 {% block title %}Zentanee | Shop clothes & fashion in Addis Ababa{% endblock %}
 {% block meta_description %}Zentanee — curated clothing and modest fashion with free delivery in Addis Ababa. Pay on delivery. Browse new arrivals, collections, and brands.{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/swiper/swiper-bundle.min.css' %}">
+{% endblock %}
+
 {% block content %}
 <main class="main spring-main">
   <section class="spring-hero spring-hero--denim spring-container">
@@ -17,6 +21,15 @@
           <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Browse collections</a>
       </div>
   </section>
+
+  <nav class="spring-edit-chips spring-container" aria-label="Shop the edits">
+      <a href="{% url 'store:all-products' %}?sort=newest" class="spring-edit-chip">New in</a>
+      <a href="{% url 'store:sale-products' %}" class="spring-edit-chip spring-edit-chip--sale">Sale</a>
+      <a href="{% url 'store:all-products' %}?max_price=1000" class="spring-edit-chip">Under 1,000 ETB</a>
+      {% for category in categories|slice:":4" %}
+      <a href="{% url 'store:category-products' category.slug %}" class="spring-edit-chip">{{ category.title }}</a>
+      {% endfor %}
+  </nav>
 
   {% if recently_viewed_products %}
   <section class="spring-section spring-container">
@@ -58,3 +71,22 @@
   </section>
 </main>
 {% endblock content %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof Swiper === 'undefined') return; // rails degrade to a scrollable row
+    document.querySelectorAll('.zent-rail').forEach(function (rail) {
+        new Swiper(rail, {
+            slidesPerView: 2.15,
+            spaceBetween: 12,
+            freeMode: true,
+            breakpoints: {
+                768: { slidesPerView: 3.15, spaceBetween: 16 },
+                1200: { slidesPerView: 4, spaceBetween: 20 }
+            }
+        });
+    });
+});
+</script>
+{% endblock extra_scripts %}

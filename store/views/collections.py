@@ -260,7 +260,7 @@ def _render_collection(request, template_name, context):
 
 
 def search_view(request):
-    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -302,7 +302,7 @@ def search_suggestions(request):
 
 
 def products(request):
-    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -315,7 +315,7 @@ def sale_products(request):
     base_products = (
         Product.objects.filter(is_active=True, compare_at_price__gt=F("price"))
         .select_related("category", "brand")
-        .prefetch_related("size_inventory")
+        .prefetch_related("size_inventory", "p_images")
         .only(*PRODUCT_LIST_FIELDS)
     )
     context = _build_collection_state(
@@ -362,7 +362,7 @@ def all_brands(request):
 
 def category_products(request, slug):
     category = get_object_or_404(Category, slug=slug)
-    base_products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True, category=category).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,
@@ -375,7 +375,7 @@ def category_products(request, slug):
 
 def brand_products(request, slug):
     brand = get_object_or_404(Brand, slug=slug)
-    base_products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").prefetch_related("size_inventory").only(*PRODUCT_LIST_FIELDS)
+    base_products = Product.objects.filter(is_active=True, brand=brand).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)
     context = _build_collection_state(
         request,
         base_products,

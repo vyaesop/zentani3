@@ -45,6 +45,7 @@ urlpatterns = [
     path('product/test/', views.test, name="test"),
     path('about/', views.about, name="about"),
     path('contact/', views.contact, name="contact"),
+    path('delivery-returns/', views.delivery_returns, name="delivery-returns"),
 
     #URL for Products
     path('product/<slug:slug>/', views.detail, name="product-detail"),

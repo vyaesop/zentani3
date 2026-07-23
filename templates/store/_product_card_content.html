@@ -9,6 +9,13 @@
             {% else %}
             <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="520">
             {% endif %}
+            {% with alt_image=product.p_images.all|first %}
+            {% if alt_image and alt_image.image %}
+            <span class="spring-product-card__alt" aria-hidden="true">
+                {% cld_img alt_image.image width=420 alt="" html_width=420 html_height=520 loading="lazy" %}
+            </span>
+            {% endif %}
+            {% endwith %}
         </a>
 
         {% if product.id in saved_product_ids %}
@@ -49,9 +56,14 @@
         {% endif %}
 
         {% if product.available_sizes and not product.is_sold_out %}
-        <div class="spring-product-card__sizes">
+        <div class="spring-product-card__sizes" aria-label="Quick add {{ product.title }} to cart"
+             hx-disinherit="hx-target hx-select hx-swap hx-push-url hx-indicator">
             {% for size in product.available_sizes|split:"," %}
-            <span class="spring-size-chip">{{ size|strip }}</span>
+            <button type="button" class="spring-size-chip spring-size-chip--quick"
+                    hx-post="{% url 'store:add-to-cart' %}"
+                    hx-vals='{"prod_id": "{{ product.id }}", "size": "{{ size|strip }}"}'
+                    hx-target="#zent-toast" hx-swap="innerHTML"
+                    aria-label="Add size {{ size|strip }} to cart">{{ size|strip }}</button>
             {% endfor %}
         </div>
         {% endif %}
