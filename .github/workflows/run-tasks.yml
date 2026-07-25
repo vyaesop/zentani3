@@ -22,7 +22,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Call run-tasks endpoint
+        # curl does not follow redirects here on purpose: a redirect means the
+        # domain moved and the drain silently stopped, so fail loudly instead.
         run: |
-          curl --fail-with-body --silent --show-error --max-time 120 \
+          response=$(curl --fail-with-body --silent --show-error --max-time 120 \
             -H "Authorization: Bearer ${{ secrets.RUN_TASKS_SECRET }}" \
-            "https://zentani3-959x.vercel.app/internal/run-tasks/?limit=25"
+            "https://zentanee.vercel.app/internal/run-tasks/?limit=25")
+          echo "$response"
+          echo "$response" | grep -q '"ok": true'
