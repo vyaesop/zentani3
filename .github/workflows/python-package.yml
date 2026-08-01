@@ -1,4 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# Lints and runs the Django test suite on every push/PR to main.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
@@ -21,13 +21,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
+        python -m pip install flake8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
@@ -35,13 +35,22 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        exit_code=0
-        pytest || exit_code=$?
-        # Pytest returns 5 when no tests are collected; treat that as non-failing for now.
-        if [ $exit_code -eq 5 ]; then
-          echo "No tests were collected; skipping failure."
-          exit 0
-        fi
-        exit $exit_code
+    - name: Run Django test suite
+      # Was `pytest`, which collected 0 items and passed: the suite lives in
+      # store/tests.py, and pytest's default discovery pattern is test_*.py.
+      # CI reported green while running no tests at all until 2026-08-01.
+      #
+      # settings_local is hermetic by construction (sqlite, locmem cache, local
+      # file storage, blanked Gemini keys, popped TELEGRAM_* env vars), so this
+      # never reaches Neon, Telegram, Cloudinary or Gemini.
+      env:
+        # settings.py refuses to import with DEBUG off unless both are present.
+        # The sqlite URL is a parseable placeholder; settings_local replaces
+        # DATABASES with its own sqlite config regardless.
+        DJANGO_SECRET_KEY: ci-only-key-never-used-in-production
+        DATABASE_URL: sqlite:///ci-placeholder.sqlite3
+        # Match local runs: with DEBUG off, TASKS_EAGER defaults to false, so the
+        # queue tests exercise the real enqueue/drain path rather than inline
+        # execution. Pinned so a future DEBUG change cannot silently flip it.
+        TASKS_EAGER: "false"
+      run: python manage.py test store --settings=zentanee.settings_local -v 2

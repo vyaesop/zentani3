@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
 import json
+import os
 import tempfile
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
@@ -11,7 +12,7 @@ from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from PIL import Image
 
 from . import ai_enrichment
@@ -1582,6 +1583,60 @@ class BackgroundTaskQueueTests(TestCase):
         self.assertTrue(
             BackgroundTask.objects.filter(task_type=BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST).exists()
         )
+
+
+@override_settings(DEBUG=False)
+class RunTasksEndpointAuthTests(TestCase):
+    """Guards the shared-secret gate on the serverless drain trigger.
+
+    A stale GitHub Actions secret silently 403'd every scheduled drain for a
+    week, so these pin both the accepted header forms and the diagnosable
+    error bodies that made the misconfiguration visible.
+    """
+
+    url = reverse_lazy("store:run-tasks")
+
+    def test_bearer_token_is_accepted(self):
+        with patch.dict(os.environ, {"RUN_TASKS_SECRET": "s3cret"}, clear=False):
+            response = self.client.get(self.url, HTTP_AUTHORIZATION="Bearer s3cret")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+
+    def test_dedicated_header_is_accepted(self):
+        with patch.dict(os.environ, {"RUN_TASKS_SECRET": "s3cret"}, clear=False):
+            response = self.client.get(self.url, HTTP_X_RUN_TASKS_SECRET="s3cret")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+
+    def test_cron_secret_is_honoured_as_fallback(self):
+        env = {"CRON_SECRET": "vercel-secret"}
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("RUN_TASKS_SECRET", None)
+            response = self.client.get(self.url, HTTP_AUTHORIZATION="Bearer vercel-secret")
+        self.assertEqual(response.status_code, 200)
+
+    def test_wrong_secret_is_rejected_with_a_diagnosable_body(self):
+        with patch.dict(os.environ, {"RUN_TASKS_SECRET": "s3cret"}, clear=False):
+            response = self.client.get(self.url, HTTP_AUTHORIZATION="Bearer stale-secret")
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertIn("invalid", payload["error"])
+        # The response must never disclose either secret.
+        self.assertNotIn("s3cret", response.content.decode())
+
+    def test_unconfigured_server_says_so(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("RUN_TASKS_SECRET", None)
+            os.environ.pop("CRON_SECRET", None)
+            response = self.client.get(self.url, HTTP_AUTHORIZATION="Bearer anything")
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("not configured", response.json()["error"])
+
+    def test_other_methods_are_rejected(self):
+        with patch.dict(os.environ, {"RUN_TASKS_SECRET": "s3cret"}, clear=False):
+            response = self.client.delete(self.url, HTTP_AUTHORIZATION="Bearer s3cret")
+        self.assertEqual(response.status_code, 405)
 
 
 class GuestCheckoutTests(TestCase):
