@@ -360,11 +360,24 @@ def run_tasks_endpoint(request):
         if authorization.startswith("Bearer "):
             provided_secret = authorization[len("Bearer "):].strip()
 
+    # The error bodies name the misconfiguration but never echo either secret:
+    # a caller that already failed auth learns nothing exploitable from them,
+    # and without them a 403 is indistinguishable from an unset server env var.
     if not expected_secret:
         if not settings.DEBUG:
-            return HttpResponse(status=403)
+            logger.error(
+                "run-tasks drain rejected: neither RUN_TASKS_SECRET nor CRON_SECRET is set on the server."
+            )
+            return JsonResponse(
+                {"ok": False, "error": "drain secret is not configured on the server"},
+                status=403,
+            )
     elif provided_secret != expected_secret:
-        return HttpResponse(status=403)
+        logger.warning("run-tasks drain rejected: caller secret did not match the configured secret.")
+        return JsonResponse(
+            {"ok": False, "error": "invalid or missing drain secret"},
+            status=403,
+        )
 
     try:
         limit = max(1, min(int(request.GET.get("limit", 10)), 50))

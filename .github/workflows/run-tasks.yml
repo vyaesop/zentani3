@@ -4,29 +4,110 @@
 # daily Vercel cron in vercel.json remains as a fallback.
 #
 # Requires the RUN_TASKS_SECRET repository secret to match the RUN_TASKS_SECRET
-# (or CRON_SECRET) environment variable configured on Vercel.
+# (or CRON_SECRET) environment variable configured on Vercel. A mismatch shows
+# up as an HTTP 403 from the endpoint and fails this job immediately.
 name: Drain background tasks
 
 on:
   schedule:
+    # GitHub heavily throttles scheduled workflows: this repo actually gets a
+    # run roughly once an hour, not every five minutes. Rather than accept an
+    # hour of queue latency, each run polls in a loop for most of that hour
+    # (see LOOP_MINUTES below), so posts go out within about a minute.
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
   group: run-tasks-drain
-  cancel-in-progress: false
+  # A newer run supersedes an older one still in its polling loop. Safe to cut
+  # one off mid-flight: the endpoint claims tasks atomically and anything left
+  # stranded in RUNNING is requeued by _requeue_stale_running after 15 minutes.
+  cancel-in-progress: true
 
 jobs:
   drain:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 55
     steps:
-      - name: Call run-tasks endpoint
-        # curl does not follow redirects here on purpose: a redirect means the
-        # domain moved and the drain silently stopped, so fail loudly instead.
+      - name: Drain the queue on a loop
+        env:
+          RUN_TASKS_SECRET: ${{ secrets.RUN_TASKS_SECRET }}
+          # 50 is the endpoint's own per-call ceiling.
+          DRAIN_URL: https://zentanee.vercel.app/internal/run-tasks/?limit=50
+          LOOP_MINUTES: "50"
+          INTERVAL_SECONDS: "60"
+        # Redirects are not followed on purpose: a redirect means the domain
+        # moved and the drain silently stopped, so fail loudly instead.
         run: |
-          response=$(curl --fail-with-body --silent --show-error --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.RUN_TASKS_SECRET }}" \
-            "https://zentanee.vercel.app/internal/run-tasks/?limit=25")
-          echo "$response"
-          echo "$response" | grep -q '"ok": true'
+          set -uo pipefail
+
+          if [ -z "$RUN_TASKS_SECRET" ]; then
+            echo "::error::RUN_TASKS_SECRET repository secret is empty or unset."
+            exit 1
+          fi
+
+          deadline=$(( $(date +%s) + LOOP_MINUTES * 60 ))
+          attempts=0
+          transient=0
+          drained=0
+
+          while :; do
+            attempts=$((attempts + 1))
+            # curl leaves the previous iteration's body in place when it fails
+            # before writing, so clear it or the warning quotes a stale response.
+            : > response.txt
+
+            # Body and status are captured separately so the response is always
+            # available. Interpolating curl into a `resp=$(...)` assignment loses
+            # it: under `set -e` a non-2xx exit aborts before the echo can run,
+            # which is what made earlier 403s show up as a bare "curl: (22)".
+            status=$(curl --silent --show-error --max-time 120 \
+              -H "Authorization: Bearer $RUN_TASKS_SECRET" \
+              -o response.txt -w '%{http_code}' \
+              "$DRAIN_URL") || status="000"
+
+            case "$status" in
+              200)
+                if grep -q '"ok": true' response.txt; then
+                  n=$(sed -n 's/.*"processed": *\([0-9]*\).*/\1/p' response.txt)
+                  n=${n:-0}
+                  drained=$((drained + n))
+                  if [ "$n" -gt 0 ]; then
+                    echo "$(date -u +%H:%M:%S)Z drained $n task(s)"
+                  fi
+                else
+                  transient=$((transient + 1))
+                  echo "::warning::HTTP 200 but payload was not ok: $(head -c 300 response.txt)"
+                fi
+                ;;
+              403)
+                echo "::error::HTTP 403 — the RUN_TASKS_SECRET repository secret does not match RUN_TASKS_SECRET/CRON_SECRET on Vercel, or Vercel has neither set."
+                head -c 300 response.txt
+                exit 1
+                ;;
+              3??)
+                echo "::error::HTTP $status redirect — the deployment domain moved. Update DRAIN_URL in this workflow."
+                exit 1
+                ;;
+              *)
+                # Serverless cold starts, 5xx and network blips are expected over
+                # a 50-minute loop; ride them out instead of failing the run.
+                transient=$((transient + 1))
+                echo "::warning::HTTP $status from the drain endpoint: $(head -c 300 response.txt)"
+                ;;
+            esac
+
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              break
+            fi
+            sleep "$INTERVAL_SECONDS"
+          done
+
+          echo "$attempts call(s), $drained task(s) drained, $transient transient failure(s)."
+
+          # Config errors already exited above, so reaching here with nothing but
+          # failures means the endpoint was unreachable for the whole window.
+          if [ "$transient" -ge "$attempts" ]; then
+            echo "::error::Every drain call in this run failed."
+            exit 1
+          fi
