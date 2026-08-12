@@ -115,11 +115,8 @@
 }
 .zd-brand-mark {
   width: 32px; height: 32px;
-  border-radius: 8px;
-  background: var(--z-sidebar-text);
-  color: var(--z-sidebar-bg);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800; letter-spacing: -0.02em;
+  border-radius: 50%;
+  background: #f9f8f6;
   flex-shrink: 0;
 }
 .zd-brand-text { display: grid; gap: 1px; }

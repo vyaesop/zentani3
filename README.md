@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="zentanee/static/asset/images/logo-circle.png" alt="Zentanee logo" width="200">
+</p>
+
 # Zentanee — Clothing & Apparel E-commerce Store
 
 [Live Demo](https://www.zentanee.com.et/)  
