@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111110">
   <title>{% block title %}{{ dashboard_page_title }} · Zentanee{% endblock %}</title>
-  <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'asset/images/icons/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'asset/css/zent-core.css' %}">
   <link rel="stylesheet" href="{% static 'asset/css/zent-dashboard.css' %}">
@@ -21,7 +21,7 @@
     <div class="zd-sidebar-inner">
 
       <a href="{% url 'store:dashboard-home' %}" class="zd-brand">
-        <span class="zd-brand-mark">Z</span>
+        <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="zd-brand-mark" width="512" height="512">
         <span class="zd-brand-text">
           <strong>Zentanee</strong>
           <small>Control Room</small>

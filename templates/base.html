@@ -17,11 +17,18 @@
 
     <title>{% block title %}Zentanee{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Zentanee fashion storefront.{% endblock %}">
-    {% block seo_head %}{% endblock %}
+    {% block seo_head %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Zentanee">
+    <meta property="og:title" content="Zentanee">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'asset/images/og-zentanee.jpg' %}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'asset/images/og-zentanee.jpg' %}">
+    {% endblock %}
     <meta name="author" content="Zentanee">
-    <link rel="icon" type="image/png" href="{% static 'asset/images/icons/favicon.ico' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'asset/images/icons/favicon.ico' %}">
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
-    <link rel="apple-touch-icon" href="{% static 'asset/images/icons/pwa-192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'asset/images/icons/apple-touch-icon.png' %}">
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,7 +72,10 @@
                     </form>
                 </div>
 
-                <a href="{% url 'store:home' %}" class="spring-logo" aria-label="Zentanee home">Zentanee</a>
+                <a href="{% url 'store:home' %}" class="spring-logo" aria-label="Zentanee home">
+                    <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="spring-logo__mark" width="512" height="512">
+                    <span>Zentanee</span>
+                </a>
 
                 <div class="spring-header__utility-right">
                     {% if request.user.is_staff %}
@@ -92,7 +102,10 @@
                 <button type="button" class="spring-mobile-icon mobile-menu-toggle" aria-label="Open menu">
                     <i class="fas fa-bars"></i>
                 </button>
-                <a href="{% url 'store:home' %}" class="spring-logo spring-logo--mobile" aria-label="Zentanee home">Zentanee</a>
+                <a href="{% url 'store:home' %}" class="spring-logo spring-logo--mobile" aria-label="Zentanee home">
+                    <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="spring-logo__mark" width="512" height="512">
+                    <span>Zentanee</span>
+                </a>
                 <a href="{% url 'store:cart' %}" class="spring-mobile-icon spring-mobile-icon--cart" aria-label="Open cart">
                     <i class="fas fa-shopping-bag"></i>
                     <span class="spring-cart-count" id="cart-count-mobile">{{ cart_items_count }}</span>
@@ -131,7 +144,10 @@
 
                 <div class="spring-footer__grid">
                     <div class="spring-footer__brand">
-                        <a href="{% url 'store:home' %}" class="spring-logo spring-logo--footer">Zentanee</a>
+                        <a href="{% url 'store:home' %}" class="spring-logo spring-logo--footer">
+                            <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="spring-logo__mark" width="512" height="512">
+                            <span>Zentanee</span>
+                        </a>
                         <p>Minimal storefront, clear product pages, and easy ordering for Addis shoppers.</p>
                     </div>
 
