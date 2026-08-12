@@ -2694,6 +2694,14 @@ body.spring-body {
     min-height: 92px;
 }
 
+/* style.min.css ships d-lg-none/block/flex but no grid variant, so the
+   utility header stayed d-none on desktop without this. */
+@media (min-width: 992px) {
+    .d-lg-grid {
+        display: grid !important;
+    }
+}
+
 .spring-header__utility-left,
 .spring-header__utility-right {
     display: flex;
@@ -2721,23 +2729,33 @@ body.spring-body {
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    gap: 0.35em;
-    font-size: clamp(28px, 4vw, 42px);
+    gap: 10px;
+    font-size: clamp(24px, 3vw, 34px);
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .spring-logo__mark {
-    width: 1.25em;
-    height: 1.25em;
+    width: 40px;
+    height: 40px;
+    max-width: 40px;
     border-radius: 50%;
     flex-shrink: 0;
+    object-fit: cover;
 }
 
 .spring-logo--footer {
     justify-content: flex-start;
     font-size: 22px;
+}
+
+.spring-logo--footer .spring-logo__mark {
+    width: 26px;
+    height: 26px;
+    max-width: 26px;
 }
 
 .spring-nav {
@@ -2783,7 +2801,15 @@ body.spring-body {
 }
 
 .spring-logo--mobile {
-    font-size: 24px;
+    font-size: 19px;
+    letter-spacing: 0.14em;
+    gap: 8px;
+}
+
+.spring-logo--mobile .spring-logo__mark {
+    width: 30px;
+    height: 30px;
+    max-width: 30px;
 }
 
 .spring-cart-link,

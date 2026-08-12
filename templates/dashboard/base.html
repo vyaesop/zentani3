@@ -9,7 +9,7 @@
   <link rel="icon" type="image/x-icon" href="{% static 'asset/images/icons/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'asset/css/zent-core.css' %}">
-  <link rel="stylesheet" href="{% static 'asset/css/zent-dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'asset/css/zent-dashboard.css' %}?v=2">
   <script src="{% static 'asset/vendor/htmx/htmx.min.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
@@ -21,7 +21,7 @@
     <div class="zd-sidebar-inner">
 
       <a href="{% url 'store:dashboard-home' %}" class="zd-brand">
-        <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="zd-brand-mark" width="512" height="512">
+        <img src="{% static 'asset/images/logo-circle.png' %}" alt="" class="zd-brand-mark" width="32" height="32">
         <span class="zd-brand-text">
           <strong>Zentanee</strong>
           <small>Control Room</small>
