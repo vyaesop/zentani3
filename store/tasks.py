@@ -4,6 +4,14 @@ No broker: `enqueue()` writes a `BackgroundTask` row, `run_pending()` drains
 due rows. Run the drain via `manage.py run_tasks` (always-on hosting) or the
 `POST /internal/run-tasks/` endpoint (serverless cron, shared-secret header).
 
+Quick, latency-sensitive types (INLINE_TASK_TYPES) additionally execute in the
+web request that enqueued them, right after the surrounding transaction
+commits — the row is written first, so a failed inline send falls back to the
+normal retry/backoff path and the cron drain picks it up. This keeps Telegram
+posts instant while letting the drain run sparsely: polling it every minute
+kept the Neon database compute awake around the clock, which exhausted the
+free plan's monthly CU allowance.
+
 With `settings.TASKS_EAGER = True` (default in DEBUG / tests) handlers execute
 inline at enqueue time so local flows behave synchronously.
 """
@@ -23,6 +31,21 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
 RETRY_BACKOFF_BASE_SECONDS = 60
 RUN_TASKS_SECRET_HEADER = "X-Run-Tasks-Secret"
+
+# Task types executed inline in the request that enqueues them (after commit)
+# instead of waiting for the cron drain. Everything here is at most a handful
+# of Telegram API calls, each capped at 6 seconds by telegram_notify. Fan-out
+# types (broadcasts, restock/wishlist alerts, cart nudges) and heavy ones (AI
+# enrichment runs minutes of Gemini calls) must stay queue-only. Values are
+# string literals rather than BackgroundTask constants to avoid importing
+# models at module load; tests assert they stay in sync.
+INLINE_TASK_TYPES = frozenset({
+    "telegram_product_post",
+    "telegram_order_notify",
+    "telegram_signup_notify",
+    "customer_order_confirm",
+    "customer_order_status",
+})
 
 
 def _handle_telegram_product_post(payload):
@@ -131,7 +154,7 @@ def _permanent_failure_hooks():
 
 
 def enqueue(task_type, payload=None, run_after=None):
-    """Queue a background task; executes inline when TASKS_EAGER is on."""
+    """Queue a background task; INLINE_TASK_TYPES also execute on commit."""
     from store.models import BackgroundTask
 
     task = BackgroundTask.objects.create(
@@ -141,6 +164,10 @@ def enqueue(task_type, payload=None, run_after=None):
     )
     if getattr(settings, "TASKS_EAGER", False):
         execute(task)
+    elif run_after is None and task_type in INLINE_TASK_TYPES:
+        # execute() swallows handler errors (leaving the row PENDING with
+        # backoff for the drain), so a failed send never breaks the request.
+        transaction.on_commit(lambda: execute(task))
     return task
 
 

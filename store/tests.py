@@ -1506,6 +1506,59 @@ class BackgroundTaskQueueTests(TestCase):
         self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
         self.assertEqual(task.attempts, 0)
 
+    def test_inline_task_types_match_model_constants(self):
+        # INLINE_TASK_TYPES uses string literals to avoid a models import at
+        # module load; catch drift if a constant is ever renamed.
+        known_types = {value for value, _ in BackgroundTask.TASK_TYPE_CHOICES}
+        self.assertTrue(task_queue.INLINE_TASK_TYPES <= known_types)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_inline_type_executes_after_commit(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            task = task_queue.enqueue(
+                BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
+                {"product_id": self.product.id},
+            )
+        task.refresh_from_db()
+        # No Telegram credentials in tests -> handler is a silent no-op.
+        self.assertEqual(task.status, BackgroundTask.STATUS_DONE)
+
+    @override_settings(TASKS_EAGER=False)
+    @patch("store.services.telegram.send_product_post", side_effect=RuntimeError("boom"))
+    def test_failed_inline_send_falls_back_to_the_queue(self, send_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            task = task_queue.enqueue(
+                BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
+                {"product_id": self.product.id},
+            )
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+        self.assertEqual(task.attempts, 1)
+        self.assertIn("boom", task.last_error)
+        self.assertGreater(task.run_after, timezone.now())
+
+    @override_settings(TASKS_EAGER=False)
+    def test_queue_only_type_stays_pending_after_commit(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            task = task_queue.enqueue(
+                BackgroundTask.TYPE_CUSTOMER_BROADCAST,
+                {"link_id": 1, "text": "Sale ends tonight"},
+            )
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+        self.assertEqual(task.attempts, 0)
+
+    @override_settings(TASKS_EAGER=False)
+    def test_scheduled_inline_type_is_not_executed_early(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            task = task_queue.enqueue(
+                BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST,
+                {"product_id": self.product.id},
+                run_after=timezone.now() + timedelta(minutes=30),
+            )
+        task.refresh_from_db()
+        self.assertEqual(task.status, BackgroundTask.STATUS_PENDING)
+
     @override_settings(TASKS_EAGER=False)
     def test_run_pending_executes_due_tasks(self):
         task_queue.enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": self.product.id})

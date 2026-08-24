@@ -568,7 +568,7 @@ def dashboard_products(request):
                 enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": product.id, "force": True})
                 messages.success(
                     request,
-                    f"{product.title} was queued for Telegram publishing. Failures appear under Background Tasks.",
+                    f"{product.title} was posted to Telegram. If the send failed it retries from Background Tasks.",
                 )
         else:
             messages.error(request, "That product action is not supported.")
@@ -791,7 +791,7 @@ def dashboard_product_edit(request, product_id=None):
                     )
                     messages.success(
                         request,
-                        f"{saved_product.title} is live and queued for Telegram publishing.",
+                        f"{saved_product.title} is live and was posted to Telegram.",
                     )
                 elif should_publish:
                     messages.warning(
