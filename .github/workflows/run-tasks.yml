@@ -1,7 +1,17 @@
-# Drains the background task queue (Telegram posts, AI enrichment) by hitting
-# /internal/run-tasks/ on the deployed site. Vercel Hobby crons may only run
-# once per day, so this scheduled workflow is the primary frequent drain; the
-# daily Vercel cron in vercel.json remains as a fallback.
+# Drains the background task queue (AI enrichment, fan-out sends like
+# broadcasts and wishlist alerts, retries of failed inline sends, periodic
+# sweeps) by hitting /internal/run-tasks/ on the deployed site. Quick Telegram
+# sends (product posts, order/signup notifications) execute inline in the web
+# request that creates them (see INLINE_TASK_TYPES in store/tasks.py), so
+# nothing drained here is latency-sensitive: this is a cleanup sweep, not the
+# delivery path. The daily Vercel cron in vercel.json remains as a fallback.
+#
+# Cost constraint: every drain call queries the Neon database, whose free-plan
+# compute only autosuspends after 5 idle minutes. The previous version of this
+# workflow polled every 60 seconds around the clock, which kept the database
+# awake 24/7 and burned the entire 100 CU-hour monthly allowance by mid-month
+# (Aug 2026). Hence the shape below: run sparsely, drain until the queue is
+# empty, then exit immediately — never idle-poll.
 #
 # Requires the RUN_TASKS_SECRET repository secret to match the RUN_TASKS_SECRET
 # (or CRON_SECRET) environment variable configured on Vercel. A mismatch shows
@@ -10,32 +20,33 @@ name: Drain background tasks
 
 on:
   schedule:
-    # GitHub heavily throttles scheduled workflows: this repo actually gets a
-    # run roughly once an hour, not every five minutes. Rather than accept an
-    # hour of queue latency, each run polls in a loop for most of that hour
-    # (see LOOP_MINUTES below), so posts go out within about a minute.
-    - cron: "*/5 * * * *"
+    # Nominally every 30 minutes; GitHub throttles scheduled workflows, so in
+    # practice expect roughly one run per hour. That latency is fine for
+    # everything left in the queue. Do NOT tighten this below ~15 minutes:
+    # each run wakes the database for its 5-minute autosuspend window, so a
+    # too-frequent schedule quietly recreates the 24/7-awake problem.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 concurrency:
   group: run-tasks-drain
-  # A newer run supersedes an older one still in its polling loop. Safe to cut
-  # one off mid-flight: the endpoint claims tasks atomically and anything left
+  # A newer run supersedes an older one still draining. Safe to cut one off
+  # mid-flight: the endpoint claims tasks atomically and anything left
   # stranded in RUNNING is requeued by _requeue_stale_running after 15 minutes.
   cancel-in-progress: true
 
 jobs:
   drain:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 15
     steps:
-      - name: Drain the queue on a loop
+      - name: Drain the queue until empty
         env:
           RUN_TASKS_SECRET: ${{ secrets.RUN_TASKS_SECRET }}
-          # 50 is the endpoint's own per-call ceiling.
+          # 50 is the endpoint's own per-call ceiling; BATCH_LIMIT must match
+          # the limit in DRAIN_URL — a full batch means more work may remain.
+          BATCH_LIMIT: "50"
           DRAIN_URL: https://zentanee.vercel.app/internal/run-tasks/?limit=50
-          LOOP_MINUTES: "50"
-          INTERVAL_SECONDS: "60"
         # Redirects are not followed on purpose: a redirect means the domain
         # moved and the drain silently stopped, so fail loudly instead.
         run: |
@@ -46,13 +57,11 @@ jobs:
             exit 1
           fi
 
-          deadline=$(( $(date +%s) + LOOP_MINUTES * 60 ))
-          attempts=0
-          transient=0
+          deadline=$(( $(date +%s) + 12 * 60 ))
           drained=0
+          transient_streak=0
 
           while :; do
-            attempts=$((attempts + 1))
             # curl leaves the previous iteration's body in place when it fails
             # before writing, so clear it or the warning quotes a stale response.
             : > response.txt
@@ -69,14 +78,21 @@ jobs:
             case "$status" in
               200)
                 if grep -q '"ok": true' response.txt; then
+                  transient_streak=0
                   n=$(sed -n 's/.*"processed": *\([0-9]*\).*/\1/p' response.txt)
                   n=${n:-0}
                   drained=$((drained + n))
                   if [ "$n" -gt 0 ]; then
                     echo "$(date -u +%H:%M:%S)Z drained $n task(s)"
                   fi
+                  # A partial batch means nothing due is left: stop right away
+                  # so the database can suspend. Only a full batch warrants
+                  # another call.
+                  if [ "$n" -lt "$BATCH_LIMIT" ]; then
+                    break
+                  fi
                 else
-                  transient=$((transient + 1))
+                  transient_streak=$((transient_streak + 1))
                   echo "::warning::HTTP 200 but payload was not ok: $(head -c 300 response.txt)"
                 fi
                 ;;
@@ -90,24 +106,25 @@ jobs:
                 exit 1
                 ;;
               *)
-                # Serverless cold starts, 5xx and network blips are expected over
-                # a 50-minute loop; ride them out instead of failing the run.
-                transient=$((transient + 1))
+                # Cold starts, 5xx and network blips deserve a few retries, but
+                # a persistent failure should fail the run loudly.
+                transient_streak=$((transient_streak + 1))
                 echo "::warning::HTTP $status from the drain endpoint: $(head -c 300 response.txt)"
                 ;;
             esac
 
+            if [ "$transient_streak" -ge 5 ]; then
+              echo "::error::5 consecutive drain calls failed; giving up."
+              exit 1
+            fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::warning::Deadline reached with a full batch still coming in; the next scheduled run continues."
               break
             fi
-            sleep "$INTERVAL_SECONDS"
+            # Only transient failures pause; full batches re-poll immediately.
+            if [ "$transient_streak" -gt 0 ]; then
+              sleep 20
+            fi
           done
 
-          echo "$attempts call(s), $drained task(s) drained, $transient transient failure(s)."
-
-          # Config errors already exited above, so reaching here with nothing but
-          # failures means the endpoint was unreachable for the whole window.
-          if [ "$transient" -ge "$attempts" ]; then
-            echo "::error::Every drain call in this run failed."
-            exit 1
-          fi
+          echo "$drained task(s) drained."
