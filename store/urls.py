@@ -1,7 +1,12 @@
-from store.forms import LoginForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
-from django.urls import path, re_path
-from . import dashboard_views, tasks, views
+from django.conf.urls.i18n import set_language
 from django.contrib.auth import views as auth_views
+from django.contrib.sitemaps.views import sitemap
+from django.urls import path, re_path
+
+from store.forms import PasswordChangeForm, PasswordResetForm, SetPasswordForm
+from store.sitemaps import SITEMAPS
+
+from . import dashboard_views, tasks, views
 
 
 app_name = 'store'
@@ -25,7 +30,14 @@ urlpatterns = [
     path('dashboard/tasks/<int:task_id>/retry/', dashboard_views.dashboard_task_retry, name="dashboard-task-retry"),
     path('internal/run-tasks/', tasks.run_tasks_endpoint, name="run-tasks"),
     path('', views.home, name="home"),
-    # URL for Cart and Checkout
+
+    # Crawlers, feeds, language
+    path('robots.txt', views.robots_txt, name="robots"),
+    path('sitemap.xml', sitemap, {'sitemaps': SITEMAPS}, name="sitemap"),
+    path('feeds/google-merchant.xml', views.google_merchant_feed, name="merchant-feed"),
+    path('i18n/setlang/', set_language, name="set-language"),
+
+    # Cart and checkout
     path('add-to-cart/', views.add_to_cart, name="add-to-cart"),
     path('wishlist/<int:product_id>/', views.toggle_wishlist, name="toggle-wishlist"),
     path('add-coupon/', views.AddCoupon.as_view(), name="add-coupon"),
@@ -35,7 +47,12 @@ urlpatterns = [
     path('cart/', views.cart, name="cart"),
     path('checkout/', views.checkout, name="checkout"),
     path('orders/', views.orders, name="orders"),
+    path('orders/confirmation/<str:token>/', views.order_confirmation, name="order-confirmation"),
     path('orders/<int:order_id>/cancel/', views.cancel_order, name="cancel-order"),
+    path('review/<str:token>/', views.review_invite, name="review-invite"),
+    path('payments/chapa/return/', views.chapa_return, name="chapa-return"),
+    path('payments/chapa/webhook/', views.chapa_webhook, name="chapa-webhook"),
+
     path("search/", views.search_view, name="search"),
     path("search/suggestions/", views.search_suggestions, name="search-suggestions"),
     path('products/', views.products, name="all-products"),
@@ -47,20 +64,21 @@ urlpatterns = [
     path('about/', views.about, name="about"),
     path('contact/', views.contact, name="contact"),
     path('delivery-returns/', views.delivery_returns, name="delivery-returns"),
+    path('privacy/', views.privacy, name="privacy"),
+    path('terms/', views.terms, name="terms"),
+    path('faq/', views.faq, name="faq"),
 
-    #URL for Products
+    # Products
     path('product/<slug:slug>/', views.detail, name="product-detail"),
     path('product/<slug:slug>/review/', views.submit_review, name="submit-review"),
     path('product/<slug:slug>/restock/', views.request_restock, name="request-restock"),
     path('categories/', views.all_categories, name="all-categories"),
-    path('<slug:slug>/', views.category_products, name="category-products"),
-
 
     path('shop/', views.shop, name="shop"),
 
-    # URL for Authentication
+    # Authentication
     path('accounts/register/', views.RegistrationView.as_view(), name="register"),
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='account/login.html', authentication_form=LoginForm), name="login"),
+    path('accounts/login/', views.RateLimitedLoginView.as_view(), name="login"),
     path('accounts/profile/', views.profile, name="profile"),
     path('accounts/affiliate/', views.affiliate_dashboard, name="affiliate-dashboard"),
     path('accounts/add-address/', views.AddressView.as_view(), name="add-address"),
@@ -70,9 +88,9 @@ urlpatterns = [
     path('accounts/password-change/', auth_views.PasswordChangeView.as_view(template_name='account/password_change.html', form_class=PasswordChangeForm, success_url='/accounts/password-change-done/'), name="password-change"),
     path('accounts/password-change-done/', auth_views.PasswordChangeDoneView.as_view(template_name='account/password_change_done.html'), name="password-change-done"),
 
-    path('accounts/password-reset/', auth_views.PasswordResetView.as_view(template_name='account/password_reset.html', form_class=PasswordResetForm, success_url='/accounts/password-reset/done/'), name="password-reset"), # Passing Success URL to Override default URL, also created password_reset_email.html due to error from our app_name in URL
+    path('accounts/password-reset/', auth_views.PasswordResetView.as_view(template_name='account/password_reset.html', form_class=PasswordResetForm, success_url='/accounts/password-reset/done/'), name="password-reset"),
     path('accounts/password-reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='account/password_reset_done.html'), name="password_reset_done"),
-    path('accounts/password-reset-confirm/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='account/password_reset_confirm.html', form_class=SetPasswordForm, success_url='/accounts/password-reset-complete/'), name="password_reset_confirm"), # Passing Success URL to Override default URL
+    path('accounts/password-reset-confirm/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='account/password_reset_confirm.html', form_class=SetPasswordForm, success_url='/accounts/password-reset-complete/'), name="password_reset_confirm"),
     path('accounts/password-reset-complete/', auth_views.PasswordResetCompleteView.as_view(template_name='account/password_reset_complete.html'), name="password_reset_complete"),
 
     # Affiliate links
@@ -83,29 +101,7 @@ urlpatterns = [
     re_path(r'^telegram/customer-webhook/?$', views.customer_telegram_webhook, name='telegram-customer-webhook'),
     re_path(r'^telegram/admin-webhook/?$', views.admin_telegram_webhook, name='telegram-admin-webhook'),
     re_path(r'^telegram/webhook/?$', views.telegram_webhook, name='telegram-webhook'),
+
+    # Collection pages live at the root; keep this last so every named route above wins.
+    path('<slug:slug>/', views.category_products, name="category-products"),
 ]
-# def cart(request):
-#     user = request.user
-#     cart_products = Cart.objects.filter(user=user)
-
-#     # Display Total on Cart Page
-#     amount = decimal.Decimal(0)
-#     shipping_amount = decimal.Decimal(40)
-#     # using list comprehension to calculate total amount based on quantity and shipping
-#     cp = [p for p in Cart.objects.all() if p.user==user]
-#     if cp:
-#         for p in cp:
-#             temp_amount = (p.quantity * p.product.price)
-#             amount += temp_amount
-
-#     # Customer Addresses
-#     addresses = Address.objects.filter(user=user)
-
-#     context = {
-#         'cart_products': cart_products,
-#         'amount': amount,
-#         'shipping_amount': shipping_amount,
-#         'total_amount': amount + shipping_amount,
-#         'addresses': addresses,
-#     }
-#     return render(request, 'store/cart.html', context)

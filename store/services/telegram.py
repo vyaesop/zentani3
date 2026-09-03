@@ -55,6 +55,13 @@ def send_product_post(product_id, force=False):
         raise TelegramSendError(f"Telegram channel post failed for product {product_id}.")
 
 
+def _decimal(value, default="0"):
+    try:
+        return Decimal(str(value if value not in (None, "") else default))
+    except Exception:  # noqa: BLE001
+        return Decimal(default)
+
+
 def send_order_notification(payload):
     user = None
     if payload.get("user_id"):
@@ -68,11 +75,15 @@ def send_order_notification(payload):
     sent = notify_new_order(
         user=user,
         order_count=int(payload.get("order_count") or 0),
-        order_total=Decimal(str(payload.get("order_total") or "0")),
+        order_total=_decimal(payload.get("order_total")),
         address=address,
         order_lines=payload.get("order_lines") or [],
         order_ids=payload.get("order_ids") or [],
         guest_contact=guest_contact,
+        order_number=payload.get("order_number") or "",
+        delivery_fee=_decimal(payload.get("delivery_fee")),
+        grand_total=_decimal(payload.get("grand_total"), default=str(payload.get("order_total") or "0")),
+        payment_method=payload.get("payment_method") or "",
     )
     if not sent and admin_bot_configured():
         raise TelegramSendError("Telegram order notification failed.")
@@ -103,8 +114,13 @@ def send_customer_order_confirmation(payload):
         chat_id,
         order_ids=payload.get("order_ids") or [],
         order_lines=payload.get("order_lines") or [],
-        order_total=Decimal(str(payload.get("order_total") or "0")),
+        order_total=_decimal(payload.get("order_total")),
         customer_name=payload.get("customer_name") or "",
+        order_number=payload.get("order_number") or "",
+        confirmation_url=payload.get("confirmation_url") or "",
+        delivery_fee=_decimal(payload.get("delivery_fee")),
+        grand_total=_decimal(payload.get("grand_total"), default=str(payload.get("order_total") or "0")),
+        paid_online=bool(payload.get("paid_online")),
     )
     if not sent and customer_bot_configured():
         raise TelegramSendError("Customer order confirmation failed.")
@@ -113,7 +129,7 @@ def send_customer_order_confirmation(payload):
 def send_customer_order_status(payload):
     from store.models import Order
 
-    order = Order.objects.filter(pk=payload.get("order_id")).select_related("product").first()
+    order = Order.objects.filter(pk=payload.get("order_id")).select_related("product", "group").first()
     if order is None:
         return
     chat_id = TelegramLink.linked_chat_id_for(
@@ -127,7 +143,7 @@ def send_customer_order_status(payload):
     status = payload.get("status") or order.status
     sent = notify_customer_order_status(
         chat_id,
-        order_id=order.id,
+        order_id=order.order_number,
         product_title=order.product.title if order.product_id else "Your item",
         status=status,
         status_copy=payload.get("status_copy") or ORDER_STATUS_COPY.get(status, ""),
@@ -137,23 +153,32 @@ def send_customer_order_status(payload):
 
 
 def send_customer_restock_notifications(payload):
-    """Alert every linked customer waiting on this product, then clear their
-    restock requests so they are notified once per restock."""
+    """Alert every customer waiting on this product — Telegram when linked,
+    email otherwise — then clear their restock requests so each restock
+    notifies once."""
+    from store.services.notifications import send_restock_emails
+
     product = Product.objects.filter(pk=payload.get("product_id"), is_active=True, is_sold_out=False).first()
     if product is None:
         return
 
     failures = 0
+    telegram_user_ids = set()
     for restock_request in RestockRequest.objects.filter(product=product).select_related("user"):
         chat_id = ""
         if restock_request.user_id:
             chat_id = TelegramLink.linked_chat_id_for(user_id=restock_request.user_id)
         if not chat_id:
-            continue  # No Telegram opt-in; the request stays for future channels.
+            continue  # Falls through to the email pass below.
         if notify_customer_restock(chat_id, product=product, size=restock_request.size or ""):
+            telegram_user_ids.add(restock_request.user_id)
             restock_request.delete()
         else:
             failures += 1
+
+    emailed_ids = send_restock_emails(product, skip_user_ids=telegram_user_ids)
+    if emailed_ids:
+        RestockRequest.objects.filter(id__in=emailed_ids).delete()
 
     if failures and customer_bot_configured():
         raise TelegramSendError(f"{failures} restock alert(s) failed for product {product.id}.")

@@ -30,6 +30,58 @@
   </div>
 </div>
 
+<!-- Funnel + search demand -->
+<div class="zd-grid-2">
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Conversion funnel</p>
+        <p class="zd-panel-head-sub">First-party events · product views → add to cart → order</p>
+      </div>
+    </div>
+    <div class="zd-table-wrap">
+      <table class="zd-table">
+        <thead><tr><th>Window</th><th>Views</th><th>Adds</th><th>Orders</th><th>View → cart</th><th>View → order</th></tr></thead>
+        <tbody>
+          {% for funnel in funnel_rows %}
+          <tr>
+            <td data-label="Window"><span class="zd-cell-primary">Last {{ funnel.days }} days</span></td>
+            <td data-label="Views">{{ funnel.views }}</td>
+            <td data-label="Adds">{{ funnel.adds }}</td>
+            <td data-label="Orders">{{ funnel.purchases }}</td>
+            <td data-label="View → cart">{{ funnel.add_rate }}%</td>
+            <td data-label="View → order">{{ funnel.purchase_rate }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="zd-panel">
+    <div class="zd-panel-head">
+      <div class="zd-panel-head-left">
+        <p class="zd-panel-head-title">Searches with no results</p>
+        <p class="zd-panel-head-sub">Last 30 days · what shoppers wanted and could not find</p>
+      </div>
+    </div>
+    <div class="zd-activity-list">
+      {% for row in zero_result_searches %}
+      <div class="zd-activity-row">
+        <div class="zd-activity-info">
+          <div class="zd-activity-title">“{{ row.term }}”</div>
+        </div>
+        <div class="zd-activity-meta">
+          <span class="zd-pill zd-pill--pending">{{ row.n }} search{{ row.n|pluralize:"es" }}</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="zd-activity-empty">Every search found something — or nobody has searched yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
 <!-- Two-column grid -->
 <div class="zd-grid-2">
 

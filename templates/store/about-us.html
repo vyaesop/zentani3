@@ -1,30 +1,32 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Zentanee | About{% endblock %}
+{% block title %}{{ store.name }} | {% trans "About" %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name %}{{ name }} is an Addis Ababa fashion store: curated clothes, shoes and accessories, delivered to your door with cash on delivery.{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-static-page">
       <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">About</p>
-          <h1>About Zentanee</h1>
-          <p>Zentanee is a fashion storefront for shoppers who want a clean online experience and carefully selected pieces.</p>
+          <p class="spring-directory-header__eyebrow">{% trans "About" %}</p>
+          <h1>{% blocktrans with name=store.name %}About {{ name }}{% endblocktrans %}</h1>
+          <p>{% trans "A fashion storefront for shoppers who want a clean online experience and carefully selected pieces — delivered in Addis Ababa, paid for at the door." %}</p>
       </section>
 
       <div class="spring-static-grid spring-static-grid--wide">
           <article class="spring-static-card">
-              <h2>What we do</h2>
-              <p>We curate clothing, handbags, perfumes, and accessories with a cleaner storefront that keeps the product and the shopping flow in focus.</p>
+              <h2>{% trans "What we do" %}</h2>
+              <p>{% trans "We curate clothing, shoes and accessories and describe every piece honestly: brand, material, colour and measurements where we have them." %}</p>
           </article>
 
           <article class="spring-static-card">
-              <h2>How we sell</h2>
-              <p>The goal is a simple path from browsing to checkout: clear product pages, clear pricing, and support that is easy to reach.</p>
+              <h2>{% trans "How we sell" %}</h2>
+              <p>{% trans "A simple path from browsing to your door: clear product pages, clear pricing, a phone call to confirm, and cash on delivery so you inspect before you pay." %}</p>
           </article>
 
           <article class="spring-static-card">
-              <h2>Where we are based</h2>
-              <p>Zentanee is based in Addis Ababa and built for mobile-first shoppers who want a smoother ecommerce experience.</p>
+              <h2>{% trans "Where we are based" %}</h2>
+              <p>{{ store.address }}. {% trans "Built for mobile-first shoppers in Addis Ababa, with delivery across Ethiopia by courier." %}</p>
           </article>
       </div>
   </div>

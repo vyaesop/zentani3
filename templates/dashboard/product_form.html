@@ -301,6 +301,12 @@
               {{ form.care_notes }}
               {% for e in form.care_notes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
             </div>
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Measurements / size guide</span>
+              {{ form.measurements }}
+              {% for e in form.measurements.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+              <span class="zd-field-hint">One size per line. Shown as a “Size guide” on the product page; leave empty to inherit the collection's size guide.</span>
+            </div>
           </div>
         </div>
       </div>

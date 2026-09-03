@@ -93,8 +93,9 @@
             <td><input type="checkbox" class="zd-row-check" name="order_ids" value="{{ order.id }}"></td>
 
             <td data-label="Order">
-              <span class="zd-cell-primary">#{{ order.id }}</span>
-              <span class="zd-cell-sub">{{ order.ordered_date|date:"M d, Y · H:i" }}</span>
+              <span class="zd-cell-primary">{{ order.order_number }}</span>
+              <span class="zd-cell-sub">{{ order.ordered_date|date:"M d, Y · H:i" }}{% if order.group and order.group.delivery_fee %} · delivery {{ order.group.delivery_fee|etb }}{% endif %}</span>
+              {% if order.group and order.group.payment_method == "chapa" %}<br><span class="zd-pill zd-pill--{% if order.group.payment_status == 'paid' %}active{% else %}pending{% endif %}" style="margin-top:5px">{{ order.group.get_payment_status_display }}</span>{% endif %}
               <br>
               <span class="zd-pill zd-pill--{{ order.status|slugify }}" style="margin-top:5px">{{ order.status }}</span>
             </td>

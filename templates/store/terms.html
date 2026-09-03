@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ store.name }} | {% trans "Terms of sale" %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name %}The terms that apply when you order from {{ name }}: pricing, delivery, cash on delivery, returns and cancellations.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-policy-page spring-legal-page">
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">{% trans "Legal" %}</p>
+          <h1>{% trans "Terms of sale" %}</h1>
+          <p>{% trans "What you can expect from us, and what we ask of you. Last updated September 2026." %}</p>
+      </section>
+
+      <article class="spring-legal">
+          <h2>{% trans "The seller" %}</h2>
+          <p>{% blocktrans with name=store.legal_name|default:store.name %}Orders placed on this site are fulfilled by {{ name }}{% endblocktrans %}{% if store.address %}, {{ store.address }}{% endif %}{% if store.trade_license %} ({% trans "trade licence" %} {{ store.trade_license }}){% endif %}.</p>
+
+          <h2>{% trans "Prices" %}</h2>
+          <p>{% trans "All prices are in Ethiopian Birr (ETB) and include applicable taxes. The delivery fee is shown before you place the order and on your confirmation page. We may correct obvious pricing errors before confirming an order; if that happens we call you first and you can cancel." %}</p>
+
+          <h2>{% trans "Placing an order" %}</h2>
+          <p>{% trans "An order is a request to buy. It becomes a contract when we confirm it by phone or message. We may decline an order when an item is unavailable, when we cannot reach you to confirm, or when a previous cash-on-delivery order was refused without reason." %}</p>
+
+          <h2>{% trans "Delivery" %}</h2>
+          <p>{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB. Delivery in Addis usually takes 1-3 days after confirmation; times outside Addis depend on the courier.{% endblocktrans %} {% trans "If nobody is available at the agreed time we will call to rearrange; a second failed attempt may incur the delivery fee again." %}</p>
+
+          <h2>{% trans "Payment" %}</h2>
+          <p>{% trans "Cash on delivery: you pay the driver after inspecting the item." %}{% if online_payments_enabled %} {% trans "Online payment through Chapa (Telebirr, CBE Birr, cards) is optional; prepaid orders are dispatched first and are refunded in full if we cannot fulfil them." %}{% endif %}</p>
+
+          <h2>{% trans "Inspection and returns" %}</h2>
+          <p>{{ return_note }} {% trans "Because you inspect before paying, we do not accept returns or exchanges after the driver has left, except where an item is defective in a way that could not reasonably be seen at delivery — in that case call us within 24 hours." %}</p>
+
+          <h2>{% trans "Cancellation" %}</h2>
+          <p>{% trans "You can cancel free of charge while an order is Pending or Accepted, from your account or by calling us. Once it is Packed or On The Way, simply decline it at the door." %}</p>
+
+          <h2>{% trans "Product information" %}</h2>
+          <p>{% trans "We describe items as accurately as we can, including brand, material and measurements where available. Colours can differ slightly between screens. Where an item is not an original branded product, the listing says so; if you are ever unsure, ask before ordering." %}</p>
+
+          <h2>{% trans "Accounts and reviews" %}</h2>
+          <p>{% trans "Keep your password private. Reviews must be honest and about the product; we remove abusive or misleading reviews." %}</p>
+
+          <h2>{% trans "Contact" %}</h2>
+          <p><a href="{{ store.phone_href }}">{{ store.phone }}</a>{% if store.email %} · <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %} · {{ store.support_hours }}</p>
+      </article>
+  </div>
+</main>
+{% endblock content %}

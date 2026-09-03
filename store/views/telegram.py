@@ -213,7 +213,9 @@ def _handle_telegram_order_reply(chat_id, message_text):
                 (
                     "✅ Thank you! Your order request was sent.\n"
                     f"🧾 Reference: TG-{bot_order.id}\n"
-                    "📞 We will contact you shortly to confirm delivery."
+                    "📞 We will contact you shortly to confirm delivery.\n"
+                    "💵 Pay cash when it arrives — check the item with the driver first."
+                    f"{_channel_and_site_footer()}"
                 ),
             )
             return True
@@ -268,11 +270,26 @@ def _telegram_message_context(payload):
     }
 
 
+def _channel_and_site_footer():
+    """Cross-links appended to bot replies so every touchpoint grows the others."""
+    from store.telegram_notify import _base_site_url, customer_channel_url
+
+    lines = []
+    channel_url = customer_channel_url()
+    if channel_url:
+        lines.append(f"📣 New drops and sale alerts: {channel_url}")
+    site_url = _base_site_url()
+    if site_url:
+        lines.append(f"🌐 Browse everything: {site_url}/products/")
+    return ("\n\n" + "\n".join(lines)) if lines else ""
+
+
 def _customer_bot_welcome_text():
     return (
         "👋 Welcome to Zentanee Orders!\n\n"
         "🛍 Tap the Choose Size button on any of our channel posts to start an order.\n"
         "🔔 Order updates from the website also arrive here once you link your account."
+        f"{_channel_and_site_footer()}"
     )
 
 

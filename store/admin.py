@@ -1,11 +1,31 @@
 from django.contrib import admin
 from django.contrib import messages
 from django.conf import settings
-from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.http import urlencode
-from .models import Address, Category, Product, Cart, Order, ProductImages, ProductSizeStock, Brand, Coupon, AffiliateProfile, AffiliateClick, AffiliateCommission, TelegramBotOrder, TelegramLink, Wishlist, ProductReview, RestockRequest
+from .models import (
+    Address,
+    AffiliateClick,
+    AffiliateCommission,
+    AffiliateProfile,
+    Brand,
+    Cart,
+    Category,
+    Coupon,
+    Order,
+    OrderGroup,
+    Product,
+    ProductImages,
+    ProductReview,
+    ProductSizeStock,
+    RestockRequest,
+    SearchLog,
+    TelegramBotOrder,
+    TelegramLink,
+    Wishlist,
+)
+from .services.checkout import cancel_order_line
 from .telegram_notify import notify_customer_delivery_status, post_product_to_channel, suspend_telegram_autopublish
 
 # Register your models here.
@@ -23,6 +43,11 @@ class CategoryAdmin(admin.ModelAdmin):
     list_per_page = 10
     search_fields = ('title', 'description')
     prepopulated_fields = {"slug": ("title", )}
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "description", "category_image", "is_active", "is_featured")}),
+        ("Shopper help", {"fields": ("size_guide",), "description": "Shown on every product in this collection that has no measurements of its own."}),
+        ("SEO", {"fields": ("meta_description",)}),
+    )
 
 class BrandAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'brand_image', 'is_active', 'is_featured', 'updated_at')
@@ -31,6 +56,10 @@ class BrandAdmin(admin.ModelAdmin):
     list_per_page = 10
     search_fields = ('title', 'description')
     prepopulated_fields = {"slug": ("title", )}
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "description", "brand_image", "is_active", "is_featured")}),
+        ("SEO", {"fields": ("meta_description",)}),
+    )
 
 class ProductImagesAdmin(admin.TabularInline):
     model = ProductImages
@@ -42,12 +71,12 @@ class ProductSizeStockAdmin(admin.TabularInline):
 
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImagesAdmin, ProductSizeStockAdmin]
-    
+
     list_display = ('title', 'is_sold_out', 'stock_quantity', 'slug', 'category','brand', 'product_image', 'is_active', 'is_featured', 'telegram_channel_last_posted_at', 'updated_at')
     list_editable = ('slug', 'category','brand', 'stock_quantity', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
-    search_fields = ('title', 'category', 'short_description')
+    search_fields = ('title', 'category__title', 'short_description', 'sku')
     prepopulated_fields = {"slug": ("title", )}
     readonly_fields = ("affiliate_link_pattern",)
     actions = ("post_selected_to_telegram",)
@@ -61,6 +90,7 @@ class ProductAdmin(admin.ModelAdmin):
                 "detail_description",
                 "product_image",
                 "price",
+                "compare_at_price",
                 "category",
                 "brand",
             )
@@ -72,9 +102,13 @@ class ProductAdmin(admin.ModelAdmin):
                 "color",
                 "fit_notes",
                 "care_notes",
+                "measurements",
                 "delivery_note",
                 "return_note",
             )
+        }),
+        ("SEO", {
+            "fields": ("seo_title", "seo_description", "image_alt_text"),
         }),
         ("Status", {
             "fields": (
@@ -183,17 +217,35 @@ class CartAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     list_per_page = 20
     search_fields = ('user__username', 'product__title')
-    
+
 class CouponAdmin(admin.ModelAdmin):
-    list_display = ('code','active', 'discount', 'active_date', 'expiry_date', 'created_date')
-    # list_editable = ('code','active', 'discount', 'active_date', 'expiry_date', 'created_date')
+    list_display = ('code','active', 'discount', 'active_date', 'expiry_date', 'used_count', 'max_uses', 'created_date')
     list_per_page = 20
+
+
+class OrderLineInline(admin.TabularInline):
+    model = Order
+    fields = ("product", "size", "quantity", "price_at_purchase", "line_total", "status", "stock_restored")
+    readonly_fields = ("product", "size", "quantity", "price_at_purchase", "line_total", "stock_restored")
+    extra = 0
+    can_delete = False
+
+
+class OrderGroupAdmin(admin.ModelAdmin):
+    inlines = [OrderLineInline]
+    list_display = ("number", "customer_name", "customer_phone", "customer_city", "subtotal", "delivery_fee", "total", "payment_method", "payment_status", "created_at")
+    list_filter = ("payment_method", "payment_status", "created_at")
+    search_fields = ("number", "contact__full_name", "contact__phone", "user__username", "payment_reference")
+    readonly_fields = ("number", "claim_token", "created_at", "updated_at", "purchase_tracked")
+    date_hierarchy = "created_at"
+
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
+        'order_number',
         'customer_name',
-        'customer_username',
-        'customer_address',
+        'customer_phone',
+        'customer_location',
         'product',
         'size',
         'quantity',
@@ -202,35 +254,22 @@ class OrderAdmin(admin.ModelAdmin):
         'status',
         'ordered_date',
     )
-    list_editable = ('quantity', 'status', 'size', 'price_at_purchase', 'line_total')
+    list_editable = ('quantity', 'size', 'price_at_purchase', 'line_total')
     list_filter = ('status', 'ordered_date')
     list_per_page = 20
-    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'user__email', 'product__title')
+    search_fields = ('group__number', 'user__username', 'user__first_name', 'user__last_name', 'user__email', 'product__title', 'guest_contact__phone')
+    actions = ("cancel_and_restock",)
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request).select_related('user', 'product')
-        latest_address = Address.objects.filter(user=OuterRef('user_id')).order_by('-id')
-        return qs.annotate(
-            latest_address_text=Subquery(latest_address.values('address')[:1]),
-            latest_city_text=Subquery(latest_address.values('city')[:1]),
-        )
+        return super().get_queryset(request).select_related('user', 'product', 'group')
 
-    @admin.display(description='Name', ordering='user__first_name')
-    def customer_name(self, obj):
-        full_name = f"{obj.user.first_name} {obj.user.last_name}".strip()
-        return full_name or '-'
-
-    @admin.display(description='Username', ordering='user__username')
-    def customer_username(self, obj):
-        return obj.user.username
-
-    @admin.display(description='Address')
-    def customer_address(self, obj):
-        address = getattr(obj, 'latest_address_text', '')
-        city = getattr(obj, 'latest_city_text', '')
-        if address and city:
-            return f'{address}, {city}'
-        return address or '-'
+    @admin.action(description="Cancel selected lines and return units to stock")
+    def cancel_and_restock(self, request, queryset):
+        changed = 0
+        for order in queryset.select_related("product"):
+            if cancel_order_line(order):
+                changed += 1
+        self.message_user(request, f"{changed} order line(s) cancelled; stock restored where applicable.")
 
 
 class AffiliateProfileAdmin(admin.ModelAdmin):
@@ -338,7 +377,7 @@ class TelegramBotOrderAdmin(admin.ModelAdmin):
                     "Status saved but Telegram notification could not be sent.",
                     level=messages.WARNING,
                 )
-    
+
 
 class WishlistAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "created_at")
@@ -347,17 +386,23 @@ class WishlistAdmin(admin.ModelAdmin):
 
 
 class ProductReviewAdmin(admin.ModelAdmin):
-    list_display = ("product", "user", "rating", "title", "created_at", "updated_at")
-    list_filter = ("rating", "created_at")
-    search_fields = ("product__title", "user__username", "title", "comment")
+    list_display = ("product", "display_name", "rating", "title", "is_verified_purchase", "created_at", "updated_at")
+    list_filter = ("rating", "is_verified_purchase", "created_at")
+    search_fields = ("product__title", "user__username", "reviewer_name", "title", "comment")
 
 
 class RestockRequestAdmin(admin.ModelAdmin):
     list_display = ("product", "email", "size", "user", "created_at")
     list_filter = ("created_at",)
     search_fields = ("product__title", "email", "size", "user__username")
-    
- 
+
+
+class SearchLogAdmin(admin.ModelAdmin):
+    list_display = ("term", "result_count", "created_at")
+    list_filter = ("result_count", "created_at")
+    search_fields = ("term",)
+    readonly_fields = ("term", "normalized_term", "result_count", "created_at")
+
 
 admin.site.register(Address, AddressAdmin)
 admin.site.register(Category, CategoryAdmin)
@@ -365,6 +410,7 @@ admin.site.register(Brand, BrandAdmin)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Coupon, CouponAdmin)
 admin.site.register(Cart, CartAdmin)
+admin.site.register(OrderGroup, OrderGroupAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(AffiliateProfile, AffiliateProfileAdmin)
 admin.site.register(AffiliateClick, AffiliateClickAdmin)
@@ -373,6 +419,7 @@ admin.site.register(TelegramBotOrder, TelegramBotOrderAdmin)
 admin.site.register(Wishlist, WishlistAdmin)
 admin.site.register(ProductReview, ProductReviewAdmin)
 admin.site.register(RestockRequest, RestockRequestAdmin)
+admin.site.register(SearchLog, SearchLogAdmin)
 
 
 class TelegramLinkAdmin(admin.ModelAdmin):

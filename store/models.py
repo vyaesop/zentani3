@@ -1,5 +1,7 @@
 from decimal import Decimal
+import secrets
 import uuid
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -27,6 +29,20 @@ class Category(models.Model):
     title = models.CharField(max_length=50, verbose_name="Category Title")
     slug = models.SlugField(max_length=55, verbose_name="Category Slug")
     description = models.TextField(blank=True, verbose_name="Category Description")
+    meta_description = models.CharField(
+        max_length=320,
+        blank=True,
+        verbose_name="SEO Description",
+        help_text="Unique search-result snippet for this collection page (falls back to the description).",
+    )
+    size_guide = models.TextField(
+        blank=True,
+        verbose_name="Size Guide",
+        help_text=(
+            "Shown on every product in this collection. One size per line, e.g. "
+            "'M — chest 96-100 cm, waist 80-84 cm'. Add a blank line and free text for fit advice."
+        ),
+    )
     category_image = models.ImageField(upload_to='category', blank=True, null=True, verbose_name="Category Image")
     is_active = models.BooleanField(verbose_name="Is Active?")
     is_featured = models.BooleanField(verbose_name="Is Featured?")
@@ -52,6 +68,12 @@ class Brand(models.Model):
     title = models.CharField(max_length=50, verbose_name="Brand Title")
     slug = models.SlugField(max_length=55, verbose_name="Brand Slug")
     description = models.TextField(blank=True, verbose_name="Brand Description")
+    meta_description = models.CharField(
+        max_length=320,
+        blank=True,
+        verbose_name="SEO Description",
+        help_text="Unique search-result snippet for this brand page (falls back to the description).",
+    )
     brand_image = models.ImageField(upload_to='brand', blank=True, null=True, verbose_name="Brand Image")
     is_active = models.BooleanField(verbose_name="Is Active?")
     is_featured = models.BooleanField(verbose_name="Is Featured?")
@@ -75,7 +97,7 @@ class Brand(models.Model):
 
 
 class Product(models.Model):
-    DEFAULT_STOCK_PER_SIZE = 10
+    DEFAULT_STOCK_PER_SIZE = getattr(settings, "INVENTORY_DEFAULT_STOCK_PER_SIZE", 10)
 
     title = models.CharField(max_length=150, verbose_name="Product Title")
     slug = models.SlugField(max_length=160, verbose_name="Product Slug")
@@ -89,6 +111,11 @@ class Product(models.Model):
     color = models.CharField(max_length=80, blank=True, verbose_name="Color")
     fit_notes = models.TextField(blank=True, verbose_name="Fit Notes")
     care_notes = models.TextField(blank=True, verbose_name="Care Notes")
+    measurements = models.TextField(
+        blank=True,
+        verbose_name="Measurements",
+        help_text="Garment measurements, one size per line (e.g. 'M — length 70 cm, chest 104 cm'). Overrides the collection size guide.",
+    )
     delivery_note = models.CharField(max_length=180, blank=True, verbose_name="Delivery Note")
     return_note = models.CharField(max_length=180, blank=True, verbose_name="Return Note")
     stock_quantity = models.PositiveIntegerField(default=0, verbose_name="Stock Quantity")
@@ -388,7 +415,19 @@ class ProductReview(models.Model):
         (FIT_RUNS_LARGE, "Runs large"),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="product_reviews")
+    # user is null for reviews left through a tokenised invite by a guest buyer;
+    # `order` ties the review to the delivered line that earned the invite.
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name="product_reviews")
+    order = models.OneToOneField(
+        "Order",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="review",
+        verbose_name="Delivered order line",
+    )
+    reviewer_name = models.CharField(max_length=150, blank=True, default="", verbose_name="Reviewer Name")
+    is_verified_purchase = models.BooleanField(default=False, verbose_name="Verified Purchase")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     title = models.CharField(max_length=120, blank=True)
@@ -406,15 +445,26 @@ class ProductReview(models.Model):
     class Meta:
         ordering = ("-updated_at", "-created_at")
         constraints = [
-            models.UniqueConstraint(fields=["user", "product"], name="unique_user_product_review"),
+            models.UniqueConstraint(
+                fields=["user", "product"],
+                condition=models.Q(user__isnull=False),
+                name="unique_user_product_review_when_user",
+            ),
         ]
         indexes = [
             models.Index(fields=["product", "created_at"]),
             models.Index(fields=["user", "created_at"]),
         ]
 
+    @property
+    def display_name(self):
+        if self.user_id:
+            return self.user.first_name or self.user.username
+        return self.reviewer_name or "Verified buyer"
+
     def __str__(self):
-        return f"{self.product.title} review by {self.user.username}"
+        who = self.user.username if self.user_id else (self.reviewer_name or "guest")
+        return f"{self.product.title} review by {who}"
 
 
 class RestockRequest(models.Model):
@@ -506,10 +556,123 @@ STATUS_CHOICES = (
     ('Cancelled', 'Cancelled')
 )
 
+
+def _new_claim_token():
+    return secrets.token_urlsafe(24)
+
+
+class OrderGroup(models.Model):
+    """One checkout = one OrderGroup; each cart line is an Order row under it.
+
+    The group carries the customer-facing order number, the contact/address
+    snapshot taken at checkout (so later address edits never rewrite history),
+    the delivery fee and totals, and the payment state. A guest reaches the
+    confirmation page through `claim_token`.
+    """
+
+    PAYMENT_COD = "cod"
+    PAYMENT_CHAPA = "chapa"
+    PAYMENT_METHOD_CHOICES = (
+        (PAYMENT_COD, "Cash on delivery"),
+        (PAYMENT_CHAPA, "Paid online (Chapa)"),
+    )
+    PAYMENT_UNPAID = "unpaid"
+    PAYMENT_PENDING = "pending"
+    PAYMENT_PAID = "paid"
+    PAYMENT_FAILED = "failed"
+    PAYMENT_STATUS_CHOICES = (
+        (PAYMENT_UNPAID, "Pay on delivery"),
+        (PAYMENT_PENDING, "Awaiting online payment"),
+        (PAYMENT_PAID, "Paid"),
+        (PAYMENT_FAILED, "Payment failed"),
+    )
+
+    number = models.CharField(max_length=24, unique=True, db_index=True, verbose_name="Order Number")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_groups")
+    session_key = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    claim_token = models.CharField(max_length=48, unique=True, default=_new_claim_token, editable=False)
+    contact = models.JSONField(default=dict, blank=True, help_text="full_name/phone/email/city/address snapshot taken at checkout")
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    coupon_code = models.CharField(max_length=30, blank=True, default="")
+    payment_method = models.CharField(max_length=12, choices=PAYMENT_METHOD_CHOICES, default=PAYMENT_COD)
+    payment_status = models.CharField(max_length=12, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_UNPAID)
+    payment_reference = models.CharField(max_length=80, blank=True, default="", db_index=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    purchase_tracked = models.BooleanField(default=False, help_text="GA4 purchase event already emitted for this order.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["session_key", "created_at"]),
+        ]
+
+    def __str__(self):
+        return self.number
+
+    @staticmethod
+    def generate_number(when=None):
+        """Human-quotable number: ZT-YYMMDD-XXXX (letters/digits, no ambiguity)."""
+        when = when or timezone.now()
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        while True:
+            suffix = "".join(secrets.choice(alphabet) for _ in range(4))
+            candidate = f"ZT-{when.strftime('%y%m%d')}-{suffix}"
+            if not OrderGroup.objects.filter(number=candidate).exists():
+                return candidate
+
+    @property
+    def customer_name(self):
+        return (self.contact or {}).get("full_name") or (self.user.get_full_name() if self.user_id else "") or "Guest"
+
+    @property
+    def customer_phone(self):
+        return (self.contact or {}).get("phone") or (self.user.username if self.user_id else "")
+
+    @property
+    def customer_email(self):
+        return (self.contact or {}).get("email") or (self.user.email if self.user_id else "")
+
+    @property
+    def customer_city(self):
+        return (self.contact or {}).get("city", "")
+
+    @property
+    def customer_address(self):
+        return (self.contact or {}).get("address", "")
+
+    @property
+    def customer_location(self):
+        parts = [self.customer_address, self.customer_city]
+        return ", ".join(part for part in parts if part)
+
+    @property
+    def is_paid_online(self):
+        return self.payment_method == self.PAYMENT_CHAPA and self.payment_status == self.PAYMENT_PAID
+
+    @property
+    def status(self):
+        """Roll-up of line statuses: the least advanced non-cancelled line."""
+        from store.constants import ORDER_STATUS_SEQUENCE
+
+        statuses = [line.status for line in self.lines.all()]
+        if not statuses:
+            return "Pending"
+        live = [status for status in statuses if status != "Cancelled"]
+        if not live:
+            return "Cancelled"
+        return min(live, key=lambda status: ORDER_STATUS_SEQUENCE.index(status) if status in ORDER_STATUS_SEQUENCE else 0)
+
+
 class Order(models.Model):
     # user is null for guest checkouts; the delivery/contact details captured
     # at checkout live in guest_contact and the session is kept for tracing.
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey(OrderGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="lines", verbose_name="Order")
     session_key = models.CharField(max_length=64, blank=True, default="", db_index=True, verbose_name="Guest Session Key")
     guest_contact = models.JSONField(null=True, blank=True, verbose_name="Guest Contact", help_text="full_name/phone/city/address captured at guest checkout")
     product = models.ForeignKey(Product, verbose_name="Product", on_delete=models.CASCADE)
@@ -524,6 +687,9 @@ class Order(models.Model):
         default="Pending"
         )
     staff_notes = models.TextField(blank=True, verbose_name="Staff Notes", help_text="Internal notes visible only to staff (address changes, delivery instructions, etc.)")
+    stock_restored = models.BooleanField(default=False, help_text="Units were returned to inventory when this line was cancelled.")
+    review_token = models.CharField(max_length=48, blank=True, default="", db_index=True, help_text="Tokenised review-invite link issued when the line is delivered.")
+    review_invited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
@@ -533,7 +699,13 @@ class Order(models.Model):
         ]
 
     @property
+    def order_number(self):
+        return self.group.number if self.group_id else f"#{self.id}"
+
+    @property
     def customer_name(self):
+        if self.group_id and (self.group.contact or {}).get("full_name"):
+            return self.group.contact["full_name"]
         if self.user_id:
             return self.user.get_full_name() or self.user.username
         if self.guest_contact:
@@ -542,6 +714,8 @@ class Order(models.Model):
 
     @property
     def customer_phone(self):
+        if self.group_id and (self.group.contact or {}).get("phone"):
+            return self.group.contact["phone"]
         if self.guest_contact and self.guest_contact.get("phone"):
             return self.guest_contact["phone"]
         if self.user_id:
@@ -550,6 +724,10 @@ class Order(models.Model):
 
     @property
     def customer_location(self):
+        # Prefer the snapshot taken at checkout; only legacy rows without a
+        # group fall back to the customer's current address book.
+        if self.group_id and self.group.contact:
+            return self.group.customer_location
         if self.guest_contact:
             parts = [self.guest_contact.get("address", ""), self.guest_contact.get("city", "")]
             return ", ".join(part for part in parts if part)
@@ -558,6 +736,12 @@ class Order(models.Model):
             if latest:
                 return f"{latest.address}, {latest.city}"
         return ""
+
+    def ensure_review_token(self):
+        if not self.review_token:
+            self.review_token = secrets.token_urlsafe(24)
+            self.save(update_fields=["review_token"])
+        return self.review_token
 
 
 class AffiliateProfile(models.Model):
@@ -784,6 +968,8 @@ class BackgroundTask(models.Model):
     TYPE_CUSTOMER_ABANDONED_CART = "customer_abandoned_cart"
     TYPE_CUSTOMER_BROADCAST = "customer_broadcast"
     TYPE_WISHLIST_SALE_NOTIFY = "wishlist_sale_notify"
+    TYPE_CUSTOMER_ORDER_MESSAGES = "customer_order_messages"
+    TYPE_CUSTOMER_REVIEW_INVITE = "customer_review_invite"
     TASK_TYPE_CHOICES = (
         (TYPE_TELEGRAM_PRODUCT_POST, "Telegram product post"),
         (TYPE_TELEGRAM_ORDER_NOTIFY, "Telegram order notification"),
@@ -795,6 +981,8 @@ class BackgroundTask(models.Model):
         (TYPE_CUSTOMER_ABANDONED_CART, "Customer abandoned-cart nudge"),
         (TYPE_CUSTOMER_BROADCAST, "Customer broadcast message"),
         (TYPE_WISHLIST_SALE_NOTIFY, "Wishlist sale alert"),
+        (TYPE_CUSTOMER_ORDER_MESSAGES, "Customer order SMS/email"),
+        (TYPE_CUSTOMER_REVIEW_INVITE, "Customer review invite"),
     )
 
     STATUS_PENDING = "pending"
@@ -826,6 +1014,38 @@ class BackgroundTask(models.Model):
 
     def __str__(self):
         return f"{self.task_type} #{self.pk} ({self.status})"
+
+
+class SearchLog(models.Model):
+    """What shoppers type into search, and whether it found anything.
+
+    Zero-result terms are the cheapest merchandising signal there is: they
+    name products people wanted and could not find.
+    """
+
+    term = models.CharField(max_length=120, db_index=True)
+    normalized_term = models.CharField(max_length=120, db_index=True)
+    result_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.term} ({self.result_count})"
+
+    @classmethod
+    def log(cls, term, result_count):
+        cleaned = " ".join(str(term or "").split())[:120]
+        if len(cleaned) < 2:
+            return None
+        try:
+            return cls.objects.create(term=cleaned, normalized_term=cleaned.casefold(), result_count=max(0, int(result_count)))
+        except Exception:  # noqa: BLE001 - analytics must never break search
+            import logging
+
+            logging.getLogger(__name__).warning("SearchLog write failed.", exc_info=True)
+            return None
 
 
 class TelegramConversationState(models.Model):

@@ -1,6 +1,6 @@
 /* Zentanee service worker: cache-first for static assets, network-first for
    pages. Bump CACHE_VERSION to invalidate after big releases. */
-const CACHE_VERSION = "zentanee-v1";
+const CACHE_VERSION = "zentanee-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 
 {% block title %}{{ seo_title }}{% endblock %}
@@ -7,12 +8,17 @@
 {% block seo_head %}
 <link rel="canonical" href="{{ product_canonical_url }}">
 <meta property="og:type" content="product">
+<meta property="og:site_name" content="{{ store.name }}">
 <meta property="og:title" content="{{ seo_title }}">
 <meta property="og:description" content="{{ seo_description }}">
 <meta property="og:url" content="{{ product_canonical_url }}">
 {% if product_og_image_url %}
 <meta property="og:image" content="{{ product_og_image_url }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ product_og_image_url }}">
 {% endif %}
+<meta property="product:price:amount" content="{{ product.price }}">
+<meta property="product:price:currency" content="ETB">
 <script type="application/ld+json">
 {{ product_schema_json|safe }}
 </script>
@@ -24,13 +30,21 @@
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-product-page">
-      <div class="spring-product-breadcrumb">
-          <a href="{% url 'store:home' %}">Home</a>
+      {% if preview_hidden %}
+      <div class="zent-alert zent-alert--warning spring-preview-banner" role="status">
+          <strong>{% trans "Staff preview." %}</strong> {% trans "This product is hidden from shoppers and search engines until it is published." %}
+          <a href="{% url 'store:dashboard-product-edit' product.id %}">{% trans "Open in Control Room" %}</a>
+      </div>
+      {% endif %}
+      {% include 'partials/_messages.html' %}
+
+      <nav class="spring-product-breadcrumb" aria-label="{% trans 'Breadcrumb' %}">
+          <a href="{% url 'store:home' %}">{% trans "Home" %}</a>
           <span>/</span>
           <a href="{% url 'store:category-products' product.category.slug %}">{{ product.category }}</a>
           <span>/</span>
           <span>{{ product.title }}</span>
-      </div>
+      </nav>
 
       <div class="spring-product-layout">
           <section class="spring-product-gallery">
@@ -45,7 +59,7 @@
                   {% else %}
                   <img id="main-product-image" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}">
                   {% endif %}
-                  <button type="button" class="spring-gallery-zoom-btn" id="gallery-zoom-btn" aria-label="Zoom image">
+                  <button type="button" class="spring-gallery-zoom-btn" id="gallery-zoom-btn" aria-label="{% trans 'Zoom image' %}">
                       <i class="fas fa-search-plus"></i>
                   </button>
               </figure>
@@ -78,14 +92,14 @@
               <h1>{{ product.title }}</h1>
               <div class="spring-product-info__topline">
                   {% if review_summary.review_count %}
-                  <p class="spring-product-info__rating">
+                  <a href="#reviews" class="spring-product-info__rating">
                       <span class="spring-stars" aria-label="{{ review_summary.average_rating|floatformat:1 }} out of 5 stars">{% star_icons review_summary.average_rating %}</span>
-                      {{ review_summary.average_rating|floatformat:1 }}/5 · {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
-                  </p>
+                      {{ review_summary.average_rating|floatformat:1 }}/5 · {{ review_summary.review_count }} {% blocktrans count counter=review_summary.review_count %}review{% plural %}reviews{% endblocktrans %}
+                  </a>
                   {% else %}
                   <p class="spring-product-info__rating">
                       <span class="spring-stars spring-stars--empty" aria-hidden="true">☆☆☆☆☆</span>
-                      Be the first to review
+                      {% trans "Be the first to review" %}
                   </p>
                   {% endif %}
 
@@ -95,15 +109,15 @@
                   {% include 'store/_wishlist_button.html' with saved=False variant="inline" %}
                   {% endif %}
               </div>
-              <p class="spring-product-info__price">
+              <p class="spring-product-info__price" id="product-price">
                   {% if product.is_sold_out %}
-                  Sold out
+                  {% trans "Sold out" %}
                   {% elif product.is_on_sale %}
-                  <span class="spring-price-now">{{ product.price }} ETB</span>
-                  <s class="spring-price-was">{{ product.compare_at_price }} ETB</s>
+                  <span class="spring-price-now">{{ product.price|etb }}</span>
+                  <s class="spring-price-was">{{ product.compare_at_price|etb }}</s>
                   <span class="spring-product-card__badge--sale spring-price-chip">-{{ product.discount_percent }}%</span>
                   {% else %}
-                  {{ product.price }} ETB
+                  {{ product.price|etb }}
                   {% endif %}
               </p>
               {% if product_stock_message %}
@@ -126,15 +140,20 @@
 
                   {% if size_options %}
                   <div class="spring-product-form__group">
-                      <label class="spring-product-form__label">Size</label>
-                      <div class="spring-size-options" role="radiogroup" aria-label="Available sizes">
+                      <div class="spring-product-form__label-row">
+                          <label class="spring-product-form__label">{% trans "Size" %}</label>
+                          {% if size_guide_lines %}
+                          <a href="#size-guide" class="spring-text-link spring-size-guide-link"><i class="fas fa-ruler-horizontal"></i> {% trans "Size guide" %}</a>
+                          {% endif %}
+                      </div>
+                      <div class="spring-size-options" role="radiogroup" aria-label="{% trans 'Available sizes' %}">
                           {% for size_option in size_options %}
                           <label class="spring-size-option {% if not size_option.available %}is-unavailable{% endif %}">
                               <input
                                   type="radio"
                                   name="size"
                                   value="{{ size_option.size }}"
-                                  data-stock-label="{% if size_option.quantity != None %}{% if size_option.quantity > 0 %}{{ size_option.quantity }} in stock{% else %}Currently sold out{% endif %}{% endif %}"
+                                  data-stock-label="{{ size_option.stock_label }}"
                                   data-available="{{ size_option.available|yesno:'true,false' }}"
                                   {% if not size_option.available %}disabled{% endif %}
                                   {% if size_option.size == default_selected_size %}checked{% endif %}>
@@ -146,19 +165,24 @@
                   {% endif %}
 
                   <div class="spring-product-form__actions">
-                      <button type="submit" class="btn btn-dark w-100" id="add-to-cart-btn" {% if product.is_sold_out %}disabled{% endif %}>
-                          {% if product.is_sold_out %}Sold Out{% else %}Add to cart{% endif %}<span class="zent-spinner" aria-hidden="true"></span>
+                      <button type="submit" class="btn btn-dark w-100" id="add-to-cart-btn" {% if product.is_sold_out or preview_hidden %}disabled{% endif %}>
+                          {% if product.is_sold_out %}{% trans "Sold Out" %}{% elif preview_hidden %}{% trans "Hidden — publish to sell" %}{% else %}{% trans "Add to cart" %}{% endif %}<span class="zent-spinner" aria-hidden="true"></span>
                       </button>
+                      {% if telegram_order_url and not product.is_sold_out and not preview_hidden %}
+                      <a href="{{ telegram_order_url }}" class="btn btn-outline-dark w-100 spring-telegram-order-btn" target="_blank" rel="noopener">
+                          <i class="fab fa-telegram-plane"></i> {% trans "Order on Telegram" %}
+                      </a>
+                      {% endif %}
                   </div>
                   <div id="add-to-cart-feedback" class="mt-3 small" role="alert" aria-live="polite"></div>
               </form>
 
               {% if product.is_sold_out %}
               <section id="restock" class="spring-product-restock">
-                  <h2>Join the restock list</h2>
-                  <p>Leave your email and we'll let you know when this item is available again.</p>
+                  <h2>{% trans "Join the restock list" %}</h2>
+                  <p>{% trans "Leave your email and we'll let you know when this item is available again." %}</p>
                   {% if existing_restock_request %}
-                  <p class="spring-product-restock__status">You're already on the list for this product.</p>
+                  <p class="spring-product-restock__status">{% trans "You're already on the list for this product." %}</p>
                   {% else %}
                   <form action="{% url 'store:request-restock' product.slug %}" method="POST" class="spring-product-restock__form">
                       {% csrf_token %}
@@ -169,7 +193,7 @@
                           <small class="text-danger">{{ fm.errors|striptags }}</small>
                       </div>
                       {% endfor %}
-                      <button type="submit" class="btn btn-outline-dark">Notify me when back in stock</button>
+                      <button type="submit" class="btn btn-outline-dark">{% trans "Notify me when back in stock" %}</button>
                   </form>
                   {% endif %}
               </section>
@@ -178,75 +202,95 @@
               {% for size_option in size_options %}
               {% if not size_option.available %}
               <section class="spring-product-restock spring-product-restock--size" id="restock-{{ size_option.size }}">
-                  <p class="spring-product-restock__label">Size {{ size_option.size }} is sold out.</p>
+                  <p class="spring-product-restock__label">{% blocktrans with size=size_option.size %}Size {{ size }} is sold out.{% endblocktrans %}</p>
                   {% if not existing_restock_request %}
                   <form action="{% url 'store:request-restock' product.slug %}" method="POST" class="spring-product-restock__form spring-product-restock__form--inline">
                       {% csrf_token %}
                       <input type="hidden" name="size" value="{{ size_option.size }}">
-                      <input type="email" name="email" class="form-control" placeholder="Your email" required>
-                      <button type="submit" class="btn btn-outline-dark btn-sm">Notify me for {{ size_option.size }}</button>
+                      <input type="email" name="email" class="form-control" placeholder="{% trans 'Your email' %}" required>
+                      <button type="submit" class="btn btn-outline-dark btn-sm">{% blocktrans with size=size_option.size %}Notify me for {{ size }}{% endblocktrans %}</button>
                   </form>
                   {% else %}
-                  <p class="spring-product-restock__status">You're on the list for restocks on this product.</p>
+                  <p class="spring-product-restock__status">{% trans "You're on the list for restocks on this product." %}</p>
                   {% endif %}
               </section>
               {% endif %}
               {% endfor %}
               {% endif %}
 
+              {% if size_guide_lines %}
+              <details class="spring-size-guide" id="size-guide">
+                  <summary><i class="fas fa-ruler-horizontal"></i> {% trans "Size guide & measurements" %}</summary>
+                  <ul>
+                      {% for line in size_guide_lines %}
+                      <li>{{ line }}</li>
+                      {% endfor %}
+                  </ul>
+                  {% if product.fit_notes %}<p class="spring-size-guide__fit"><strong>{% trans "Fit" %}:</strong> {{ product.fit_notes }}</p>{% endif %}
+                  {% if fit_summary %}<p class="spring-size-guide__fit">{% blocktrans with percent=fit_summary.true_to_size_percent total=fit_summary.total %}{{ percent }}% of {{ total }} shoppers say this fits true to size.{% endblocktrans %}</p>{% endif %}
+                  <p class="spring-size-guide__help">{% trans "Between sizes? Order both — you only pay for what you keep when the driver arrives." %}</p>
+              </details>
+              {% endif %}
+
               <div class="spring-product-info__details">
                   <div>
-                      <strong>Collection</strong>
-                      <span>{{ product.category }}</span>
+                      <strong>{% trans "Collection" %}</strong>
+                      <span><a href="{% url 'store:category-products' product.category.slug %}">{{ product.category }}</a></span>
                   </div>
                   {% if product.material %}
                   <div>
-                      <strong>Material</strong>
+                      <strong>{% trans "Material" %}</strong>
                       <span>{{ product.material }}</span>
                   </div>
                   {% endif %}
                   {% if product.color %}
                   <div>
-                      <strong>Color</strong>
+                      <strong>{% trans "Color" %}</strong>
                       <span>{{ product.color }}</span>
                   </div>
                   {% endif %}
                   <div>
-                      <strong>Product code</strong>
+                      <strong>{% trans "Product code" %}</strong>
                       <span>{{ product.sku }}</span>
                   </div>
               </div>
 
               <div class="spring-product-trust">
                   <article>
-                      <strong>Payment</strong>
-                      <p>Cash on delivery only. You pay when the order reaches you.</p>
+                      <strong>{% trans "Payment" %}</strong>
+                      <p>{% if is_cash_on_delivery_only %}{% trans "Cash on delivery only. Inspect the item with the driver, then pay." %}{% else %}{% trans "Cash on delivery, or pay now with Telebirr / CBE Birr for priority dispatch." %}{% endif %}</p>
                   </article>
                   <article>
-                      <strong>Delivery</strong>
+                      <strong>{% trans "Delivery" %}</strong>
                       <p>{{ product_delivery_note }}</p>
                   </article>
                   <article>
-                      <strong>Returns</strong>
+                      <strong>{% trans "Returns" %}</strong>
                       <p>{{ product_return_note }}</p>
                   </article>
-                  {% if product.fit_notes %}
+                  {% if product.fit_notes and not size_guide_lines %}
                   <article>
-                      <strong>Fit</strong>
+                      <strong>{% trans "Fit" %}</strong>
                       <p>{{ product.fit_notes }}</p>
                   </article>
                   {% endif %}
               </div>
 
               <div class="spring-product-info__support">
-                  <p>Need help with fit or delivery? <a href="{% url 'store:contact' %}">Contact us</a>. Orders are tracked in your account after checkout.</p>
+                  <p>{% trans "Question about fit or delivery?" %}</p>
+                  <div class="spring-product-info__support-actions">
+                      <a href="{{ store.phone_href }}" class="spring-support-chip"><i class="fas fa-phone"></i> {% trans "Call" %} {{ store.phone }}</a>
+                      <a href="{{ store.telegram_bot_url }}" class="spring-support-chip" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i> {% trans "Ask on Telegram" %}</a>
+                      <a href="{% url 'store:faq' %}" class="spring-support-chip"><i class="fas fa-question-circle"></i> {% trans "FAQ" %}</a>
+                  </div>
+                  <p class="spring-product-info__support-note">{% trans "After checkout you get an order number and a tracking link — no account needed." %}</p>
               </div>
           </section>
       </div>
 
       <section class="spring-product-description">
           <div class="spring-section__head">
-              <h2>Product Details</h2>
+              <h2>{% trans "Product Details" %}</h2>
           </div>
           <div class="spring-product-description__content">
               {% if product.detail_description %}
@@ -257,14 +301,14 @@
 
               {% if product.care_notes %}
               <div class="spring-product-detail-block">
-                  <h3>Care</h3>
+                  <h3>{% trans "Care" %}</h3>
                   <p>{{ product.care_notes }}</p>
               </div>
               {% endif %}
 
               {% if product.fit_notes %}
               <div class="spring-product-detail-block">
-                  <h3>Fit Notes</h3>
+                  <h3>{% trans "Fit Notes" %}</h3>
                   <p>{{ product.fit_notes }}</p>
               </div>
               {% endif %}
@@ -273,13 +317,13 @@
 
       <section id="reviews" class="spring-section">
           <div class="spring-section__head">
-              <h2>Reviews</h2>
+              <h2>{% trans "Reviews" %}</h2>
               <span class="spring-section__meta">
                   {% if review_summary.review_count %}
                   <span class="spring-stars" aria-hidden="true">{% star_icons review_summary.average_rating %}</span>
-                  {{ review_summary.average_rating|floatformat:1 }}/5 average · {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
+                  {{ review_summary.average_rating|floatformat:1 }}/5 {% trans "average" %} · {{ review_summary.review_count }} {% blocktrans count counter=review_summary.review_count %}review{% plural %}reviews{% endblocktrans %}
                   {% else %}
-                  No reviews yet
+                  {% trans "No reviews yet" %}
                   {% endif %}
               </span>
           </div>
@@ -287,7 +331,7 @@
           {% if fit_summary %}
           <p class="spring-fit-summary">
               <i class="fas fa-ruler-horizontal"></i>
-              <strong>{{ fit_summary.true_to_size_percent }}%</strong> of {{ fit_summary.total }} shopper{{ fit_summary.total|pluralize }} say this fits true to size.
+              <strong>{{ fit_summary.true_to_size_percent }}%</strong> {% blocktrans count counter=fit_summary.total %}of {{ counter }} shopper says this fits true to size.{% plural %}of {{ counter }} shoppers say this fits true to size.{% endblocktrans %}
           </p>
           {% endif %}
 
@@ -296,11 +340,12 @@
                   {% for review in reviews %}
                   <article class="spring-review-card">
                       <div class="spring-review-card__head">
-                          <strong>{{ review.title|default:"Customer review" }}</strong>
+                          <strong>{{ review.title|default:_("Customer review") }}</strong>
                           <span class="spring-stars" aria-label="{{ review.rating }} out of 5 stars">{% star_icons review.rating %}</span>
                       </div>
                       <p class="spring-review-card__byline">
-                          {% firstof review.user.first_name review.user.username %}
+                          {{ review.display_name }}
+                          {% if review.is_verified_purchase %}<span class="spring-verified-chip"><i class="fas fa-check-circle"></i> {% trans "Verified purchase" %}</span>{% endif %}
                           · {{ review.created_at|date:"M d, Y" }}
                           {% if review.fit_feedback %}
                           · <span class="spring-fit-chip">{{ review.get_fit_feedback_display }}</span>
@@ -309,17 +354,17 @@
                       <p>{{ review.comment }}</p>
                       {% if review.image %}
                       <a href="{{ review.image.url }}" target="_blank" rel="noopener" class="spring-review-card__photo">
-                          <img src="{{ review.image.url }}" alt="Customer photo for {{ product.title }}" loading="lazy" width="96" height="96">
+                          <img src="{{ review.image.url }}" alt="{% blocktrans with title=product.title %}Customer photo for {{ title }}{% endblocktrans %}" loading="lazy" width="96" height="96">
                       </a>
                       {% endif %}
                   </article>
                   {% empty %}
-                  <p class="text-muted mb-0">No reviews yet. The first review helps the next shopper decide faster.</p>
+                  <p class="text-muted mb-0">{% trans "No reviews yet. The first review helps the next shopper decide faster." %}</p>
                   {% endfor %}
               </div>
 
               <div class="spring-review-form-card">
-                  <h3>Share your review</h3>
+                  <h3>{% trans "Share your review" %}</h3>
                   {% if request.user.is_authenticated %}
                   <form action="{% url 'store:submit-review' product.slug %}" method="POST" enctype="multipart/form-data" class="spring-review-form">
                       {% csrf_token %}
@@ -330,11 +375,11 @@
                           <small class="text-danger">{{ fm.errors|striptags }}</small>
                       </div>
                       {% endfor %}
-                      <button type="submit" class="btn btn-dark">Save review</button>
+                      <button type="submit" class="btn btn-dark">{% trans "Save review" %}</button>
                   </form>
                   {% else %}
-                  <p>Log in to leave a review after shopping with Zentanee.</p>
-                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-dark">Log in to review</a>
+                  <p>{% trans "Bought this? After delivery we send you a one-tap review link — no account needed. You can also log in to review now." %}</p>
+                  <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-dark">{% trans "Log in to review" %}</a>
                   {% endif %}
               </div>
           </div>
@@ -342,8 +387,8 @@
 
       <section class="spring-section">
           <div class="spring-section__head">
-              <h2>You may also like</h2>
-              <a href="{% url 'store:category-products' product.category.slug %}">View collection</a>
+              <h2>{% trans "You may also like" %}</h2>
+              <a href="{% url 'store:category-products' product.category.slug %}">{% trans "View collection" %}</a>
           </div>
           <div class="spring-product-grid">
               {% for rp in related_products %}
@@ -351,7 +396,7 @@
                   {% include 'store/_product_card_content.html' with product=rp %}
               </div>
               {% empty %}
-              <p class="text-muted mb-0">More products from this category will appear here.</p>
+              <p class="text-muted mb-0">{% trans "More pieces from this collection are on the way." %}</p>
               {% endfor %}
           </div>
       </section>
@@ -359,8 +404,8 @@
       {% if recently_viewed_products %}
       <section class="spring-section">
           <div class="spring-section__head">
-              <h2>Recently viewed</h2>
-              <a href="{% url 'store:all-products' %}">Keep browsing</a>
+              <h2>{% trans "Recently viewed" %}</h2>
+              <a href="{% url 'store:all-products' %}">{% trans "Keep browsing" %}</a>
           </div>
           <div class="spring-product-grid">
               {% for viewed_product in recently_viewed_products %}
@@ -374,13 +419,25 @@
   </div>
 </main>
 
+{% if not product.is_sold_out and not preview_hidden %}
+{# Mobile sticky buy bar: appears once the main add-to-cart button scrolls away. #}
+<div class="zent-sticky-cta d-lg-none" id="sticky-cta" data-sticky-cta hidden>
+    <div class="zent-sticky-cta__price">
+        <strong>{{ product.price|etb }}</strong>
+        <span id="sticky-cta-size">{% if default_selected_size %}{% trans "Size" %} {{ default_selected_size }}{% endif %}</span>
+    </div>
+    <button type="button" class="btn btn-dark" data-sticky-cta-submit>{% trans "Add to cart" %}</button>
+</div>
+{% endif %}
+
 {# Lightbox overlay for image zoom #}
-<div id="gallery-lightbox" class="spring-gallery-lightbox" role="dialog" aria-modal="true" aria-label="Product image zoom" hidden>
-    <button type="button" class="spring-gallery-lightbox__close" id="gallery-lightbox-close" aria-label="Close zoom">
+<div id="gallery-lightbox" class="spring-gallery-lightbox" role="dialog" aria-modal="true" aria-label="{% trans 'Product image zoom' %}" hidden>
+    <button type="button" class="spring-gallery-lightbox__close" id="gallery-lightbox-close" aria-label="{% trans 'Close zoom' %}">
         <i class="fas fa-times"></i>
     </button>
     <img src="" alt="" id="gallery-lightbox-img">
 </div>
+<script type="application/json" id="ga-view-item-data">{{ ga_item_json|safe }}</script>
 {% endblock content %}
 
 {% block extra_scripts %}
@@ -393,6 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const lightboxImg = document.getElementById('gallery-lightbox-img');
     const lightboxClose = document.getElementById('gallery-lightbox-close');
     const zoomBtn = document.getElementById('gallery-zoom-btn');
+    const stickySize = document.getElementById('sticky-cta-size');
 
     // Thumbnail switcher. The main image carries a srcset, and browsers
     // prefer srcset over src — swapping src alone changes nothing visibly,
@@ -414,16 +472,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Per-size stock message update
+    // Per-size stock message update (+ sticky bar label)
     const sizeInputs = document.querySelectorAll('input[name="size"]');
     sizeInputs.forEach(function (input) {
         input.addEventListener('change', function () {
-            if (!stockMessage) return;
             const stockLabel = input.getAttribute('data-stock-label');
-            if (stockLabel) {
+            if (stockMessage && stockLabel) {
                 stockMessage.textContent = stockLabel;
                 stockMessage.style.display = '';
             }
+            if (stickySize) stickySize.textContent = '{% trans "Size" %} ' + input.value;
         });
     });
 
@@ -464,111 +522,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.key === 'Escape' && !lightbox.hasAttribute('hidden')) closeLightbox();
         });
     }
-
-    // Add-to-cart is handled by htmx (hx-post on the form).
+    // Add-to-cart is handled by htmx (hx-post on the form); the sticky bar and
+    // GA4 view_item / add_to_cart events live in zent.js.
 });
 </script>
-
-<style>
-.spring-gallery-lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.88);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.spring-gallery-lightbox[hidden] { display: none; }
-.spring-gallery-lightbox__close {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    background: rgba(255,255,255,0.1);
-    border: none;
-    color: #fff;
-    font-size: 1.4rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.spring-gallery-lightbox__close:hover { background: rgba(255,255,255,0.2); }
-#gallery-lightbox-img {
-    max-width: 90vw;
-    max-height: 90vh;
-    object-fit: contain;
-    border-radius: 4px;
-}
-.spring-gallery-zoom-btn {
-    position: absolute;
-    bottom: .75rem;
-    right: .75rem;
-    background: rgba(0,0,0,0.5);
-    color: #fff;
-    border: none;
-    padding: .4rem .55rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: .85rem;
-}
-.spring-gallery-zoom-btn:hover { background: rgba(0,0,0,0.75); }
-#gallery-main-wrap { position: relative; }
-.spring-stars .spring-star { color: #ccc; }
-.spring-stars .spring-star.is-filled { color: #f5a623; }
-.spring-product-restock--size { margin-top: .75rem; }
-.spring-product-restock__form--inline { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
-.spring-product-card__badge {
-    position: absolute;
-    top: .6rem;
-    left: .6rem;
-    font-size: .7rem;
-    font-weight: 600;
-    padding: .2rem .5rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-.spring-product-card__badge--soldout { background: #111; color: #fff; }
-.spring-product-card__notify { font-size: .75rem; margin-left: .5rem; text-decoration: underline; }
-.spring-size-chip {
-    display: inline-block;
-    padding: .15rem .4rem;
-    font-size: .72rem;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    margin: .15rem .1rem 0 0;
-    font-weight: 500;
-}
-.spring-dashboard-control--notes {
-    display: block;
-    width: 100%;
-    min-height: 3rem;
-    margin-top: .35rem;
-    font-size: .8rem;
-    padding: .35rem .5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    resize: vertical;
-}
-.spring-dashboard-mini-link {
-    display: block;
-    font-size: .75rem;
-    margin-top: .25rem;
-    text-decoration: underline;
-}
-.spring-trust-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    border-top: 1px solid #eee;
-}
-.spring-trust-item strong { display: block; margin-bottom: .3rem; }
-.spring-trust-item p { font-size: .9rem; color: #555; margin: 0; }
-</style>
 {% endblock %}

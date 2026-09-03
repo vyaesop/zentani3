@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ store.name }} | {% trans "This item is no longer available" %}{% endblock %}
+{% block meta_description %}{% trans "This product is no longer available. Browse what is live in the store instead." %}{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-unavailable-page">
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">{% trans "Not available" %}</p>
+          <h1>{{ product.title }}</h1>
+          <p>{% trans "This item isn't in the store right now — it may be sold out or retired. The pieces below are live and ready to order." %}</p>
+          <div class="spring-hero__actions">
+              {% if product.category %}
+              <a href="{% url 'store:category-products' product.category.slug %}" class="btn btn-dark">{% blocktrans with collection=product.category.title %}Shop {{ collection }}{% endblocktrans %}</a>
+              {% endif %}
+              <a href="{% url 'store:all-products' %}?sort=newest" class="btn btn-outline-dark">{% trans "See new arrivals" %}</a>
+          </div>
+      </section>
+
+      {% if alternatives %}
+      <section class="spring-section">
+          <div class="spring-section__head">
+              <h2>{% trans "You might like these instead" %}</h2>
+          </div>
+          <div class="spring-product-grid">
+              {% for alt in alternatives %}
+              <div class="spring-grid-item">
+                  {% include 'store/_product_card_content.html' with product=alt %}
+              </div>
+              {% endfor %}
+          </div>
+      </section>
+      {% endif %}
+  </div>
+</main>
+{% endblock content %}

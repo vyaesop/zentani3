@@ -18,4 +18,6 @@ trap cleanup EXIT
 "$VENV_DIR/bin/python" -m pip install -r requirements.txt
 "$VENV_DIR/bin/python" manage.py check --deploy --fail-level ERROR
 "$VENV_DIR/bin/python" manage.py migrate --noinput
+# Rebuild locale/*/django.mo from the .po sources (no gettext on the build image).
+"$VENV_DIR/bin/python" manage.py compile_translations
 "$VENV_DIR/bin/python" manage.py collectstatic --noinput

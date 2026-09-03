@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 
-{% block title %}Zentanee | Orders{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Orders" %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
@@ -11,9 +12,9 @@
       {% include 'partials/_messages.html' %}
 
       <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">Orders</p>
-          <h1>Your orders</h1>
-          <p>Track current and previous orders from one place.</p>
+          <p class="spring-directory-header__eyebrow">{% trans "Orders" %}</p>
+          <h1>{% trans "Your orders" %}</h1>
+          <p>{% trans "Track current and previous orders from one place." %}</p>
       </section>
 
       {% include 'store/_telegram_optin.html' %}
@@ -39,31 +40,32 @@
 
               <div class="spring-order-item__info">
                   <h2><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h2>
-                  <p>Placed {{ order.ordered_date|date:"F d, Y, P" }}</p>
-                  <p>Order #{{ order.id }}</p>
-                  <p>Qty {{ order.quantity }}{% if order.size %} / Size {{ order.size }}{% endif %}</p>
+                  <p>{% trans "Placed" %} {{ order.ordered_date|date:"F d, Y, P" }}</p>
+                  <p>{% trans "Order" %} {% if order.group %}<a href="{% url 'store:order-confirmation' order.group.claim_token %}">{{ order.group.number }}</a>{% else %}#{{ order.id }}{% endif %}</p>
+                  <p>{% trans "Qty" %} {{ order.quantity }}{% if order.size %} / {% trans "Size" %} {{ order.size }}{% endif %}</p>
+                  {% if order.group and order.group.delivery_fee %}<p>{% trans "Delivery" %} {{ order.group.delivery_fee|etb }} · {% trans "Order total" %} {{ order.group.total|etb }}</p>{% endif %}
               </div>
 
               <div class="spring-order-item__aside">
                   <span>{{ order.status }}</span>
-                  <strong>{{ order.line_total|default:0|floatformat:2 }} ETB</strong>
+                  <strong>{{ order.line_total|default:0|etb }}</strong>
                   {% if order.can_cancel %}
                   <form action="{% url 'store:cancel-order' order.id %}" method="POST">
                       {% csrf_token %}
-                      <button type="submit" class="spring-text-link">Cancel order</button>
+                      <button type="submit" class="spring-text-link">{% trans "Cancel order" %}</button>
                   </form>
                   {% endif %}
               </div>
 
               <div class="spring-order-item__timeline">
                   <p class="spring-order-item__status-copy">{{ order.status_copy }}</p>
-                  <div class="spring-order-timeline" aria-label="Order timeline">
+                  <div class="spring-order-timeline" aria-label="{% trans 'Order timeline' %}">
                       {% for step in order.timeline %}
                       <span class="spring-order-timeline__step is-{{ step.state }}">{{ step.label }}</span>
                       {% endfor %}
                   </div>
                   {% if order.staff_notes %}
-                  <p class="spring-order-item__notes"><strong>Note:</strong> {{ order.staff_notes }}</p>
+                  <p class="spring-order-item__notes"><strong>{% trans "Note" %}:</strong> {{ order.staff_notes }}</p>
                   {% endif %}
               </div>
           </article>
@@ -74,16 +76,17 @@
 
       <section class="spring-order-help">
           <div class="spring-section__head">
-              <h2>Need help with an order?</h2>
+              <h2>{% trans "Need help with an order?" %}</h2>
           </div>
-          <p>If an order is still pending or accepted, you can cancel it here. For return or delivery issues after that, contact the store quickly with your order number.</p>
-          <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">Contact support</a>
+          <p>{% trans "If an order is still pending or accepted, you can cancel it here. For delivery issues after that, call us with your order number." %}</p>
+          <a href="{{ store.phone_href }}" class="btn btn-outline-dark"><i class="fas fa-phone"></i> {{ store.phone }}</a>
+          <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">{% trans "Contact support" %}</a>
       </section>
       {% else %}
       <section class="spring-empty-state">
-          <h2>You have no orders yet</h2>
-          <p>Once you place an order, it will appear here.</p>
-          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
+          <h2>{% trans "You have no orders yet" %}</h2>
+          <p>{% trans "Once you place an order, it will appear here." %}</p>
+          <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Shop all" %}</a>
       </section>
       {% endif %}
   </div>

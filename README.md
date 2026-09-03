@@ -71,9 +71,15 @@ Before deploying, ensure these environment variables are set with real values (n
 - `DATABASE_URL`
 - `DJANGO_SECRET_KEY`
 - `ALLOWED_HOSTS`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
+- `SITE_URL` (public https origin — canonical tags, sitemap, feeds, SMS/Telegram links)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- `EMAIL_HOST` + credentials (password reset, receipts, restock alerts)
+- `SMS_BACKEND` + gateway token (order confirmation and dispatch SMS)
+- `STORE_LEGAL_NAME`, `STORE_ADDRESS`, `STORE_PHONE` (footer, policies, schema.org)
+
+Optional: `REDIS_URL` (shared cache), `CHAPA_SECRET_KEY` (Telebirr/CBE Birr prepay),
+`GA_MEASUREMENT_ID`, `REFERRAL_WELCOME_COUPON_CODE`. See `.env.example` for every
+setting and `docs/launch-checklist.md` for the post-deploy steps.
 
 Run this command locally to catch deployment issues early:
 
@@ -81,7 +87,16 @@ Run this command locally to catch deployment issues early:
 python manage.py check --deploy --fail-level ERROR
 ```
 
+Useful commands:
+
+```bash
+python manage.py scrub_seo_placeholders --apply   # remove leaked "[Store Name]" AI copy
+python manage.py compile_translations             # rebuild locale/*/django.mo (no gettext needed)
+python manage.py test store --settings=zentanee.settings_local
+```
+
 Notes:
 
 - On Vercel/serverless, sqlite media writes are not suitable for admin uploads.
 - If Cloudinary credentials are missing or invalid, uploads will fail.
+- `check --deploy` warns when email or SMS are still disabled in production.

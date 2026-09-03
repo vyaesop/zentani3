@@ -1,21 +1,24 @@
 """Cart contents, cart mutations, and coupon application."""
 import decimal
+import json
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 
-from store.constants import (
-    ADDIS_FREE_SHIPPING_THRESHOLD,
-    ADDIS_SHIPPING_FEE,
-    OUTSIDE_ADDIS_SHIPPING_FEE,
+from store.constants import AFFILIATE_SESSION_KEY
+from store.models import Address, Cart, Coupon, OrderGroup, Product, ProductEvent
+from store.services.checkout import (
+    coupon_issue as _coupon_issue,
+    delivery_fee_for,
+    delivery_note_for,
+    effective_unit_price as _effective_unit_price,
 )
-from store.models import Address, Cart, Coupon, Product, ProductEvent
-from store.services.checkout import coupon_issue as _coupon_issue, effective_unit_price as _effective_unit_price
 
-from .catalog import _parse_available_sizes, _product_can_fulfill_quantity, _product_size_stock
+from .catalog import _ga_item, _parse_available_sizes, _product_can_fulfill_quantity, _product_size_stock
 from .common import _ensure_session_key, _is_htmx, _safe_redirect_url, _telegram_optin_context
 
 
@@ -93,40 +96,26 @@ def _cart_owner_kwargs(request):
     return {"user": None, "session_key": _ensure_session_key(request)}
 
 
-def _normalized_city(value):
-    return (value or "").strip().lower()
-
-
+# Thin wrappers kept for callers that import the old names.
 def _shipping_amount_for_city(city, subtotal):
-    normalized_city = _normalized_city(city)
-    if not normalized_city:
-        return Decimal("0.00")
-    if "addis" in normalized_city:
-        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
-            return Decimal("0.00")
-        return ADDIS_SHIPPING_FEE
-    return OUTSIDE_ADDIS_SHIPPING_FEE
+    return delivery_fee_for(city, subtotal)
 
 
 def _shipping_note_for_city(city, subtotal):
-    normalized_city = _normalized_city(city)
-    if not normalized_city:
-        return f"Shipping is calculated once the delivery city is known. Addis starts at {ADDIS_SHIPPING_FEE:.0f} ETB."
-    if "addis" in normalized_city:
-        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
-            return "Addis delivery is free for this order total."
-        shortfall = (ADDIS_FREE_SHIPPING_THRESHOLD - subtotal).quantize(Decimal("0.01"))
-        return f"Addis delivery is {ADDIS_SHIPPING_FEE:.0f} ETB. Add {shortfall:.2f} ETB more for free delivery."
-    return f"Outside Addis delivery is {OUTSIDE_ADDIS_SHIPPING_FEE:.0f} ETB."
+    return delivery_note_for(city, subtotal)
 
 
 def add_to_cart(request):
-    def _feedback(message, tone="success"):
-        return render(
+    def _feedback(message, tone="success", ga_event=None):
+        response = render(
             request,
             "store/_add_to_cart_result.html",
             {"message": message, "tone": tone, "include_oob_badge": True},
         )
+        if ga_event:
+            # htmx surfaces this as a DOM event; zent.js forwards it to GA4.
+            response["HX-Trigger"] = json.dumps({"zent:add_to_cart": ga_event})
+        return response
 
     if request.method != "POST":
         messages.warning(request, "Please use the add-to-cart button to add an item.")
@@ -179,7 +168,11 @@ def add_to_cart(request):
 
     requested_quantity = 1 if created else cart_item.quantity + 1
     if not _product_can_fulfill_quantity(product, requested_quantity, size_value=selected_size_value):
-        message = f"Only {_product_size_stock(product, size_value=selected_size_value)} unit(s) are available for {product.title} ({selected_size_value or 'default size'})."
+        available = _product_size_stock(product, size_value=selected_size_value)
+        if getattr(settings, "STORE_SHOW_STOCK_COUNTS", False):
+            message = f"Only {available} unit(s) are available for {product.title} ({selected_size_value or 'default size'})."
+        else:
+            message = f"No more units of {product.title} ({selected_size_value or 'default size'}) are available right now."
         if created:
             cart_item.delete()
         if is_htmx:
@@ -196,29 +189,74 @@ def add_to_cart(request):
 
     ProductEvent.log(ProductEvent.EVENT_ADD_TO_CART, product, request=request)
 
+    ga_event = {
+        "currency": "ETB",
+        "value": float(product.price or 0),
+        "items": [_ga_item(product, quantity=1, size=selected_size_value or "")],
+    }
     if is_htmx:
-        return _feedback(success_message, tone="success")
+        return _feedback(success_message, tone="success", ga_event=ga_event)
 
     messages.success(request, success_message)
     return redirect(_safe_redirect_url(request, fallback_url="store:cart"))
 
 
+def _apply_referral_welcome_coupon(request, cart_products):
+    """Auto-apply the welcome coupon to a cart that arrived via an affiliate link."""
+    code = getattr(settings, "REFERRAL_WELCOME_COUPON_CODE", "")
+    if not code or not cart_products or not request.session.get(AFFILIATE_SESSION_KEY):
+        return None
+    if any(item.coupon_id for item in cart_products):
+        return None
+    coupon = Coupon.objects.filter(code__iexact=code).first()
+    if coupon is None or _coupon_issue(coupon):
+        return None
+    Cart.objects.filter(id__in=[item.id for item in cart_products]).update(coupon=coupon)
+    for item in cart_products:
+        item.coupon = coupon
+    return coupon
+
+
+def _payment_method_options():
+    if not getattr(settings, "ONLINE_PAYMENTS_ENABLED", False):
+        return []
+    return [
+        {
+            "value": OrderGroup.PAYMENT_COD,
+            "label": "Cash on delivery",
+            "hint": "Pay the driver in cash after inspecting your order.",
+            "selected": True,
+        },
+        {
+            "value": OrderGroup.PAYMENT_CHAPA,
+            "label": "Pay now (Telebirr, CBE Birr, card)",
+            "hint": "Secure payment via Chapa. Prepaid orders are dispatched first.",
+            "selected": False,
+        },
+    ]
+
+
 def _cart_page_context(request):
-    cart_products = Cart.objects.filter(**_cart_owner_kwargs(request)).select_related("product", "coupon", "product__category", "product__brand")
+    cart_products = list(
+        Cart.objects.filter(**_cart_owner_kwargs(request)).select_related("product", "coupon", "product__category", "product__brand")
+    )
+    _apply_referral_welcome_coupon(request, cart_products)
     latest_address = _latest_saved_address(request.user)
 
     amount = decimal.Decimal(0)
+    ga_items = []
     for item in cart_products:
         line_total = item.quantity * _effective_unit_price(item.product.price, item.coupon)
         item.display_total_price = line_total
         amount += line_total
+        ga_items.append(_ga_item(item.product, quantity=item.quantity, size=item.size or ""))
 
     shipping_city = latest_address.city if latest_address else ""
-    shipping_amount = _shipping_amount_for_city(shipping_city, amount) if request.user.is_authenticated else decimal.Decimal(0)
-    shipping_note = _shipping_note_for_city(shipping_city, amount) if request.user.is_authenticated else "Shipping will be calculated after you enter your delivery city during guest checkout."
+    shipping_amount = delivery_fee_for(shipping_city, amount) if request.user.is_authenticated else decimal.Decimal(0)
+    shipping_note = delivery_note_for(shipping_city, amount) if request.user.is_authenticated else "Delivery is calculated after you enter your city: free in Addis over the threshold, otherwise a flat fee."
 
     coupon_for_display = None
-    first_item_with_coupon = cart_products.filter(coupon__isnull=False).first()
+    first_item_with_coupon = next((item for item in cart_products if item.coupon_id), None)
     if first_item_with_coupon and not _coupon_issue(first_item_with_coupon.coupon):
         coupon_for_display = first_item_with_coupon.coupon
 
@@ -232,6 +270,9 @@ def _cart_page_context(request):
         "latest_address": latest_address,
         "flow_status": _build_cart_flow_status(request, cart_products, latest_address),
         "shipping_note": shipping_note,
+        "payment_method_options": _payment_method_options(),
+        "ga_cart_json": json.dumps({"currency": "ETB", "value": float(amount), "items": ga_items}),
+        "robots_meta": "noindex, nofollow",
         **_telegram_optin_context(request),
     }
 
@@ -316,7 +357,10 @@ def plus_cart(request, cart_id):
 
     requested_quantity = cp.quantity + 1
     if not _product_can_fulfill_quantity(cp.product, requested_quantity, size_value=cp.size):
-        msg = f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available."
+        if getattr(settings, "STORE_SHOW_STOCK_COUNTS", False):
+            msg = f"Only {_product_size_stock(cp.product, size_value=cp.size)} unit(s) are available."
+        else:
+            msg = "No more units of this item are available right now."
         if _is_htmx(request):
             return _render_cart_contents(request, alert=msg, tone="warning")
         messages.warning(request, msg)

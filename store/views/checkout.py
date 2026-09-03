@@ -1,4 +1,7 @@
-"""Checkout, order history, and order cancellation."""
+"""Checkout, order confirmation, order history, and order cancellation."""
+import json
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -12,9 +15,10 @@ from store.constants import (
     ORDER_STATUS_COPY,
     ORDER_STATUS_SEQUENCE,
 )
-from store.forms import GuestCheckoutForm
-from store.models import STATUS_CHOICES, BackgroundTask, Cart, Order
-from store.services.checkout import OrderPlacementError, place_order
+from store.forms import GuestCheckoutForm, PaymentMethodForm
+from store.models import STATUS_CHOICES, BackgroundTask, Cart, Order, OrderGroup
+from store.payments import chapa
+from store.services.checkout import OrderPlacementError, cancel_order_line, place_order
 from store.tasks import enqueue
 
 from .affiliate import _affiliate_profile_from_session
@@ -22,9 +26,11 @@ from .cart import (
     _address_entry_url,
     _cart_owner_kwargs,
     _latest_saved_address,
-    _shipping_amount_for_city,
 )
+from .catalog import _ga_item
 from .common import _querystring_without, _telegram_optin_context
+
+GUEST_ORDER_TOKENS_SESSION_KEY = "guest_order_tokens"
 
 
 def _build_order_flow_status(orders_queryset):
@@ -45,7 +51,7 @@ def _build_order_flow_status(orders_queryset):
         "eyebrow": "Order tracking",
         "title": "Track your order progress here",
         "message": "Pending means we received it, Accepted means confirmed, Packed means preparing, On The Way means out for delivery, and Delivered means completed.",
-        "meta": f"Latest order: #{latest_order.id} on {latest_order.ordered_date.strftime('%Y-%m-%d %H:%M')}.",
+        "meta": f"Latest order: {latest_order.order_number} on {latest_order.ordered_date.strftime('%Y-%m-%d %H:%M')}.",
         "primary_label": "Continue shopping",
         "primary_url": reverse("store:home"),
     }
@@ -87,6 +93,16 @@ def _can_cancel_order(order):
     return order.status in {"Pending", "Accepted"}
 
 
+def _remember_guest_order(request, group):
+    tokens = [token for token in request.session.get(GUEST_ORDER_TOKENS_SESSION_KEY, []) if token != group.claim_token]
+    request.session[GUEST_ORDER_TOKENS_SESSION_KEY] = [group.claim_token, *tokens][:10]
+    request.session.modified = True
+
+
+def _confirmation_url(request, group):
+    return request.build_absolute_uri(reverse("store:order-confirmation", kwargs={"token": group.claim_token}))
+
+
 def checkout(request):
     if request.method != "POST":
         messages.warning(request, "Invalid checkout request.")
@@ -113,8 +129,16 @@ def checkout(request):
         messages.error(request, "Some items are no longer available: " + ", ".join(unavailable_products))
         return redirect("store:cart")
 
+    payment_form = PaymentMethodForm(request.POST)
+    if not payment_form.is_valid():
+        for error in payment_form.errors.get("payment_method", []):
+            messages.error(request, error)
+        return redirect("store:cart")
+    payment_method = payment_form.cleaned_data["payment_method"]
+
     customer_address = _latest_saved_address(request.user)
     guest_contact = None
+    contact_email = ""
 
     if user is None:
         guest_form = GuestCheckoutForm(request.POST)
@@ -129,6 +153,9 @@ def checkout(request):
             "city": guest_form.cleaned_data["city"].strip(),
             "address": guest_form.cleaned_data["address"].strip(),
         }
+        contact_email = guest_form.cleaned_data.get("email") or ""
+        if contact_email:
+            guest_contact["email"] = contact_email
     elif customer_address is None:
         messages.error(request, "Add a delivery address before placing your order.")
         return redirect(_address_entry_url("store:cart"))
@@ -141,55 +168,145 @@ def checkout(request):
             session_key=request.session.session_key or "",
             affiliate_profile=affiliate_profile,
             affiliate_click_id=request.session.get(AFFILIATE_CLICK_SESSION_KEY),
+            address=customer_address,
+            payment_method=payment_method,
+            contact_email=contact_email,
         )
     except OrderPlacementError as exc:
         messages.error(request, str(exc))
         return redirect("store:cart")
 
-    shipping_city = guest_contact["city"] if guest_contact else getattr(customer_address, "city", "")
-    shipping_amount = _shipping_amount_for_city(shipping_city, placement.order_total)
+    group = placement.group
+    if user is None:
+        _remember_guest_order(request, group)
 
+    # Optional prepay: hand the shopper to Chapa. If Chapa is down, the order
+    # still stands as cash on delivery rather than being lost.
+    if payment_method == OrderGroup.PAYMENT_CHAPA:
+        try:
+            checkout_url = chapa.initialize_payment(
+                group,
+                return_url=request.build_absolute_uri(
+                    f"{reverse('store:chapa-return')}?tx_ref={chapa.tx_ref_for(group)}"
+                ),
+                callback_url=request.build_absolute_uri(reverse("store:chapa-webhook")),
+            )
+        except chapa.ChapaError as exc:
+            group.payment_method = OrderGroup.PAYMENT_COD
+            group.payment_status = OrderGroup.PAYMENT_UNPAID
+            group.save(update_fields=["payment_method", "payment_status", "updated_at"])
+            messages.warning(request, f"{exc} Your order {group.number} was placed as cash on delivery instead.")
+            checkout_url = ""
+    else:
+        checkout_url = ""
+
+    _enqueue_order_notifications(request, user, group, placement, customer_address, guest_contact)
+
+    messages.success(
+        request,
+        f"Order {group.number} placed successfully. Total including delivery: {placement.grand_total:,.2f} ETB.",
+    )
+    if checkout_url:
+        return redirect(checkout_url)
+    return redirect("store:order-confirmation", token=group.claim_token)
+
+
+def _enqueue_order_notifications(request, user, group, placement, customer_address, guest_contact):
+    confirmation_url = _confirmation_url(request, group)
     notify_payload = {
         "user_id": user.id if user else None,
         "guest_contact": guest_contact,
         "order_count": placement.order_count,
         "order_total": str(placement.order_total),
+        "delivery_fee": str(placement.delivery_fee),
+        "grand_total": str(placement.grand_total),
+        "order_number": group.number,
+        "payment_method": group.payment_method,
         "address_id": customer_address.id if (user and customer_address) else None,
         "order_lines": placement.order_lines,
         "order_ids": placement.order_ids,
     }
-    customer_name = ""
-    if user:
-        customer_name = user.get_full_name() or ""
-    elif guest_contact:
-        customer_name = guest_contact.get("full_name") or ""
     customer_confirm_payload = {
         "user_id": user.id if user else None,
         "session_key": request.session.session_key or "",
         "order_ids": placement.order_ids,
         "order_lines": placement.order_lines,
         "order_total": str(placement.order_total),
-        "customer_name": customer_name,
+        "delivery_fee": str(placement.delivery_fee),
+        "grand_total": str(placement.grand_total),
+        "order_number": group.number,
+        "confirmation_url": confirmation_url,
+        "paid_online": group.is_paid_online,
+        "customer_name": group.customer_name,
     }
+    messages_payload = {"group_id": group.id}
     transaction.on_commit(
         lambda: (
             enqueue(BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY, notify_payload),
             enqueue(BackgroundTask.TYPE_CUSTOMER_ORDER_CONFIRM, customer_confirm_payload),
+            enqueue(BackgroundTask.TYPE_CUSTOMER_ORDER_MESSAGES, messages_payload),
         )
     )
 
-    messages.success(
+
+def _group_lines(group):
+    lines = list(group.lines.select_related("product").order_by("id"))
+    for line in lines:
+        line.timeline = _order_status_timeline(line.status)
+        line.status_copy = ORDER_STATUS_COPY.get(line.status, "")
+        line.can_cancel = _can_cancel_order(line)
+    return lines
+
+
+def order_confirmation(request, token):
+    """Post-checkout receipt reachable by anyone holding the claim token.
+
+    Guests get here straight after checkout (and again from the SMS/Telegram
+    link); it carries the order number, lines, delivery fee, total, payment
+    state, what happens next, and the Telegram opt-in where it finally has a
+    concrete benefit to offer.
+    """
+    group = get_object_or_404(OrderGroup.objects.select_related("user"), claim_token=token)
+    lines = _group_lines(group)
+
+    emit_purchase = not group.purchase_tracked
+    if emit_purchase:
+        OrderGroup.objects.filter(pk=group.pk).update(purchase_tracked=True)
+
+    ga_purchase = {
+        "transaction_id": group.number,
+        "value": float(group.total),
+        "shipping": float(group.delivery_fee),
+        "currency": "ETB",
+        "coupon": group.coupon_code or "",
+        "items": [_ga_item(line.product, quantity=line.quantity, size=line.size or "") for line in lines],
+    }
+    return render(
         request,
-        f"Order placed successfully. Estimated grand total including delivery: {(placement.order_total + shipping_amount):.2f} ETB.",
+        "store/order_confirmation.html",
+        {
+            "group": group,
+            "lines": lines,
+            "group_status": group.status,
+            "emit_purchase": emit_purchase,
+            "ga_purchase_json": json.dumps(ga_purchase),
+            "robots_meta": "noindex, nofollow",
+            "store_phone": settings.STORE_PHONE,
+            **_telegram_optin_context(request),
+        },
     )
-    if request.user.is_authenticated:
-        return redirect("store:orders")
-    return redirect("store:home")
 
 
-@login_required
 def orders(request):
-    all_orders = Order.objects.filter(user=request.user).select_related("product").only(
+    if request.user.is_authenticated:
+        all_orders = Order.objects.filter(user=request.user)
+    else:
+        tokens = request.session.get(GUEST_ORDER_TOKENS_SESSION_KEY, [])
+        if not tokens:
+            return redirect(f"{reverse('store:login')}?next={reverse('store:orders')}")
+        all_orders = Order.objects.filter(group__claim_token__in=tokens)
+
+    all_orders = all_orders.select_related("product", "group").only(
         "id",
         "quantity",
         "size",
@@ -197,6 +314,14 @@ def orders(request):
         "ordered_date",
         "line_total",
         "price_at_purchase",
+        "staff_notes",
+        "group__id",
+        "group__number",
+        "group__claim_token",
+        "group__delivery_fee",
+        "group__total",
+        "group__payment_method",
+        "group__payment_status",
         "product__id",
         "product__product_image",
         "product__title",
@@ -209,7 +334,7 @@ def orders(request):
     for order in page_obj.object_list:
         order.timeline = _order_status_timeline(order.status)
         order.status_copy = ORDER_STATUS_COPY.get(order.status, "")
-        order.can_cancel = _can_cancel_order(order)
+        order.can_cancel = _can_cancel_order(order) and request.user.is_authenticated
     return render(
         request,
         "store/orders.html",
@@ -220,6 +345,7 @@ def orders(request):
             "page_query": _querystring_without(request, "page"),
             "flow_status": _build_order_flow_status(all_orders),
             "order_status_summary": _order_status_summary(all_orders),
+            "robots_meta": "noindex, nofollow",
             **_telegram_optin_context(request),
         },
     )
@@ -236,7 +362,6 @@ def cancel_order(request, order_id):
         messages.warning(request, "This order can no longer be cancelled online.")
         return redirect("store:orders")
 
-    order.status = "Cancelled"
-    order.save(update_fields=["status"])
-    messages.success(request, f"Order #{order.id} was cancelled.")
+    cancel_order_line(order)
+    messages.success(request, f"Order {order.order_number} ({order.product.title}) was cancelled.")
     return redirect("store:orders")

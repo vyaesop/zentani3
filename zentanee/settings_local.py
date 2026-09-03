@@ -36,3 +36,21 @@ for _name in (
     "TELEGRAM_ADMIN_WEBHOOK_SECRET",
 ):
     os.environ.pop(_name, None)
+
+# The real .env carries the production SITE_URL; tests must build canonical,
+# sitemap and robots URLs from the request host unless a test overrides it.
+SITE_URL = ""
+
+# Outbound channels never leave the process locally: email goes to the in-memory
+# outbox (readable in tests via django.core.mail.outbox), SMS to the console,
+# and online payments stay disabled unless a test overrides it.
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+SMS_BACKEND = "console"
+CHAPA_SECRET_KEY = ""
+CHAPA_WEBHOOK_SECRET = ""
+ONLINE_PAYMENTS_ENABLED = False
+
+# The test client speaks plain HTTP; production-only transport hardening off.
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False

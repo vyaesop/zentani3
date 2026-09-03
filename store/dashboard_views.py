@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -34,15 +34,18 @@ from .models import (
     Order,
     Product,
     ProductAIDraft,
+    ProductEvent,
     ProductImages,
     ProductReview,
     ProductSizeStock,
     RestockRequest,
+    SearchLog,
     TelegramBotOrder,
     TelegramLink,
 )
+from .services.checkout import cancel_order_line
 from .services.enrichment import mark_draft_manual_review
-from .services.inventory import parse_size_list, set_product_sizes
+from .services.inventory import default_stock_per_size, parse_size_list, set_product_sizes
 from .tasks import enqueue, execute as execute_task, has_active_task, retry_task
 from .telegram_notify import (
     notify_customer_delivery_status,
@@ -53,8 +56,54 @@ from .telegram_notify import (
 STATUS_VALUES = {value for value, _ in STATUS_CHOICES}
 AI_DRAFT_SESSION_KEY = "dashboard_product_ai_draft_id"
 AI_QUEUE_LIMIT = 20
-DEFAULT_STOCK_PER_SIZE = 10
 LOW_STOCK_THRESHOLD = 3
+
+
+def _apply_order_status(order, new_status):
+    """Move one line to `new_status` with the side effects that status implies.
+
+    Cancelled returns units to inventory; Delivered issues the review invite.
+    Returns True when the status actually changed.
+    """
+    if order.status == new_status:
+        return False
+    if new_status == "Cancelled":
+        cancel_order_line(order)
+    else:
+        order.status = new_status
+        order.save(update_fields=["status"])
+    enqueue(
+        BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS,
+        {"order_id": order.id, "status": new_status},
+    )
+    if new_status == "Delivered":
+        enqueue(BackgroundTask.TYPE_CUSTOMER_REVIEW_INVITE, {"order_id": order.id})
+    return True
+
+
+def _funnel_stats(now, days):
+    since = now - timedelta(days=days)
+    counts = dict(
+        ProductEvent.objects.filter(created_at__gte=since)
+        .values_list("event_type")
+        .annotate(n=Count("id"))
+        .values_list("event_type", "n")
+    )
+    views = counts.get(ProductEvent.EVENT_VIEW, 0)
+    adds = counts.get(ProductEvent.EVENT_ADD_TO_CART, 0)
+    purchases = counts.get(ProductEvent.EVENT_PURCHASE, 0)
+
+    def _rate(part, whole):
+        return round(part * 100 / whole, 1) if whole else 0.0
+
+    return {
+        "days": days,
+        "views": views,
+        "adds": adds,
+        "purchases": purchases,
+        "add_rate": _rate(adds, views),
+        "purchase_rate": _rate(purchases, views),
+    }
 
 
 def staff_required(view_func):
@@ -352,6 +401,14 @@ def dashboard_home(request):
         RestockRequest.objects.select_related("product", "user")
         .order_by("-created_at")[:4]
     )
+    funnel_7d = _funnel_stats(now, 7)
+    funnel_30d = _funnel_stats(now, 30)
+    zero_result_searches = list(
+        SearchLog.objects.filter(result_count=0, created_at__gte=now - timedelta(days=30))
+        .values("normalized_term")
+        .annotate(n=Count("id"), term=Max("term"))
+        .order_by("-n", "term")[:8]
+    )
 
     context = _dashboard_context(
         request,
@@ -368,6 +425,8 @@ def dashboard_home(request):
         recent_telegram_orders=recent_telegram_orders,
         latest_reviews=latest_reviews,
         latest_restock_requests=latest_restock_requests,
+        funnel_rows=[funnel_7d, funnel_30d],
+        zero_result_searches=zero_result_searches,
     )
     return render(request, "dashboard/overview.html", context)
 
@@ -387,20 +446,15 @@ def dashboard_orders(request):
             if new_status not in STATUS_VALUES:
                 messages.error(request, "Invalid status selected for bulk update.")
                 return redirect(next_url)
-            changed_ids = list(
-                Order.objects.filter(pk__in=order_ids).exclude(status=new_status).values_list("id", flat=True)
-            )
-            updated = Order.objects.filter(pk__in=changed_ids).update(status=new_status)
-            for order_id in changed_ids:
-                enqueue(
-                    BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS,
-                    {"order_id": order_id, "status": new_status},
-                )
+            updated = 0
+            for order in Order.objects.filter(pk__in=order_ids).exclude(status=new_status).select_related("product"):
+                if _apply_order_status(order, new_status):
+                    updated += 1
             messages.success(request, f"{updated} order{'s' if updated != 1 else ''} moved to {new_status}.")
             return redirect(next_url)
 
         # Single order update (status + optional staff notes).
-        order = get_object_or_404(Order, pk=request.POST.get("order_id"))
+        order = get_object_or_404(Order.objects.select_related("product", "group"), pk=request.POST.get("order_id"))
         new_status = (request.POST.get("status") or "").strip()
         staff_notes = (request.POST.get("staff_notes") or "").strip()
 
@@ -408,37 +462,31 @@ def dashboard_orders(request):
             messages.error(request, "That order status is not valid.")
             return redirect(next_url)
 
-        update_fields = []
-        status_changed = order.status != new_status
-        if status_changed:
-            order.status = new_status
-            update_fields.append("status")
-        if staff_notes != order.staff_notes:
+        notes_changed = staff_notes != order.staff_notes
+        if notes_changed:
             order.staff_notes = staff_notes
-            update_fields.append("staff_notes")
-        if update_fields:
-            order.save(update_fields=update_fields)
-        if status_changed:
-            enqueue(
-                BackgroundTask.TYPE_CUSTOMER_ORDER_STATUS,
-                {"order_id": order.id, "status": new_status},
-            )
-            messages.success(request, f"Order #{order.id} updated.")
+            order.save(update_fields=["staff_notes"])
+        status_changed = _apply_order_status(order, new_status)
+        if status_changed or notes_changed:
+            messages.success(request, f"Order {order.order_number} updated.")
         else:
-            messages.info(request, f"Order #{order.id} — no changes detected.")
+            messages.info(request, f"Order {order.order_number} — no changes detected.")
         return redirect(next_url)
 
     query = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "").strip()
 
 
-    orders = Order.objects.select_related("user", "product", "product__category").order_by("-ordered_date")
+    orders = Order.objects.select_related("user", "product", "product__category", "group").order_by("-ordered_date")
     if status in STATUS_VALUES:
         orders = orders.filter(status=status)
     if query:
         query_filter = (
             Q(product__title__icontains=query)
             | Q(product__sku__icontains=query)
+            | Q(group__number__icontains=query)
+            | Q(group__contact__full_name__icontains=query)
+            | Q(group__contact__phone__icontains=query)
             | Q(user__username__icontains=query)
             | Q(user__first_name__icontains=query)
             | Q(user__last_name__icontains=query)
@@ -803,7 +851,7 @@ def dashboard_product_edit(request, product_id=None):
                     if size_count:
                         messages.success(
                             request,
-                            f"{saved_product.title} was saved. {size_count} size option(s) are now stocked automatically at 10 units for new sizes.",
+                            f"{saved_product.title} was saved. {size_count} size option(s); new sizes start at {default_stock_per_size()} unit(s) — adjust the counts in the Stock panel if that is not right.",
                         )
                     else:
                         messages.success(request, f"{saved_product.title} was saved.")
@@ -838,7 +886,7 @@ def dashboard_product_edit(request, product_id=None):
         product_affiliate_pattern=_absolute_affiliate_pattern(product) if product else None,
         gallery_images=list(product.p_images.all()) if product else [],
         size_tokens=size_tokens,
-        stock_per_size=DEFAULT_STOCK_PER_SIZE,
+        stock_per_size=default_stock_per_size(),
     )
     return render(request, "dashboard/product_form.html", context)
 

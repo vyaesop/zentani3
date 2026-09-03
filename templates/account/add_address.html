@@ -1,14 +1,15 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Zentanee | Add address{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Add address" %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-auth">
       <section class="spring-auth__panel">
-          <p class="spring-directory-header__eyebrow">Account</p>
-          <h1>Add a delivery address</h1>
-          <p class="spring-auth__copy">Save your usual delivery details so checkout is faster next time.</p>
+          <p class="spring-directory-header__eyebrow">{% trans "Account" %}</p>
+          <h1>{% trans "Add a delivery address" %}</h1>
+          <p class="spring-auth__copy">{% trans "Save your usual delivery details so checkout is faster next time. A landmark the driver will know works best." %}</p>
 
           {% include 'partials/_messages.html' %}
 
@@ -27,13 +28,11 @@
               </div>
               {% endfor %}
 
-              {% if form.non_field_errors %}
               {% for error in form.non_field_errors %}
-              <p class="alert alert-danger my-3">{{ error }}</p>
+              <p class="zent-alert zent-alert--danger">{{ error }}</p>
               {% endfor %}
-              {% endif %}
 
-              <button class="btn btn-dark w-100" type="submit">Save address</button>
+              <button class="btn btn-dark w-100" type="submit">{% trans "Save address" %}</button>
           </form>
       </section>
   </div>

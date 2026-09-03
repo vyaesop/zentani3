@@ -1468,7 +1468,9 @@ class PromoPricingTests(TestCase):
 
         self.assertContains(response, "-30%")
         self.assertContains(response, "spring-price-was")
-        self.assertContains(response, "500.00 ETB")
+        # Prices render through the `etb` filter: thousands separator, no
+        # trailing ".00" noise.
+        self.assertContains(response, "500 ETB")
 
     def test_dashboard_form_rejects_compare_at_below_price(self):
         from store.dashboard_forms import DashboardProductForm
@@ -1838,8 +1840,10 @@ class QueryCountGuardTests(TestCase):
         Cart.objects.create(user=user, product=self.product, quantity=1, size="M")
         self.client.login(username="0911800000", password="test-pass-123")
         self.client.get(reverse("store:cart"))  # warm caches
-        # 7 baseline + 1 TelegramLink lookup for the notifications opt-in banner.
-        with self.assertNumQueries(8):
+        # session + user + cart rows (joined) + address + TelegramLink for the
+        # opt-in banner + cart/wishlist badge counts. The coupon-for-display
+        # lookup now reuses the already-loaded cart rows.
+        with self.assertNumQueries(7):
             self.client.get(reverse("store:cart"))
 
 

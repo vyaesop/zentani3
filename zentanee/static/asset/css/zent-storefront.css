@@ -2694,14 +2694,6 @@ body.spring-body {
     min-height: 92px;
 }
 
-/* style.min.css ships d-lg-none/block/flex but no grid variant, so the
-   utility header stayed d-none on desktop without this. */
-@media (min-width: 992px) {
-    .d-lg-grid {
-        display: grid !important;
-    }
-}
-
 .spring-header__utility-left,
 .spring-header__utility-right {
     display: flex;
@@ -2848,14 +2840,6 @@ body.spring-body {
     text-align: center;
 }
 
-.spring-hero--denim {
-    padding: 72px 24px 48px;
-    border-radius: 20px;
-    background:
-        linear-gradient(180deg, rgba(245, 245, 241, 0.16) 0%, rgba(17, 19, 24, 0.44) 100%),
-        url("../images/home/denim-clouds-hero.jpg") center 24% / cover no-repeat;
-}
-
 .spring-hero__eyebrow,
 .spring-directory-header__eyebrow,
 .spring-product-info__brand {
@@ -2894,19 +2878,8 @@ body.spring-body {
     margin-top: 30px;
 }
 
-.spring-hero--denim .spring-hero__eyebrow,
-.spring-hero--denim h1,
-.spring-hero--denim .spring-hero__copy {
-    color: #fff;
-}
 
-.spring-hero--denim h1 {
-    text-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
-}
 
-.spring-hero--denim .spring-hero__copy {
-    text-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-}
 
 .spring-section {
     padding: 28px 0 12px;
@@ -3701,9 +3674,6 @@ body.spring-body {
         padding: 48px 0 28px;
     }
 
-    .spring-hero--denim {
-        padding: 48px 18px 28px;
-    }
 
     .spring-hero h1,
     .spring-directory-header h1,

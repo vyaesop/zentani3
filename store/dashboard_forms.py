@@ -2,6 +2,22 @@ from django import forms
 from django.forms import inlineformset_factory
 
 from .models import Product, ProductAIDraft, ProductImages
+from .seo import has_placeholder
+
+PLACEHOLDER_ERROR = (
+    "This still contains template text such as “[Store Name]” or “{brand}”. "
+    "Replace it with real copy before saving."
+)
+# Fields whose copy is shown to shoppers or search engines and therefore must
+# never carry a leaked AI template fragment.
+COPY_FIELDS_GUARDED_FOR_PLACEHOLDERS = (
+    "title",
+    "short_description",
+    "detail_description",
+    "seo_title",
+    "seo_description",
+    "image_alt_text",
+)
 
 
 def _decorate_dashboard_fields(fields):
@@ -51,6 +67,7 @@ class DashboardProductForm(forms.ModelForm):
             "color",
             "fit_notes",
             "care_notes",
+            "measurements",
             "delivery_note",
             "return_note",
             "price",
@@ -68,6 +85,12 @@ class DashboardProductForm(forms.ModelForm):
             "detail_description": forms.Textarea(attrs={"rows": 8}),
             "fit_notes": forms.Textarea(attrs={"rows": 3}),
             "care_notes": forms.Textarea(attrs={"rows": 3}),
+            "measurements": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "One size per line, e.g.\nM — length 70 cm, chest 104 cm\nL — length 72 cm, chest 110 cm",
+                }
+            ),
             "delivery_note": forms.TextInput(attrs={"placeholder": "Delivery promise shown on PDP"}),
             "return_note": forms.TextInput(attrs={"placeholder": "Return/support note shown on PDP"}),
             "price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
@@ -87,6 +110,12 @@ class DashboardProductForm(forms.ModelForm):
 
         return ", ".join(parse_size_list(self.cleaned_data.get("available_sizes") or ""))
 
+    def clean_price(self):
+        price = self.cleaned_data.get("price")
+        if price is not None and price <= 0:
+            raise forms.ValidationError("Price must be greater than 0 ETB — a free product cannot be sold.")
+        return price
+
     def clean(self):
         cleaned = super().clean()
         price = cleaned.get("price")
@@ -96,6 +125,9 @@ class DashboardProductForm(forms.ModelForm):
                 "compare_at_price",
                 "Compare-at price must be higher than the selling price (leave it blank when the product is not on sale).",
             )
+        for field_name in COPY_FIELDS_GUARDED_FOR_PLACEHOLDERS:
+            if has_placeholder(cleaned.get(field_name)):
+                self.add_error(field_name, PLACEHOLDER_ERROR)
         return cleaned
 
 

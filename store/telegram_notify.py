@@ -376,10 +376,18 @@ def _product_caption(product):
             f"📏 <b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
             "\n"
             "👇 Tap <b>Choose Size</b> below to order in chat.\n"
+            f"{_caption_site_line(product)}"
             "\n"
             f"{html.escape(_safe_text(product.short_description, fallback='No description yet.'))}"
         )
     )
+
+
+def _caption_site_line(product):
+    url = product_site_url(product)
+    if not url:
+        return ""
+    return f"🌐 Size guide, photos & reviews: {html.escape(url)}\n"
 
 
 def _collect_product_image_urls(product, max_images=None):
@@ -559,8 +567,14 @@ def post_product_to_channel(product, force=False):
         return False
 
     deep_link = f"https://t.me/{bot_username}?start=order_{product.id}"
+    buttons = [{"text": "Choose Size", "url": deep_link}]
+    site_link = product_site_url(product)
+    if site_link:
+        # Channel readers can also finish on the website (cart, reviews, size
+        # guide) — every post links back so the two surfaces feed each other.
+        buttons.append({"text": "View on site", "url": site_link})
     reply_markup = {
-        "inline_keyboard": [[{"text": "Choose Size", "url": deep_link}]],
+        "inline_keyboard": [buttons],
     }
 
     caption = _product_caption(product)
@@ -710,7 +724,19 @@ def notify_new_signup(user, address=None):
     return send_admin_alert_message(_trim_message(message))
 
 
-def notify_new_order(user, order_count, order_total, address=None, order_lines=None, order_ids=None, guest_contact=None):
+def notify_new_order(
+    user,
+    order_count,
+    order_total,
+    address=None,
+    order_lines=None,
+    order_ids=None,
+    guest_contact=None,
+    order_number="",
+    delivery_fee=None,
+    grand_total=None,
+    payment_method="",
+):
     if (not user and not guest_contact) or order_count <= 0:
         return False
 
@@ -719,6 +745,14 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
             order_total = Decimal(order_total)
         except Exception:
             order_total = Decimal("0.00")
+    if delivery_fee is None:
+        delivery_fee = Decimal("0.00")
+    if grand_total is None:
+        grand_total = order_total + delivery_fee
+    payment_label = {
+        "chapa": "Paid online (Chapa)",
+        "cod": "Cash on delivery",
+    }.get((payment_method or "").lower(), payment_method or "Cash on delivery")
 
     timestamp = timezone.now().strftime("%Y-%m-%d %H:%M")
 
@@ -747,9 +781,11 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         )
     order_lines_text = "\n".join(line_chunks) if line_chunks else "N/A"
 
+    number_line = f"• Order: {order_number}\n" if order_number else ""
     message = (
         "🛒 NEW ORDER ALERT\n"
         "━━━━━━━━━━━━━━━━━━\n"
+        f"{number_line}"
         "👤 Customer\n"
         f"• ID: {customer_id_text}\n"
         f"• Full name: {customer_name_text}\n"
@@ -762,9 +798,12 @@ def notify_new_order(user, order_count, order_total, address=None, order_lines=N
         f"• Phone: {phone_text}\n"
         "\n"
         "💳 Order Summary\n"
-        f"• Order IDs: {order_ids_text}\n"
+        f"• Line IDs: {order_ids_text}\n"
         f"• Lines: {order_count}\n"
-        f"• Total: {order_total:.2f}\n"
+        f"• Subtotal: {order_total:.2f} ETB\n"
+        f"• Delivery: {delivery_fee:.2f} ETB\n"
+        f"• Total to collect: {grand_total:.2f} ETB\n"
+        f"• Payment: {payment_label}\n"
         "\n"
         f"🧺 Items\n{order_lines_text}\n"
         "\n"
@@ -783,7 +822,43 @@ def customer_notify_deep_link(token):
     return f"https://t.me/{bot_username}?start=notify_{token}"
 
 
-def notify_customer_order_confirmation(chat_id, *, order_ids, order_lines, order_total, customer_name=""):
+def customer_channel_url():
+    """Public URL of the product channel (empty when not configured)."""
+    _, channel_chat_id, _ = _customer_bot_settings()
+    channel = (channel_chat_id or "").strip()
+    if channel.startswith("@"):
+        return f"https://t.me/{channel[1:]}"
+    return ""
+
+
+def product_site_url(product):
+    base = _base_site_url()
+    if not base or not product or not getattr(product, "slug", ""):
+        return ""
+    return f"{base}/product/{product.slug}/"
+
+
+def product_order_deep_link(product):
+    """`https://t.me/<bot>?start=order_<id>` — the PDP's "Order on Telegram" button."""
+    _, _, bot_username = _customer_bot_settings()
+    if not bot_username or not product or not getattr(product, "id", None):
+        return ""
+    return f"https://t.me/{bot_username}?start=order_{product.id}"
+
+
+def notify_customer_order_confirmation(
+    chat_id,
+    *,
+    order_ids,
+    order_lines,
+    order_total,
+    customer_name="",
+    order_number="",
+    confirmation_url="",
+    delivery_fee=None,
+    grand_total=None,
+    paid_online=False,
+):
     name = html.escape(_safe_text(customer_name, fallback="there"))
     line_chunks = []
     for line in order_lines or []:
@@ -793,17 +868,29 @@ def notify_customer_order_confirmation(chat_id, *, order_ids, order_lines, order
         line_total = _safe_text(line.get("line_total"))
         line_chunks.append(f"• {title} — size {size} × {quantity} ({line_total} ETB)")
     items_text = "\n".join(line_chunks) if line_chunks else "• (details in your account)"
-    order_ref = ", ".join(f"#{order_id}" for order_id in (order_ids or [])) or "your order"
+    if order_number:
+        order_ref = f"order <b>{html.escape(order_number)}</b>"
+    else:
+        order_ref = ", ".join(f"#{order_id}" for order_id in (order_ids or [])) or "your order"
+
+    if delivery_fee is None:
+        delivery_fee = Decimal("0.00")
+    if grand_total is None:
+        grand_total = (order_total or Decimal("0.00")) + delivery_fee
+    delivery_text = "free" if delivery_fee == 0 else f"{_format_money(delivery_fee)} ETB"
+    payment_text = "already paid online" if paid_online else "pay cash on delivery"
+    link_line = f"\nTrack it here: {html.escape(confirmation_url)}" if confirmation_url else ""
 
     message = (
         f"✅ <b>Order confirmed</b>\n"
         f"Hi {name}, we received {order_ref}.\n"
         "\n"
         f"{items_text}\n"
-        f"<b>Total</b>: {_format_money(order_total)} ETB — pay cash on delivery.\n"
+        f"Delivery: {delivery_text}\n"
+        f"<b>Total</b>: {_format_money(grand_total)} ETB — {payment_text}.\n"
         "\n"
         "We'll message you here when it's on the way. "
-        "Remember: inspect the item with the driver present."
+        f"Remember: inspect the item with the driver present.{link_line}"
     )
     return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
 

@@ -1,0 +1,610 @@
+# Amharic translations for the Zentanee storefront chrome.
+# Compile with: python manage.py compile_translations
+msgid ""
+msgstr ""
+"Project-Id-Version: zentanee\n"
+"Language: am\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# ── Header / navigation ───────────────────────────────────────────────
+msgid "Menu"
+msgstr "ምናሌ"
+
+msgid "Open menu"
+msgstr "ምናሌ ክፈት"
+
+msgid "Close menu"
+msgstr "ምናሌ ዝጋ"
+
+msgid "Search products"
+msgstr "ምርቶችን ይፈልጉ"
+
+msgid "Search"
+msgstr "ፍለጋ"
+
+msgid "Search suggestions"
+msgstr "የፍለጋ ጥቆማዎች"
+
+msgid "Account"
+msgstr "መለያ"
+
+msgid "Log in"
+msgstr "ግባ"
+
+msgid "Cart"
+msgstr "ጋሪ"
+
+msgid "Open cart"
+msgstr "ጋሪ ክፈት"
+
+msgid "Primary"
+msgstr "ዋና"
+
+msgid "Home"
+msgstr "መነሻ"
+
+msgid "New In"
+msgstr "አዲስ የገቡ"
+
+msgid "Shop All"
+msgstr "ሁሉንም ይግዙ"
+
+msgid "Sale"
+msgstr "ቅናሽ"
+
+msgid "Collections"
+msgstr "ስብስቦች"
+
+msgid "Brands"
+msgstr "ብራንዶች"
+
+msgid "Help"
+msgstr "እገዛ"
+
+msgid "Contact"
+msgstr "ያግኙን"
+
+msgid "Under 1,000 ETB"
+msgstr "ከ1,000 ብር በታች"
+
+msgid "Help &amp; FAQ"
+msgstr "እገዛ እና ተደጋጋሚ ጥያቄዎች"
+
+msgid "Delivery &amp; returns"
+msgstr "አቅርቦት እና ተመላሽ"
+
+msgid "Create account"
+msgstr "መለያ ይፍጠሩ"
+
+msgid "Primary mobile navigation"
+msgstr "ዋና የሞባይል አሰሳ"
+
+msgid "Shop"
+msgstr "ግዢ"
+
+msgid "Me"
+msgstr "እኔ"
+
+#, python-format
+msgid "Free delivery in Addis Ababa on orders over %(threshold)s ETB · Pay on delivery"
+msgstr "በአዲስ አበባ ከ%(threshold)s ብር በላይ ለሆኑ ትዕዛዞች ነጻ አቅርቦት · ሲደርስ ይክፈሉ"
+
+# ── Footer ────────────────────────────────────────────────────────────
+#, python-format
+msgid "%(name)s on Telegram"
+msgstr "%(name)s በቴሌግራም"
+
+msgid "New drops, sale alerts, and order updates — where Addis actually is."
+msgstr "አዳዲስ ምርቶች፣ የቅናሽ ማሳወቂያዎች እና የትዕዛዝ ዝመናዎች — አዲስ አበባ ባለችበት።"
+
+msgid "Join the channel"
+msgstr "ቻናሉን ይቀላቀሉ"
+
+msgid "Clothes, shoes and accessories for Addis shoppers. Cash on delivery — inspect before you pay."
+msgstr "ለአዲስ አበባ ገዢዎች ልብስ፣ ጫማ እና መለዋወጫዎች። ሲደርስ ይክፈሉ — ከመክፈልዎ በፊት ይመልከቱ።"
+
+msgid "Trade licence"
+msgstr "የንግድ ፈቃድ"
+
+msgid "New in"
+msgstr "አዲስ የገቡ"
+
+msgid "All products"
+msgstr "ሁሉም ምርቶች"
+
+msgid "Customer care"
+msgstr "የደንበኞች አገልግሎት"
+
+msgid "FAQ &amp; size help"
+msgstr "ተደጋጋሚ ጥያቄዎች እና የመጠን እገዛ"
+
+msgid "Track your orders"
+msgstr "ትዕዛዞችዎን ይከታተሉ"
+
+msgid "About"
+msgstr "ስለ እኛ"
+
+msgid "My account"
+msgstr "የእኔ መለያ"
+
+msgid "Delivery address"
+msgstr "የመላኪያ አድራሻ"
+
+msgid "Refer &amp; earn 5%"
+msgstr "ጋብዙ እና 5% ያግኙ"
+
+msgid "Log out"
+msgstr "ውጣ"
+
+msgid "Language"
+msgstr "ቋንቋ"
+
+msgid "All rights reserved."
+msgstr "መብቱ በህግ የተጠበቀ ነው።"
+
+msgid "Privacy"
+msgstr "ግላዊነት"
+
+msgid "Terms"
+msgstr "ውሎች"
+
+# ── Homepage ──────────────────────────────────────────────────────────
+msgid "Shop clothes & fashion in Addis Ababa"
+msgstr "በአዲስ አበባ ልብስ እና ፋሽን ይግዙ"
+
+#, python-format
+msgid "Free delivery in Addis over %(threshold)s ETB · Pay on delivery"
+msgstr "በአዲስ ከ%(threshold)s ብር በላይ ነጻ አቅርቦት · ሲደርስ ይክፈሉ"
+
+msgid "Fashion you love, delivered to your door."
+msgstr "የሚወዱት ፋሽን፣ እስከ ቤትዎ ደጃፍ።"
+
+msgid "Curated drops from local and international brands. No online payment required — check the item with the driver, then pay."
+msgstr "ከአገር ውስጥ እና ከውጭ ብራንዶች የተመረጡ ምርቶች። የመስመር ላይ ክፍያ አያስፈልግም — እቃውን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ ይክፈሉ።"
+
+msgid "Shop all products"
+msgstr "ሁሉንም ምርቶች ይግዙ"
+
+msgid "Browse collections"
+msgstr "ስብስቦችን ይመልከቱ"
+
+msgid "Shop the edits"
+msgstr "ምርጫዎችን ይግዙ"
+
+msgid "Pick Up Where You Left Off"
+msgstr "ካቆሙበት ይቀጥሉ"
+
+msgid "Browse more"
+msgstr "ተጨማሪ ይመልከቱ"
+
+msgid "Free delivery"
+msgstr "ነጻ አቅርቦት"
+
+#, python-format
+msgid "On orders over %(threshold)s ETB in Addis Ababa. Otherwise a flat %(fee)s ETB."
+msgstr "በአዲስ አበባ ከ%(threshold)s ብር በላይ ለሆኑ ትዕዛዞች። ካልሆነ ቋሚ %(fee)s ብር።"
+
+msgid "Pay on delivery"
+msgstr "ሲደርስ ይክፈሉ"
+
+msgid "No online payment required. Inspect the order with the driver, then pay in cash."
+msgstr "የመስመር ላይ ክፍያ አያስፈልግም። ትዕዛዙን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ በጥሬ ገንዘብ ይክፈሉ።"
+
+msgid "Order on Telegram"
+msgstr "በቴሌግራም ይዘዙ"
+
+msgid "Every drop is posted to our channel — order in chat or here on the site."
+msgstr "እያንዳንዱ አዲስ ምርት በቻናላችን ይለጠፋል — በቻት ወይም እዚህ በድር ጣቢያው ይዘዙ።"
+
+msgid "Real people, real phone"
+msgstr "እውነተኛ ሰዎች፣ እውነተኛ ስልክ"
+
+msgid "Latest Drops"
+msgstr "የቅርብ ጊዜ ምርቶች"
+
+msgid "See all new arrivals"
+msgstr "ሁሉንም አዳዲስ ይመልከቱ"
+
+msgid "The edit"
+msgstr "ምርጫው"
+
+msgid "Shop the edit"
+msgstr "ምርጫውን ይግዙ"
+
+msgid "Shop Collections"
+msgstr "ስብስቦችን ይግዙ"
+
+msgid "View all collections"
+msgstr "ሁሉንም ስብስቦች ይመልከቱ"
+
+msgid "Most Wanted"
+msgstr "በጣም የተፈለጉ"
+
+msgid "The pieces shoppers order most"
+msgstr "ገዢዎች በብዛት የሚያዙት"
+
+msgid "Featured Products"
+msgstr "ተመራጭ ምርቶች"
+
+msgid "View all"
+msgstr "ሁሉንም ይመልከቱ"
+
+msgid "Brand spotlight"
+msgstr "የብራንድ ትኩረት"
+
+#, python-format
+msgid "Explore %(brand)s"
+msgstr "%(brand)s ን ያስሱ"
+
+msgid "Featured Brands"
+msgstr "ተመራጭ ብራንዶች"
+
+msgid "View all brands"
+msgstr "ሁሉንም ብራንዶች ይመልከቱ"
+
+# ── Product cards ─────────────────────────────────────────────────────
+msgid "Sold out"
+msgstr "ተሸጦ አልቋል"
+
+msgid "Bestseller"
+msgstr "ተወዳጅ"
+
+msgid "New"
+msgstr "አዲስ"
+
+msgid "Notify me"
+msgstr "አሳውቁኝ"
+
+msgid "Load more"
+msgstr "ተጨማሪ ጫን"
+
+msgid "of"
+msgstr "ከ"
+
+msgid "Nothing here yet"
+msgstr "እስካሁን ምንም የለም"
+
+msgid "Shop all"
+msgstr "ሁሉንም ይግዙ"
+
+# ── Cart & checkout ───────────────────────────────────────────────────
+msgid "Your cart"
+msgstr "የእርስዎ ጋሪ"
+
+msgid "Review your selected items and continue to checkout."
+msgstr "የመረጧቸውን እቃዎች ይመልከቱ እና ወደ ክፍያ ይቀጥሉ።"
+
+msgid "each"
+msgstr "እያንዳንዱ"
+
+msgid "Size"
+msgstr "መጠን"
+
+msgid "Decrease quantity"
+msgstr "ብዛት ቀንስ"
+
+msgid "Increase quantity"
+msgstr "ብዛት ጨምር"
+
+msgid "Remove"
+msgstr "አስወግድ"
+
+msgid "Order Summary"
+msgstr "የትዕዛዝ ማጠቃለያ"
+
+msgid "Change address"
+msgstr "አድራሻ ቀይር"
+
+msgid "No saved address yet."
+msgstr "እስካሁን የተቀመጠ አድራሻ የለም።"
+
+msgid "Add address"
+msgstr "አድራሻ ጨምር"
+
+msgid "Subtotal"
+msgstr "ንዑስ ድምር"
+
+msgid "Delivery"
+msgstr "አቅርቦት"
+
+msgid "Calculated from your city"
+msgstr "በከተማዎ መሠረት ይሰላል"
+
+msgid "Free"
+msgstr "ነጻ"
+
+msgid "Coupon"
+msgstr "ኩፖን"
+
+msgid "Total"
+msgstr "ጠቅላላ"
+
+msgid "Coupon code"
+msgstr "የኩፖን ኮድ"
+
+msgid "Apply"
+msgstr "ተግብር"
+
+msgid "Continue shopping"
+msgstr "ግዢ ይቀጥሉ"
+
+msgid "Full name"
+msgstr "ሙሉ ስም"
+
+msgid "Phone number"
+msgstr "ስልክ ቁጥር"
+
+msgid "We call this number to confirm before dispatch."
+msgstr "ከመላክ በፊት ለማረጋገጥ በዚህ ቁጥር እንደውላለን።"
+
+msgid "Email (optional, for your receipt)"
+msgstr "ኢሜይል (አማራጭ፣ ለደረሰኝዎ)"
+
+msgid "Email address"
+msgstr "የኢሜይል አድራሻ"
+
+msgid "City"
+msgstr "ከተማ"
+
+msgid "Landmark, street or building"
+msgstr "ምልክት፣ መንገድ ወይም ህንጻ"
+
+msgid "Payment"
+msgstr "ክፍያ"
+
+msgid "Cash on delivery. Inspect your order with the driver, then pay."
+msgstr "ሲደርስ ይክፈሉ። ትዕዛዝዎን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ ይክፈሉ።"
+
+msgid "Place Order"
+msgstr "ትዕዛዝ ስጥ"
+
+#, python-format
+msgid "By placing an order you agree to our <a href=\"%(terms_url)s\">terms</a> and on-the-spot return policy."
+msgstr "ትዕዛዝ በመስጠት <a href=\"%(terms_url)s\">ውሎቻችንን</a> እና ወዲያውኑ የመመለስ ፖሊሲያችንን ተቀብለዋል።"
+
+msgid "Your cart is empty"
+msgstr "ጋሪዎ ባዶ ነው"
+
+msgid "Add products to your cart to continue."
+msgstr "ለመቀጠል ምርቶችን ወደ ጋሪዎ ያክሉ።"
+
+# ── Product page ──────────────────────────────────────────────────────
+msgid "Breadcrumb"
+msgstr "መንገድ"
+
+msgid "Be the first to review"
+msgstr "የመጀመሪያው ግምገማ ይሁኑ"
+
+msgid "Add to cart"
+msgstr "ወደ ጋሪ ጨምር"
+
+msgid "Sold Out"
+msgstr "ተሸጦ አልቋል"
+
+msgid "Size guide"
+msgstr "የመጠን መመሪያ"
+
+msgid "Available sizes"
+msgstr "የሚገኙ መጠኖች"
+
+msgid "Size guide & measurements"
+msgstr "የመጠን መመሪያ እና መለኪያዎች"
+
+msgid "Fit"
+msgstr "አቀማመጥ"
+
+msgid "Between sizes? Order both — you only pay for what you keep when the driver arrives."
+msgstr "በመጠኖች መካከል ነዎት? ሁለቱንም ይዘዙ — አሽከርካሪው ሲደርስ ለሚያስቀሩት ብቻ ይከፍላሉ።"
+
+msgid "Collection"
+msgstr "ስብስብ"
+
+msgid "Material"
+msgstr "ቁሳቁስ"
+
+msgid "Color"
+msgstr "ቀለም"
+
+msgid "Product code"
+msgstr "የምርት ኮድ"
+
+msgid "Returns"
+msgstr "ተመላሽ"
+
+msgid "Cash on delivery only. Inspect the item with the driver, then pay."
+msgstr "ሲደርስ ብቻ ይክፈሉ። እቃውን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ ይክፈሉ።"
+
+msgid "Question about fit or delivery?"
+msgstr "ስለ አቀማመጥ ወይም አቅርቦት ጥያቄ አለዎት?"
+
+msgid "Call"
+msgstr "ይደውሉ"
+
+msgid "Ask on Telegram"
+msgstr "በቴሌግራም ይጠይቁ"
+
+msgid "FAQ"
+msgstr "ተደጋጋሚ ጥያቄዎች"
+
+msgid "After checkout you get an order number and a tracking link — no account needed."
+msgstr "ከክፍያ በኋላ የትዕዛዝ ቁጥር እና የክትትል አገናኝ ያገኛሉ — መለያ አያስፈልግም።"
+
+msgid "Product Details"
+msgstr "የምርት ዝርዝሮች"
+
+msgid "Care"
+msgstr "እንክብካቤ"
+
+msgid "Fit Notes"
+msgstr "የአቀማመጥ ማስታወሻዎች"
+
+msgid "Reviews"
+msgstr "ግምገማዎች"
+
+msgid "average"
+msgstr "አማካይ"
+
+msgid "No reviews yet"
+msgstr "እስካሁን ግምገማ የለም"
+
+msgid "Verified purchase"
+msgstr "የተረጋገጠ ግዢ"
+
+msgid "Share your review"
+msgstr "ግምገማዎን ያጋሩ"
+
+msgid "Save review"
+msgstr "ግምገማ አስቀምጥ"
+
+msgid "Log in to review"
+msgstr "ለመገምገም ይግቡ"
+
+msgid "You may also like"
+msgstr "እነዚህንም ሊወዱ ይችላሉ"
+
+msgid "View collection"
+msgstr "ስብስብ ይመልከቱ"
+
+msgid "Recently viewed"
+msgstr "በቅርብ የታዩ"
+
+msgid "Keep browsing"
+msgstr "መመልከት ይቀጥሉ"
+
+msgid "Join the restock list"
+msgstr "የዳግም ክምችት ዝርዝር ይቀላቀሉ"
+
+msgid "Notify me when back in stock"
+msgstr "ሲመለስ አሳውቁኝ"
+
+# ── Order confirmation & orders ───────────────────────────────────────
+msgid "Order received"
+msgstr "ትዕዛዝ ተቀብለናል"
+
+msgid "Thank you"
+msgstr "እናመሰግናለን"
+
+msgid "Your order number is"
+msgstr "የትዕዛዝ ቁጥርዎ"
+
+msgid "What happens next"
+msgstr "ቀጥሎ ምን ይሆናል"
+
+msgid "We call to confirm."
+msgstr "ለማረጋገጥ እንደውላለን።"
+
+msgid "We pack and dispatch."
+msgstr "እናሽጋለን እና እንልካለን።"
+
+msgid "You inspect, then pay the driver."
+msgstr "ይመልከቱ፣ ከዛ ለአሽከርካሪው ይክፈሉ።"
+
+msgid "Items"
+msgstr "እቃዎች"
+
+msgid "Qty"
+msgstr "ብዛት"
+
+msgid "Summary"
+msgstr "ማጠቃለያ"
+
+msgid "Paid online"
+msgstr "በመስመር ላይ ተከፍሏል"
+
+msgid "Cash on delivery"
+msgstr "ሲደርስ ክፍያ"
+
+msgid "Delivering to"
+msgstr "የሚላክለት"
+
+msgid "Need to change something?"
+msgstr "የሚቀየር ነገር አለ?"
+
+msgid "and quote your order number."
+msgstr "እና የትዕዛዝ ቁጥርዎን ይናገሩ።"
+
+msgid "View all orders"
+msgstr "ሁሉንም ትዕዛዞች ይመልከቱ"
+
+msgid "Orders"
+msgstr "ትዕዛዞች"
+
+msgid "Your orders"
+msgstr "የእርስዎ ትዕዛዞች"
+
+msgid "Placed"
+msgstr "የተሰጠ"
+
+msgid "Order"
+msgstr "ትዕዛዝ"
+
+msgid "Cancel order"
+msgstr "ትዕዛዝ ሰርዝ"
+
+msgid "Note"
+msgstr "ማስታወሻ"
+
+msgid "Need help with an order?"
+msgstr "በትዕዛዝ ላይ እገዛ ይፈልጋሉ?"
+
+msgid "Contact support"
+msgstr "ድጋፍን ያግኙ"
+
+msgid "You have no orders yet"
+msgstr "እስካሁን ትዕዛዝ የለዎትም"
+
+# ── Auth ──────────────────────────────────────────────────────────────
+msgid "Create an account"
+msgstr "መለያ ይፍጠሩ"
+
+msgid "Forgot your password?"
+msgstr "የይለፍ ቃልዎን ረሱ?"
+
+msgid "Already have an account? Log in"
+msgstr "መለያ አለዎት? ይግቡ"
+
+msgid "Password"
+msgstr "የይለፍ ቃል"
+
+msgid "Confirm Password"
+msgstr "የይለፍ ቃል ያረጋግጡ"
+
+msgid "Full Name"
+msgstr "ሙሉ ስም"
+
+msgid "Address"
+msgstr "አድራሻ"
+
+msgid "Email"
+msgstr "ኢሜይል"
+
+msgid "Phone Number"
+msgstr "ስልክ ቁጥር"
+
+msgid "Nearest Location"
+msgstr "ቅርብ ቦታ"
+
+# ── Policy pages ──────────────────────────────────────────────────────
+msgid "Legal"
+msgstr "ህጋዊ"
+
+msgid "Privacy policy"
+msgstr "የግላዊነት ፖሊሲ"
+
+msgid "Terms of sale"
+msgstr "የሽያጭ ውሎች"
+
+msgid "Questions, answered"
+msgstr "ጥያቄዎች፣ መልሶች"
+
+msgid "Delivery &amp; Returns"
+msgstr "አቅርቦት እና ተመላሽ"
+
+msgid "Page not found"
+msgstr "ገጹ አልተገኘም"
+
+msgid "We couldn't find that page."
+msgstr "ያንን ገጽ ማግኘት አልቻልንም።"
