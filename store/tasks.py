@@ -45,6 +45,7 @@ INLINE_TASK_TYPES = frozenset({
     "telegram_signup_notify",
     "customer_order_confirm",
     "customer_order_status",
+    "customer_order_messages",
 })
 
 
@@ -76,9 +77,26 @@ def _handle_customer_order_confirm(payload):
 
 
 def _handle_customer_order_status(payload):
+    from store.models import Order
+    from store.services import notifications as notification_service
     from store.services import telegram as telegram_service
 
     telegram_service.send_customer_order_status(payload)
+    order = Order.objects.select_related("group", "user", "product").filter(pk=payload.get("order_id")).first()
+    if order is not None:
+        notification_service.send_status_sms(order, payload.get("status") or order.status)
+
+
+def _handle_customer_order_messages(payload):
+    from store.services import notifications as notification_service
+
+    notification_service.send_order_messages(payload)
+
+
+def _handle_customer_review_invite(payload):
+    from store.services import notifications as notification_service
+
+    notification_service.send_review_invite(payload)
 
 
 def _handle_customer_restock_notify(payload):
@@ -142,6 +160,8 @@ def _registry():
         BackgroundTask.TYPE_CUSTOMER_ABANDONED_CART: _handle_customer_abandoned_cart,
         BackgroundTask.TYPE_CUSTOMER_BROADCAST: _handle_customer_broadcast,
         BackgroundTask.TYPE_WISHLIST_SALE_NOTIFY: _handle_wishlist_sale_notify,
+        BackgroundTask.TYPE_CUSTOMER_ORDER_MESSAGES: _handle_customer_order_messages,
+        BackgroundTask.TYPE_CUSTOMER_REVIEW_INVITE: _handle_customer_review_invite,
     }
 
 

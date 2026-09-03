@@ -1,3 +1,5 @@
+import sys
+
 from django.conf import settings
 from django.core.checks import Error, Warning, register
 
@@ -38,6 +40,37 @@ def deployment_safety_checks(app_configs, **kwargs):
                     "Pillow is not available in this deployment.",
                     hint="Install Pillow in requirements.txt so image uploads can be converted to WebP.",
                     id="store.E003",
+                )
+            )
+
+    # Customer messaging: a production store with the console email backend
+    # silently drops password resets, receipts and restock alerts. The test
+    # runner forces DEBUG off, so skip these under `manage.py test`.
+    running_tests = len(sys.argv) > 1 and sys.argv[1] == "test"
+    if not settings.DEBUG and not running_tests:
+        email_backend = getattr(settings, "EMAIL_BACKEND", "")
+        if email_backend.endswith("console.EmailBackend") or email_backend.endswith("dummy.EmailBackend"):
+            issues.append(
+                Warning(
+                    "EMAIL_BACKEND is the console backend in production: password resets, order receipts and restock alerts are never delivered.",
+                    hint="Set EMAIL_HOST (+ EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) for any SMTP provider.",
+                    id="store.W002",
+                )
+            )
+        if (getattr(settings, "SMS_BACKEND", "disabled") or "disabled") in {"", "disabled", "console"}:
+            issues.append(
+                Warning(
+                    "SMS_BACKEND is disabled: customers get no order confirmation or dispatch SMS.",
+                    hint="Set SMS_BACKEND=afromessage (with AFROMESSAGE_TOKEN) or SMS_BACKEND=http.",
+                    id="store.W003",
+                )
+            )
+        if not getattr(settings, "SITE_URL", ""):
+            issues.append(
+                Warning(
+                    "SITE_URL is empty: canonical tags, the sitemap, feeds and message links fall back to the request host.",
+                    hint="Set SITE_URL to the public https origin (custom domain).",
+                    id="store.W004",
                 )
             )
 

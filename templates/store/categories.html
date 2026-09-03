@@ -1,18 +1,20 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Zentanee | Collections{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Collections" %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name %}Browse every collection at {{ name }} — dresses, tops, sets, shoes and accessories with cash on delivery in Addis Ababa.{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-directory">
-      {% include 'store/_collection_header.html' with kicker='Collections' title='All Collections' description='Shop by collection.' count=directory_count %}
+      {% include 'store/_collection_header.html' with kicker=_('Collections') title=_('All Collections') description=_('Shop by collection.') count=directory_count %}
 
       <div class="spring-collection-grid">
           {% for category in categories %}
           {% url 'store:category-products' category.slug as category_href %}
           {% include 'store/_directory_card.html' with href=category_href image_file=category.category_image title=category.title %}
           {% empty %}
-          <p class="text-muted mb-0">Collections will appear here once they are active in admin.</p>
+          <p class="text-muted mb-0">{% trans "Collections appear here as soon as their first pieces go live." %}</p>
           {% endfor %}
       </div>
 

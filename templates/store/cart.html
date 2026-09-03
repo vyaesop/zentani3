@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Zentanee | Cart{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Cart" %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
@@ -9,9 +10,9 @@
       {% include 'partials/_messages.html' %}
 
       <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">Cart</p>
-          <h1>Your cart</h1>
-          <p>Review your selected items and continue to checkout.</p>
+          <p class="spring-directory-header__eyebrow">{% trans "Cart" %}</p>
+          <h1>{% trans "Your cart" %}</h1>
+          <p>{% trans "Review your selected items and continue to checkout." %}</p>
       </section>
 
       {% include 'store/_cart_contents.html' %}

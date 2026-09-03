@@ -1,12 +1,13 @@
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Latest Drops</h2>
-          <a href="{% url 'store:all-products' %}?sort=newest">See all new arrivals</a>
+          <h2>{% trans "Latest Drops" %}</h2>
+          <a href="{% url 'store:all-products' %}?sort=newest">{% trans "See all new arrivals" %}</a>
       </div>
-      {% include 'store/_product_rail.html' with rail_products=latest_products rail_empty_message="New arrivals will appear here as soon as products go live." %}
+      {% include 'store/_product_rail.html' with rail_products=latest_products rail_empty_message=_("New arrivals land here first — follow the Telegram channel to hear about them the moment they drop.") %}
   </section>
 
   {% if story_category %}
@@ -14,20 +15,21 @@
       {% cld_url story_category.category_image 1600 as story_image_url %}
       <div class="spring-story-band__media" style="background-image:url('{{ story_image_url }}')" role="img" aria-label="{{ story_category.title }}"></div>
       <div class="spring-story-band__overlay">
-          <p class="spring-story-band__kicker">The edit</p>
+          <p class="spring-story-band__kicker">{% trans "The edit" %}</p>
           <h2 class="spring-story-band__title">{{ story_category.title }}</h2>
           {% if story_category.description %}
           <p class="spring-story-band__copy">{{ story_category.description|truncatechars:140 }}</p>
           {% endif %}
-          <a href="{% url 'store:category-products' story_category.slug %}" class="btn btn-light spring-story-band__cta">Shop the edit</a>
+          <a href="{% url 'store:category-products' story_category.slug %}" class="btn btn-light spring-story-band__cta">{% trans "Shop the edit" %}</a>
       </div>
   </section>
   {% endif %}
 
+  {% if categories %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Shop Collections</h2>
-          <a href="{% url 'store:all-categories' %}">View all collections</a>
+          <h2>{% trans "Shop Collections" %}</h2>
+          <a href="{% url 'store:all-categories' %}">{% trans "View all collections" %}</a>
       </div>
       <div class="spring-collection-grid">
           {% for category in categories %}
@@ -45,37 +47,36 @@
                   </div>
               </a>
           </article>
-          {% empty %}
-          <p class="text-muted mb-0">Featured collections will appear here once they are marked in admin.</p>
           {% endfor %}
       </div>
   </section>
+  {% endif %}
 
   {% if top_selling_products %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Most Wanted</h2>
-          <span class="spring-section__meta">The products Zentanee shoppers order most</span>
+          <h2>{% trans "Most Wanted" %}</h2>
+          <span class="spring-section__meta">{% trans "The pieces shoppers order most" %}</span>
       </div>
       {% include 'store/_product_rail.html' with rail_products=top_selling_products %}
   </section>
   {% endif %}
 
+  {% if products %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Featured Products</h2>
-          <a href="{% url 'store:all-products' %}">View all</a>
+          <h2>{% trans "Featured Products" %}</h2>
+          <a href="{% url 'store:all-products' %}">{% trans "View all" %}</a>
       </div>
       <div class="spring-product-grid">
           {% for product in products %}
           <div class="spring-grid-item">
               {% include 'store/_product_card_content.html' with product=product %}
           </div>
-          {% empty %}
-          <p class="text-muted mb-0">Featured products will appear here once they are marked in admin.</p>
           {% endfor %}
       </div>
   </section>
+  {% endif %}
 
   {% if spotlight_brand %}
   <section class="spring-brand-hero spring-container">
@@ -83,20 +84,21 @@
           {% cld_img spotlight_brand.brand_image width=900 alt=spotlight_brand.title %}
       </div>
       <div class="spring-brand-hero__body">
-          <p class="spring-directory-header__eyebrow">Brand spotlight</p>
+          <p class="spring-directory-header__eyebrow">{% trans "Brand spotlight" %}</p>
           <h2 class="spring-brand-hero__title">{{ spotlight_brand.title }}</h2>
           {% if spotlight_brand.description %}
           <p>{{ spotlight_brand.description|truncatechars:220 }}</p>
           {% endif %}
-          <a href="{% url 'store:brand-products' spotlight_brand.slug %}" class="btn btn-dark">Explore {{ spotlight_brand.title }}</a>
+          <a href="{% url 'store:brand-products' spotlight_brand.slug %}" class="btn btn-dark">{% blocktrans with brand=spotlight_brand.title %}Explore {{ brand }}{% endblocktrans %}</a>
       </div>
   </section>
   {% endif %}
 
+  {% if brands %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Featured Brands</h2>
-          <a href="{% url 'store:all-brands' %}">View all brands</a>
+          <h2>{% trans "Featured Brands" %}</h2>
+          <a href="{% url 'store:all-brands' %}">{% trans "View all brands" %}</a>
       </div>
       <div class="spring-brand-grid">
           {% for brand in brands %}
@@ -108,8 +110,7 @@
               {% endif %}
               <strong>{{ brand.title }}</strong>
           </a>
-          {% empty %}
-          <p class="text-muted mb-0">Featured brands will appear here once they are marked in admin.</p>
           {% endfor %}
       </div>
   </section>
+  {% endif %}

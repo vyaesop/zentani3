@@ -1,0 +1,24 @@
+{% load image_optim %}Hi {{ group.customer_name }},
+
+Thank you for your order {{ group.number }} at {{ store_name }}.
+{% for line in lines %}
+- {{ line.product.title }}{% if line.size %} (size {{ line.size }}){% endif %} x {{ line.quantity }} — {{ line.line_total|etb }}{% endfor %}
+
+Subtotal: {{ group.subtotal|etb }}
+Delivery: {% if group.delivery_fee == 0 %}Free{% else %}{{ group.delivery_fee|etb }}{% endif %}
+Total: {{ group.total|etb }}
+Payment: {% if group.is_paid_online %}Paid online{% else %}Cash on delivery — inspect the item with the driver, then pay{% endif %}
+
+Delivering to:
+{{ group.customer_name }}
+{{ group.customer_address }}, {{ group.customer_city }}
+{{ group.customer_phone }}
+
+What happens next: we call {{ group.customer_phone }} to confirm, then pack and dispatch.
+Delivery in Addis Ababa usually lands within 1-3 days after confirmation.
+
+Track this order: {{ confirmation_url }}
+
+Questions? Call {{ store_phone }} and quote {{ group.number }}.
+
+{{ store_name }}

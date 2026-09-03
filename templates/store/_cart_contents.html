@@ -1,4 +1,5 @@
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 {% comment %}
 Full cart body. htmx cart mutations replace this element wholesale so line
@@ -28,29 +29,29 @@ totals, summary, and flow status always agree with the server.
 
                 <div class="spring-cart-item__info">
                     <h2><a href="{% url 'store:product-detail' item.product.slug %}">{{ item.product.title }}</a></h2>
-                    <p>{{ item.product.price|floatformat:2 }} ETB each</p>
+                    <p>{{ item.product.price|etb }} {% trans "each" %}</p>
                     {% if item.size %}
-                    <p>Size: {{ item.size }}</p>
+                    <p>{% trans "Size" %}: {{ item.size }}</p>
                     {% endif %}
 
                     <div class="spring-cart-item__qty">
                         <form method="post" action="{% url 'store:minus-cart' item.id %}" hx-post="{% url 'store:minus-cart' item.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="spring-cart-qty-btn" aria-label="Decrease quantity">−</button>
+                            <button type="submit" class="spring-cart-qty-btn" aria-label="{% trans 'Decrease quantity' %}">−</button>
                         </form>
                         <span class="spring-cart-qty-display">{{ item.quantity }}</span>
                         <form method="post" action="{% url 'store:plus-cart' item.id %}" hx-post="{% url 'store:plus-cart' item.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="spring-cart-qty-btn" aria-label="Increase quantity">+</button>
+                            <button type="submit" class="spring-cart-qty-btn" aria-label="{% trans 'Increase quantity' %}">+</button>
                         </form>
                     </div>
                 </div>
 
                 <div class="spring-cart-item__aside">
-                    <strong>{{ item.display_total_price|default:item.total_price|floatformat:2 }} ETB</strong>
+                    <strong>{{ item.display_total_price|default:item.total_price|etb }}</strong>
                     <form method="post" action="{% url 'store:remove-cart' item.id %}" hx-post="{% url 'store:remove-cart' item.id %}">
                         {% csrf_token %}
-                        <button type="submit" class="spring-text-link spring-cart-remove-btn">Remove</button>
+                        <button type="submit" class="spring-text-link spring-cart-remove-btn">{% trans "Remove" %}</button>
                     </form>
                 </div>
             </article>
@@ -58,31 +59,30 @@ totals, summary, and flow status always agree with the server.
         </section>
 
         <aside class="spring-cart-summary">
-            <h2>Order Summary</h2>
+            <h2>{% trans "Order Summary" %}</h2>
 
             {% if not guest_checkout %}
             <div class="spring-cart-summary__address">
-                <h3>Delivery address</h3>
+                <h3>{% trans "Delivery address" %}</h3>
                 {% if latest_address %}
                 <p>{{ latest_address.address }}</p>
                 <p>{{ latest_address.city }}</p>
                 <p>{{ latest_address.phone }}</p>
-                <a href="{% url 'store:profile' %}" class="spring-text-link">Change address</a>
+                <a href="{% url 'store:profile' %}" class="spring-text-link">{% trans "Change address" %}</a>
                 {% else %}
-                <p>No saved address yet.</p>
-                <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-outline-dark">Add address</a>
+                <p>{% trans "No saved address yet." %}</p>
+                <a href="{% url 'store:add-address' %}?next={% url 'store:cart' %}" class="btn btn-outline-dark">{% trans "Add address" %}</a>
                 {% endif %}
             </div>
             {% endif %}
 
             <div class="spring-cart-summary__rows" id="cart-totals">
-                <div><span>Subtotal</span><strong>{{ amount|floatformat:2 }} ETB</strong></div>
-                <div><span>Delivery</span><strong>{% if shipping_amount == 0 %}Free{% else %}{{ shipping_amount|floatformat:2 }} ETB{% endif %}</strong></div>
-                <div><span>Payment</span><strong>Pay on delivery</strong></div>
+                <div><span>{% trans "Subtotal" %}</span><strong>{{ amount|etb }}</strong></div>
+                <div><span>{% trans "Delivery" %}</span><strong>{% if guest_checkout %}{% trans "Calculated from your city" %}{% elif shipping_amount == 0 %}{% trans "Free" %}{% else %}{{ shipping_amount|etb }}{% endif %}</strong></div>
                 {% if coupon %}
-                <div><span>Coupon {{ coupon.code }}</span><strong>−{{ coupon.discount }}%</strong></div>
+                <div><span>{% trans "Coupon" %} {{ coupon.code }}</span><strong>−{{ coupon.discount }}%</strong></div>
                 {% endif %}
-                <div class="spring-cart-summary__total"><span>Total</span><strong>{{ total_amount|floatformat:2 }} ETB</strong></div>
+                <div class="spring-cart-summary__total"><span>{% trans "Total" %}</span><strong>{{ total_amount|etb }}</strong></div>
             </div>
             <p class="spring-cart-summary__shipping-note">{{ shipping_note }}</p>
 
@@ -90,45 +90,66 @@ totals, summary, and flow status always agree with the server.
                 <form action="{% url 'store:add-coupon' %}" method="POST" class="spring-cart-summary__coupon"
                       hx-post="{% url 'store:add-coupon' %}">
                     {% csrf_token %}
-                    <input type="text" name="coupon" class="form-control" placeholder="Coupon code" value="{{ coupon.code|default:'' }}">
-                    <button class="btn btn-outline-dark" type="submit">Apply<span class="zent-spinner" aria-hidden="true"></span></button>
+                    <input type="text" name="coupon" class="form-control" placeholder="{% trans 'Coupon code' %}" aria-label="{% trans 'Coupon code' %}" value="{{ coupon.code|default:'' }}">
+                    <button class="btn btn-outline-dark" type="submit">{% trans "Apply" %}<span class="zent-spinner" aria-hidden="true"></span></button>
                 </form>
             </div>
 
-            <a href="{% url 'store:all-products' %}" class="spring-text-link spring-cart-continue">← Continue shopping</a>
+            <a href="{% url 'store:all-products' %}" class="spring-text-link spring-cart-continue">← {% trans "Continue shopping" %}</a>
 
-            <form action="{% url 'store:checkout' %}" method="POST" class="spring-cart-summary__checkout">
+            <form action="{% url 'store:checkout' %}" method="POST" class="spring-cart-summary__checkout" id="checkout-form" data-ga-checkout="ga-cart-data">
                 {% csrf_token %}
                 {% if guest_checkout %}
                 <div class="spring-auth__field">
-                    <label for="guest-full-name">Full name</label>
-                    <input type="text" id="guest-full-name" name="full_name" class="form-control" placeholder="Full name" required minlength="2">
+                    <label for="guest-full-name">{% trans "Full name" %}</label>
+                    <input type="text" id="guest-full-name" name="full_name" class="form-control" placeholder="{% trans 'Full name' %}" required minlength="2" autocomplete="name">
                 </div>
                 <div class="spring-auth__field">
-                    <label for="guest-phone">Phone number</label>
-                    <input type="tel" id="guest-phone" name="phone" class="form-control" placeholder="Phone number" required>
+                    <label for="guest-phone">{% trans "Phone number" %}</label>
+                    <input type="tel" id="guest-phone" name="phone" class="form-control" placeholder="09XX XXX XXX" required autocomplete="tel" inputmode="tel">
+                    <small>{% trans "We call this number to confirm before dispatch." %}</small>
                 </div>
                 <div class="spring-auth__field">
-                    <label for="guest-city">City</label>
-                    <input type="text" id="guest-city" name="city" class="form-control" placeholder="City" required>
+                    <label for="guest-email">{% trans "Email (optional, for your receipt)" %}</label>
+                    <input type="email" id="guest-email" name="email" class="form-control" placeholder="{% trans 'Email address' %}" autocomplete="email">
                 </div>
                 <div class="spring-auth__field">
-                    <label for="guest-address">Delivery address</label>
-                    <input type="text" id="guest-address" name="address" class="form-control" placeholder="Delivery address (landmark or street)" required minlength="5">
+                    <label for="guest-city">{% trans "City" %}</label>
+                    <input type="text" id="guest-city" name="city" class="form-control" placeholder="{% trans 'City' %}" required autocomplete="address-level2" value="Addis Ababa">
+                </div>
+                <div class="spring-auth__field">
+                    <label for="guest-address">{% trans "Delivery address" %}</label>
+                    <input type="text" id="guest-address" name="address" class="form-control" placeholder="{% trans 'Landmark, street or building' %}" required minlength="5" autocomplete="street-address">
                 </div>
                 {% endif %}
 
+                {% if payment_method_options %}
+                <fieldset class="spring-payment-options">
+                    <legend>{% trans "Payment" %}</legend>
+                    {% for option in payment_method_options %}
+                    <label class="spring-payment-option">
+                        <input type="radio" name="payment_method" value="{{ option.value }}" {% if option.selected %}checked{% endif %}>
+                        <span><strong>{{ option.label }}</strong><small>{{ option.hint }}</small></span>
+                    </label>
+                    {% endfor %}
+                </fieldset>
+                {% else %}
+                <p class="spring-cart-summary__payment-note"><i class="fas fa-money-bill-wave"></i> {% trans "Cash on delivery. Inspect your order with the driver, then pay." %}</p>
+                {% endif %}
+
                 <button type="submit" class="btn btn-dark w-100" {% if not flow_status.checkout_ready %}disabled{% endif %}>
-                    {{ flow_status.checkout_label|default:"Place Order" }}
+                    {{ flow_status.checkout_label|default:_("Place Order") }}
                 </button>
+                <p class="spring-cart-summary__terms">{% url 'store:terms' as terms_url %}{% blocktrans %}By placing an order you agree to our <a href="{{ terms_url }}">terms</a> and on-the-spot return policy.{% endblocktrans %}</p>
             </form>
+            <script type="application/json" id="ga-cart-data">{{ ga_cart_json|safe }}</script>
         </aside>
     </div>
     {% else %}
     <section class="spring-empty-state">
-        <h2>Your cart is empty</h2>
-        <p>Add products to your cart to continue.</p>
-        <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all</a>
+        <h2>{% trans "Your cart is empty" %}</h2>
+        <p>{% trans "Add products to your cart to continue." %}</p>
+        <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Shop all" %}</a>
     </section>
     {% endif %}
 

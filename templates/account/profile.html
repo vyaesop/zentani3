@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Zentanee | Account{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Account" %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
@@ -10,22 +11,23 @@
 
       <section class="spring-account__hero">
           <div>
-              <p class="spring-directory-header__eyebrow">My account</p>
+              <p class="spring-directory-header__eyebrow">{% trans "My account" %}</p>
               <h1>{% firstof request.user.first_name request.user.username %}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
-              <p>View your saved addresses, recent orders, and account shortcuts from one place.</p>
+              <p>{% trans "View your saved addresses, recent orders, and account shortcuts from one place." %}</p>
           </div>
           <div class="spring-account__hero-actions">
-              <a class="btn btn-dark" href="{% url 'store:home' %}">Continue shopping</a>
-              <a class="btn btn-outline-dark" href="{% url 'store:add-address' %}">Add address</a>
-              <a class="btn btn-outline-dark" href="{% url 'store:orders' %}">Orders</a>
+              <a class="btn btn-dark" href="{% url 'store:home' %}">{% trans "Continue shopping" %}</a>
+              <a class="btn btn-outline-dark" href="{% url 'store:add-address' %}">{% trans "Add address" %}</a>
+              <a class="btn btn-outline-dark" href="{% url 'store:orders' %}">{% trans "Orders" %}</a>
+              <a class="btn btn-outline-dark" href="{% url 'store:password-change' %}">{% trans "Change password" %}</a>
           </div>
       </section>
 
       <div class="spring-account__grid">
           <section class="spring-account__card">
               <div class="spring-section__head">
-                  <h2>Saved Addresses</h2>
-                  <a href="{% url 'store:add-address' %}">Add address</a>
+                  <h2>{% trans "Saved Addresses" %}</h2>
+                  <a href="{% url 'store:add-address' %}">{% trans "Add address" %}</a>
               </div>
 
               {% if addresses %}
@@ -33,28 +35,28 @@
                   {% for address in addresses %}
                   <article class="spring-account__item">
                       <div>
-                          <strong>Address {{ forloop.counter }}</strong>
+                          <strong>{% trans "Address" %} {{ forloop.counter }}</strong>
                           <p>{{ address.address }}</p>
                           <p>{{ address.city }}</p>
                           <p>{{ address.phone }}</p>
                       </div>
                       <form action="{% url 'store:remove-address' address.id %}" method="POST">
                           {% csrf_token %}
-                          <button type="submit" class="spring-text-link">Remove</button>
+                          <button type="submit" class="spring-text-link">{% trans "Remove" %}</button>
                       </form>
                   </article>
                   {% endfor %}
               </div>
               {% else %}
-              <p class="text-muted mb-3">You have not saved an address yet.</p>
-              <a href="{% url 'store:add-address' %}" class="btn btn-dark">Add your first address</a>
+              <p class="text-muted mb-3">{% trans "You have not saved an address yet." %}</p>
+              <a href="{% url 'store:add-address' %}" class="btn btn-dark">{% trans "Add your first address" %}</a>
               {% endif %}
           </section>
 
           <section class="spring-account__card">
               <div class="spring-section__head">
-                  <h2>Recent Orders</h2>
-                  <a href="{% url 'store:orders' %}">View all</a>
+                  <h2>{% trans "Recent Orders" %}</h2>
+                  <a href="{% url 'store:orders' %}">{% trans "View all" %}</a>
               </div>
 
               {% if orders %}
@@ -63,22 +65,30 @@
                   <article class="spring-account__item">
                       <div>
                           <strong>{{ order.product.title }}</strong>
-                          <p>Order #{{ order.id }}</p>
+                          <p>{% trans "Order" %} {{ order.order_number }}</p>
                       </div>
                       <span class="spring-order-status-pill spring-order-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
                   </article>
                   {% endfor %}
               </div>
               {% else %}
-              <p class="text-muted mb-3">You have not placed any orders yet.</p>
-              <a href="{% url 'store:home' %}" class="btn btn-dark">Browse products</a>
+              <p class="text-muted mb-3">{% trans "You have not placed any orders yet." %}</p>
+              <a href="{% url 'store:home' %}" class="btn btn-dark">{% trans "Browse products" %}</a>
               {% endif %}
+          </section>
+
+          <section class="spring-account__card spring-account__card--referral">
+              <div class="spring-section__head">
+                  <h2>{% trans "Refer &amp; earn" %}</h2>
+              </div>
+              <p>{% trans "Share your personal link with friends. You earn 5% of every order they place, paid once it is delivered." %}</p>
+              <a href="{% url 'store:affiliate-dashboard' %}" class="btn btn-outline-dark">{% if has_affiliate_profile %}{% trans "Open my referral dashboard" %}{% else %}{% trans "Get my referral link" %}{% endif %}</a>
           </section>
 
           <section class="spring-account__card spring-account__card--wide">
               <div class="spring-section__head">
-                  <h2>Saved Items</h2>
-                  <a href="{% url 'store:all-products' %}">Browse more</a>
+                  <h2>{% trans "Saved Items" %}</h2>
+                  <a href="{% url 'store:all-products' %}">{% trans "Browse more" %}</a>
               </div>
 
               {% if saved_items %}
@@ -90,8 +100,8 @@
                   {% endfor %}
               </div>
               {% else %}
-              <p class="text-muted mb-3">You have not saved any products yet.</p>
-              <a href="{% url 'store:all-products' %}" class="btn btn-dark">Start saving items</a>
+              <p class="text-muted mb-3">{% trans "You have not saved any products yet." %}</p>
+              <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Start saving items" %}</a>
               {% endif %}
           </section>
       </div>

@@ -158,6 +158,14 @@ def create_product_from_draft(draft):
         notes.append(brand_note)
 
     initial = draft_to_product_initial(draft, categories=[category], brands=[brand] if brand else [])
+    # Gemini sometimes returns its own template literally ("| [Store Name]").
+    # Never let that reach a shopper or a search result.
+    from store.seo import clean_seo_copy, has_placeholder
+
+    for copy_field in ("title", "short_description", "detail_description", "seo_title", "seo_description", "image_alt_text"):
+        if has_placeholder(initial.get(copy_field)):
+            initial[copy_field] = clean_seo_copy(initial.get(copy_field), fallback="")
+            notes.append(f"Removed template text from the {copy_field.replace('_', ' ')}; review it before publishing.")
     title = (initial.get("title") or draft.sku)[:150]
     slug = (initial.get("slug") or slugify(f"{title}-{draft.sku}"))[:160] or slugify(draft.sku)[:160]
     if Product.objects.filter(slug=slug).exists():

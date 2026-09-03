@@ -1,4 +1,5 @@
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 
 <article class="spring-product-card">
@@ -25,13 +26,13 @@
         {% endif %}
 
         {% if product.is_sold_out %}
-        <span class="spring-product-card__badge spring-product-card__badge--soldout">Sold out</span>
+        <span class="spring-product-card__badge spring-product-card__badge--soldout">{% trans "Sold out" %}</span>
         {% elif product.is_on_sale %}
         <span class="spring-product-card__badge spring-product-card__badge--sale">-{{ product.discount_percent }}%</span>
         {% elif product.id in bestseller_product_ids %}
-        <span class="spring-product-card__badge spring-product-card__badge--bestseller">Bestseller</span>
+        <span class="spring-product-card__badge spring-product-card__badge--bestseller">{% trans "Bestseller" %}</span>
         {% elif product.is_new %}
-        <span class="spring-product-card__badge spring-product-card__badge--new">New</span>
+        <span class="spring-product-card__badge spring-product-card__badge--new">{% trans "New" %}</span>
         {% endif %}
     </div>
 
@@ -43,27 +44,27 @@
 
         {% if product.is_sold_out %}
         <p class="spring-product-card__price spring-product-card__price--soldout">
-            Sold out
-            <a href="{% url 'store:product-detail' product.slug %}#restock" class="spring-product-card__notify">Notify me</a>
+            {% trans "Sold out" %}
+            <a href="{% url 'store:product-detail' product.slug %}#restock" class="spring-product-card__notify">{% trans "Notify me" %}</a>
         </p>
         {% elif product.is_on_sale %}
         <p class="spring-product-card__price spring-product-card__price--sale">
-            <span class="spring-price-now">{{ product.price }} ETB</span>
-            <s class="spring-price-was">{{ product.compare_at_price }} ETB</s>
+            <span class="spring-price-now">{{ product.price|etb }}</span>
+            <s class="spring-price-was">{{ product.compare_at_price|etb }}</s>
         </p>
         {% else %}
-        <p class="spring-product-card__price">{{ product.price }} ETB</p>
+        <p class="spring-product-card__price">{{ product.price|etb }}</p>
         {% endif %}
 
         {% if product.available_sizes and not product.is_sold_out %}
-        <div class="spring-product-card__sizes" aria-label="Quick add {{ product.title }} to cart"
+        <div class="spring-product-card__sizes" aria-label="{% blocktrans with title=product.title %}Quick add {{ title }} to cart{% endblocktrans %}"
              hx-disinherit="hx-target hx-select hx-swap hx-push-url hx-indicator">
             {% for size in product.available_sizes|split:"," %}
             <button type="button" class="spring-size-chip spring-size-chip--quick"
                     hx-post="{% url 'store:add-to-cart' %}"
                     hx-vals='{"prod_id": "{{ product.id }}", "size": "{{ size|strip }}"}'
                     hx-target="#zent-toast" hx-swap="innerHTML"
-                    aria-label="Add size {{ size|strip }} to cart">{{ size|strip }}</button>
+                    aria-label="{% blocktrans with size=size|strip %}Add size {{ size }} to cart{% endblocktrans %}">{{ size|strip }}</button>
             {% endfor %}
         </div>
         {% endif %}

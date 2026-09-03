@@ -1,14 +1,16 @@
-"""Registration, profile, and address management."""
+"""Registration, login, profile, and address management."""
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from store.forms import AddressForm, RegistrationForm
+from store import ratelimit
+from store.forms import AddressForm, LoginForm, RegistrationForm
 from store.models import Address, AffiliateProfile, BackgroundTask, Order, Wishlist
 from store.tasks import enqueue
 
@@ -51,12 +53,48 @@ def _build_profile_flow_status(addresses, orders):
     }
 
 
+def _too_many_attempts(request, template, context):
+    context = dict(context)
+    context["rate_limited_minutes"] = ratelimit.retry_after_minutes()
+    return render(request, template, context, status=429)
+
+
+class RateLimitedLoginView(LoginView):
+    """Django's LoginView with per-IP / per-phone attempt throttling."""
+
+    template_name = "account/login.html"
+    authentication_form = LoginForm
+
+    def post(self, request, *args, **kwargs):
+        identifier = (request.POST.get("username") or "").strip()
+        if ratelimit.is_blocked("login", request, identifier):
+            form = self.get_form()
+            return _too_many_attempts(request, self.template_name, self.get_context_data(form=form))
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        ratelimit.record_failure("login", self.request, (self.request.POST.get("username") or "").strip())
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        ratelimit.clear("login", self.request, (self.request.POST.get("username") or "").strip())
+        return super().form_valid(form)
+
+
 class RegistrationView(View):
     def get(self, request):
         form = RegistrationForm()
         return render(request, "account/register.html", {"form": form, "next_url": request.GET.get("next", "")})
 
     def post(self, request):
+        if ratelimit.is_blocked("register", request):
+            return _too_many_attempts(
+                request,
+                "account/register.html",
+                {"form": RegistrationForm(), "next_url": request.POST.get("next", "")},
+            )
+        ratelimit.record_failure("register", request)
+
         form = RegistrationForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
@@ -81,6 +119,7 @@ class RegistrationView(View):
                 BackgroundTask.TYPE_TELEGRAM_SIGNUP_NOTIFY,
                 {"user_id": user.id, "address_id": signup_address.id},
             )
+            ratelimit.clear("register", request)
             messages.success(request, "Account created successfully. You can continue with your order now.")
             return redirect(_safe_redirect_url_with_query(request, "store:profile"))
         return render(request, "account/register.html", {"form": form, "next_url": request.POST.get("next", "")})
@@ -89,7 +128,7 @@ class RegistrationView(View):
 @login_required
 def profile(request):
     addresses = Address.objects.filter(user=request.user).order_by("-id")
-    orders = Order.objects.filter(user=request.user).select_related("product").only(
+    orders = Order.objects.filter(user=request.user).select_related("product", "group").only(
         "id",
         "quantity",
         "size",
@@ -97,6 +136,8 @@ def profile(request):
         "ordered_date",
         "line_total",
         "price_at_purchase",
+        "group__id",
+        "group__number",
         "product__id",
         "product__title",
         "product__slug",
@@ -132,6 +173,7 @@ def profile(request):
             "saved_product_ids": _saved_product_ids_for_user(request.user),
             "has_affiliate_profile": has_affiliate_profile,
             "profile_flow_status": profile_flow_status,
+            "robots_meta": "noindex, nofollow",
         },
     )
 

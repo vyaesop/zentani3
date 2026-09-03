@@ -1,3 +1,4 @@
+{% load i18n %}
 {# Swipeable product rail (Marine Serre-style carousel). Pass rail_products. #}
 <div class="zent-rail swiper">
     <div class="swiper-wrapper">
@@ -6,7 +7,7 @@
             {% include 'store/_product_card_content.html' with product=product %}
         </div>
         {% empty %}
-        <p class="text-muted mb-0">{{ rail_empty_message|default:"Products will appear here soon." }}</p>
+        <p class="text-muted mb-0">{{ rail_empty_message|default:_("New pieces are on the way — follow the Telegram channel to see them first.") }}</p>
         {% endfor %}
     </div>
 </div>

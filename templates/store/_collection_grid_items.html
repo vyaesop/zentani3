@@ -1,3 +1,4 @@
+{% load i18n %}
 {# One page of product cards + the load-more sentinel. Rendered inside the #}
 {# grid on first paint, and returned bare for ?fragment=items requests so #}
 {# htmx appends the next page in place of the sentinel. #}
@@ -13,7 +14,14 @@
 {% if empty_include %}
 {% include empty_include %}
 {% else %}
-<p class="text-muted mb-0">{{ empty_message|default:"Products will appear here once they are active in admin." }}</p>
+<div class="spring-empty-state spring-empty-state--grid">
+    <h2>{% trans "Nothing here yet" %}</h2>
+    <p>{{ empty_message|default:_("New pieces land every week. Follow the Telegram channel to catch the next drop, or browse everything that is live now.") }}</p>
+    <div class="spring-hero__actions">
+        <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Shop all" %}</a>
+        <a href="{{ store.telegram_channel_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i> {% trans "Join the channel" %}</a>
+    </div>
+</div>
 {% endif %}
 {% endfor %}
 
@@ -26,8 +34,8 @@
        hx-swap="outerHTML"
        hx-trigger="revealed, click"
        rel="next">
-        Load more
-        <span class="spring-load-more__hint">({{ products.end_index }} of {{ products.paginator.count }})</span>
+        {% trans "Load more" %}
+        <span class="spring-load-more__hint">({{ products.end_index }} {% trans "of" %} {{ products.paginator.count }})</span>
     </a>
 </div>
 {% endif %}

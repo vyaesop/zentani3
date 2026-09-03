@@ -1,16 +1,20 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Zentanee | Log in{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Log in" %}{% endblock %}
 
 {% block content %}
 <main class="main spring-main">
   <div class="spring-container spring-auth">
       <section class="spring-auth__panel">
-          <p class="spring-directory-header__eyebrow">Account</p>
-          <h1>Log in</h1>
-          <p class="spring-auth__copy">Sign in to view your orders, manage delivery details, and continue checkout.</p>
+          <p class="spring-directory-header__eyebrow">{% trans "Account" %}</p>
+          <h1>{% trans "Log in" %}</h1>
+          <p class="spring-auth__copy">{% trans "Sign in to view your orders, manage delivery details, and continue checkout." %}</p>
 
           {% include 'partials/_messages.html' %}
+          {% if rate_limited_minutes %}
+          <p class="zent-alert zent-alert--warning">{% blocktrans with minutes=rate_limited_minutes %}Too many attempts. Please wait about {{ minutes }} minutes before trying again, or reset your password.{% endblocktrans %}</p>
+          {% endif %}
 
           <form method="post" action="" class="spring-auth__form">
               {% csrf_token %}
@@ -27,18 +31,16 @@
               </div>
               {% endfor %}
 
-              {% if form.non_field_errors %}
               {% for error in form.non_field_errors %}
-              <p class="alert alert-danger my-3">{{ error }}</p>
+              <p class="zent-alert zent-alert--danger">{{ error }}</p>
               {% endfor %}
-              {% endif %}
 
-              <button class="btn btn-dark w-100" type="submit">Log in</button>
+              <button class="btn btn-dark w-100" type="submit" {% if rate_limited_minutes %}disabled{% endif %}>{% trans "Log in" %}</button>
           </form>
 
           <div class="spring-auth__footer">
-              <a href="{% url 'store:password-reset' %}">Forgot your password?</a>
-              <a href="{% url 'store:register' %}{% if redirect_field_value %}?next={{ redirect_field_value|urlencode }}{% endif %}">Create an account</a>
+              <a href="{% url 'store:password-reset' %}">{% trans "Forgot your password?" %}</a>
+              <a href="{% url 'store:register' %}{% if redirect_field_value %}?next={{ redirect_field_value|urlencode }}{% endif %}">{% trans "Create an account" %}</a>
           </div>
       </section>
   </div>

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load image_optim %}
+
+{% block title %}{{ store.name }} | {% trans "Review" %} {{ product.title }}{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-auth spring-review-invite">
+      <section class="spring-auth__panel spring-auth__panel--wide">
+          <p class="spring-directory-header__eyebrow">{% trans "Verified purchase" %} · {{ order.order_number }}</p>
+          <h1>{% blocktrans with title=product.title %}How was your {{ title }}?{% endblocktrans %}</h1>
+          <p class="spring-auth__copy">{% trans "Thirty seconds from you saves the next shopper a wrong size. Your review is marked as a verified purchase." %}</p>
+
+          {% include 'partials/_messages.html' %}
+
+          <div class="spring-review-invite__product">
+              {% if product.product_image %}
+              {% cld_img product.product_image width=160 alt=product.title %}
+              {% endif %}
+              <div>
+                  <strong>{{ product.title }}</strong>
+                  <p>{% trans "Qty" %} {{ order.quantity }}{% if order.size %} · {% trans "Size" %} {{ order.size }}{% endif %} · {% trans "Delivered" %}</p>
+              </div>
+          </div>
+
+          <form method="post" action="" enctype="multipart/form-data" class="spring-auth__form spring-review-form">
+              {% csrf_token %}
+              {% for fm in form %}
+              <div class="spring-auth__field">
+                  {{ fm.label_tag }}
+                  {{ fm }}
+                  {% if fm.help_text %}<small>{{ fm.help_text|safe }}</small>{% endif %}
+                  <small class="text-danger">{{ fm.errors|striptags }}</small>
+              </div>
+              {% endfor %}
+              <button class="btn btn-dark w-100" type="submit">{% if existing_review %}{% trans "Update my review" %}{% else %}{% trans "Post my review" %}{% endif %}</button>
+          </form>
+      </section>
+  </div>
+</main>
+{% endblock content %}

@@ -53,4 +53,6 @@ jobs:
         # queue tests exercise the real enqueue/drain path rather than inline
         # execution. Pinned so a future DEBUG change cannot silently flip it.
         TASKS_EAGER: "false"
-      run: python manage.py test store --settings=zentanee.settings_local -v 2
+      run: |
+        python manage.py compile_translations --settings=zentanee.settings_local
+        python manage.py test store --settings=zentanee.settings_local -v 2 -v 2

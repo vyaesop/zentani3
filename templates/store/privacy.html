@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{{ store.name }} | {% trans "Privacy policy" %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name %}How {{ name }} collects, uses and protects the details you share when you browse and order.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<main class="main spring-main">
+  <div class="spring-container spring-policy-page spring-legal-page">
+      <section class="spring-page-header">
+          <p class="spring-directory-header__eyebrow">{% trans "Legal" %}</p>
+          <h1>{% trans "Privacy policy" %}</h1>
+          <p>{% trans "Plain language, because that is the only kind worth reading. Last updated September 2026." %}</p>
+      </section>
+
+      <article class="spring-legal">
+          <h2>{% trans "Who we are" %}</h2>
+          <p>{{ store.legal_name|default:store.name }}{% if store.address %}, {{ store.address }}{% endif %}. {% trans "Reach us at" %} <a href="{{ store.phone_href }}">{{ store.phone }}</a>{% if store.email %} {% trans "or" %} <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %}.</p>
+
+          <h2>{% trans "What we collect" %}</h2>
+          <ul>
+              <li><strong>{% trans "Order details" %}</strong> — {% trans "your name, phone number, delivery city and address, optional email, and the items you ordered. We need these to deliver and to call you before dispatch." %}</li>
+              <li><strong>{% trans "Account details" %}</strong> — {% trans "phone number (used as your login), email, password (stored hashed), saved addresses, saved items and reviews, if you create an account." %}</li>
+              <li><strong>{% trans "Telegram" %}</strong> — {% trans "if you link Telegram for order updates we store your chat id and username so the bot can message you. Unlink any time by blocking the bot." %}</li>
+              <li><strong>{% trans "Browsing" %}</strong> — {% trans "which products you view, add to cart and buy, tied to a session cookie, so we can show recently viewed items and improve recommendations." %}{% if ga_enabled %} {% trans "We also use Google Analytics to understand how the store is used in aggregate." %}{% endif %}</li>
+              {% if online_payments_enabled %}<li><strong>{% trans "Payments" %}</strong> — {% trans "online payments are processed by Chapa. We never see or store card or wallet credentials; we only receive a payment reference and status." %}</li>{% endif %}
+          </ul>
+
+          <h2>{% trans "How we use it" %}</h2>
+          <ul>
+              <li>{% trans "To confirm, pack, deliver and, where needed, return your order." %}</li>
+              <li>{% trans "To send you order confirmations and status updates by SMS, Telegram or email." %}</li>
+              <li>{% trans "To ask for a review after delivery (one message per order)." %}</li>
+              <li>{% trans "To notify you about restocks, price drops on saved items or new drops — only where you asked for it." %}</li>
+              <li>{% trans "To keep the store secure and prevent fraud." %}</li>
+          </ul>
+
+          <h2>{% trans "Who else sees it" %}</h2>
+          <p>{% trans "Delivery drivers see the name, phone number and address needed to deliver. Our hosting, database, image hosting, SMS and email providers process data on our behalf under their own security terms. We do not sell your data." %}</p>
+
+          <h2>{% trans "Cookies" %}</h2>
+          <p>{% trans "We use a session cookie for your cart and login, a security cookie to protect forms, a language preference cookie, and analytics cookies where enabled. Blocking cookies may prevent checkout from working." %}</p>
+
+          <h2>{% trans "Your choices" %}</h2>
+          <p>{% trans "You can ask us to show, correct or delete the details we hold about you, or to stop messaging you, by calling or emailing us. Account holders can delete saved addresses and reviews themselves." %}</p>
+
+          <h2>{% trans "Retention" %}</h2>
+          <p>{% trans "Order records are kept for accounting. Browsing events are deleted after 90 days. Restock requests are deleted once we notify you." %}</p>
+      </article>
+  </div>
+</main>
+{% endblock content %}

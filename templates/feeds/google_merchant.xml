@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>{{ store_name }}</title>
+    <link>{{ site_url }}</link>
+    <description>{{ store_name }} product feed</description>
+    {% for item in items %}
+    <item>
+      <g:id>{{ item.id }}</g:id>
+      <g:title>{{ item.title }}</g:title>
+      <g:description>{{ item.description }}</g:description>
+      <g:link>{{ item.link }}</g:link>
+      {% if item.image_link %}<g:image_link>{{ item.image_link }}</g:image_link>{% endif %}
+      {% for extra in item.additional_images %}<g:additional_image_link>{{ extra }}</g:additional_image_link>
+      {% endfor %}
+      <g:availability>{{ item.availability }}</g:availability>
+      <g:condition>new</g:condition>
+      {% if item.regular_price %}<g:price>{{ item.regular_price }}</g:price>
+      <g:sale_price>{{ item.sale_price }}</g:sale_price>{% else %}<g:price>{{ item.price }}</g:price>{% endif %}
+      {% if item.brand %}<g:brand>{{ item.brand }}</g:brand>{% endif %}
+      {% if item.product_type %}<g:product_type>{{ item.product_type }}</g:product_type>{% endif %}
+      {% if item.color %}<g:color>{{ item.color }}</g:color>{% endif %}
+      {% if item.material %}<g:material>{{ item.material }}</g:material>{% endif %}
+      {% if item.size %}<g:size>{{ item.size }}</g:size>
+      <g:item_group_id>{{ item.group_id }}</g:item_group_id>{% endif %}
+      <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping>
+        <g:country>ET</g:country>
+        <g:region>Addis Ababa</g:region>
+        <g:service>Standard</g:service>
+        <g:price>{{ addis_fee }} ETB</g:price>
+      </g:shipping>
+      <g:shipping>
+        <g:country>ET</g:country>
+        <g:service>Courier</g:service>
+        <g:price>{{ outside_fee }} ETB</g:price>
+      </g:shipping>
+    </item>
+    {% endfor %}
+  </channel>
+</rss>

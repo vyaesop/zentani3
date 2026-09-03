@@ -12,7 +12,7 @@ from store.constants import (
     COLLECTION_SORT_OPTIONS,
     DIRECTORY_PAGE_SIZE,
 )
-from store.models import Brand, Category, Product, ProductSizeStock
+from store.models import Brand, Category, Product, ProductSizeStock, SearchLog
 
 from .catalog import (
     PRODUCT_LIST_FIELDS,
@@ -268,7 +268,11 @@ def search_view(request):
         include_relevance_sort=True,
     )
     context["query"] = context["browse_state"]["current_query"]
+    context["robots_meta"] = "noindex, follow"
     context.update(_search_discovery_context(request))
+    # Zero-result terms are surfaced in the dashboard as merchandising demand.
+    if context["query"] and request.GET.get("fragment") != "items" and not request.GET.get("page"):
+        SearchLog.log(context["query"], context["product_count"])
     return _render_collection(request, "store/search.html", context)
 
 
@@ -370,6 +374,11 @@ def category_products(request, slug):
         show_category_filters=False,
     )
     context["category"] = category
+    context["page_meta_description"] = (
+        category.meta_description
+        or (category.description or "")[:300]
+        or f"Shop {category.title} at Zentanee. Cash on delivery in Addis Ababa, inspect before you pay."
+    )
     return _render_collection(request, "store/category_products.html", context)
 
 
@@ -383,4 +392,9 @@ def brand_products(request, slug):
         show_brand_filters=False,
     )
     context["brand"] = brand
+    context["page_meta_description"] = (
+        brand.meta_description
+        or (brand.description or "")[:300]
+        or f"Shop {brand.title} at Zentanee. Cash on delivery in Addis Ababa, inspect before you pay."
+    )
     return _render_collection(request, "store/brand_products.html", context)

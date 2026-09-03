@@ -1,10 +1,16 @@
 {% extends 'base.html' %}
 {% load cache %}
 {% load static %}
+{% load i18n %}
 {% load image_optim %}
 
-{% block title %}Zentanee | Shop clothes & fashion in Addis Ababa{% endblock %}
-{% block meta_description %}Zentanee — curated clothing and modest fashion with free delivery in Addis Ababa. Pay on delivery. Browse new arrivals, collections, and brands.{% endblock %}
+{% block title %}{{ store.name }} | {% trans "Shop clothes & fashion in Addis Ababa" %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name threshold=store.free_threshold %}{{ name }} — curated clothing, shoes and accessories with cash on delivery in Addis Ababa. Free delivery over {{ threshold }} ETB. Inspect your order before you pay.{% endblocktrans %}{% endblock %}
+
+{% block seo_head %}
+{{ block.super }}
+<script type="application/ld+json">{{ organization_schema_json|safe }}</script>
+{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/swiper/swiper-bundle.min.css' %}">
@@ -12,20 +18,20 @@
 
 {% block content %}
 <main class="main spring-main">
-  <section class="spring-hero spring-hero--denim spring-container">
-      <p class="spring-hero__eyebrow">Free delivery in Addis Ababa · Pay on delivery</p>
-      <h1>Fashion you love, delivered to your door.</h1>
-      <p class="spring-hero__copy">Browse curated drops from the best local and international brands. No online payment required — pay when your order arrives.</p>
+  <section class="spring-hero spring-hero--ink spring-container">
+      <p class="spring-hero__eyebrow">{% blocktrans with threshold=store.free_threshold %}Free delivery in Addis over {{ threshold }} ETB · Pay on delivery{% endblocktrans %}</p>
+      <h1>{% trans "Fashion you love, delivered to your door." %}</h1>
+      <p class="spring-hero__copy">{% trans "Curated drops from local and international brands. No online payment required — check the item with the driver, then pay." %}</p>
       <div class="spring-hero__actions">
-          <a href="{% url 'store:all-products' %}" class="btn btn-dark">Shop all products</a>
-          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-dark">Browse collections</a>
+          <a href="{% url 'store:all-products' %}" class="btn btn-light">{% trans "Shop all products" %}</a>
+          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-light">{% trans "Browse collections" %}</a>
       </div>
   </section>
 
-  <nav class="spring-edit-chips spring-container" aria-label="Shop the edits">
-      <a href="{% url 'store:all-products' %}?sort=newest" class="spring-edit-chip">New in</a>
-      <a href="{% url 'store:sale-products' %}" class="spring-edit-chip spring-edit-chip--sale">Sale</a>
-      <a href="{% url 'store:all-products' %}?max_price=1000" class="spring-edit-chip">Under 1,000 ETB</a>
+  <nav class="spring-edit-chips spring-container" aria-label="{% trans 'Shop the edits' %}">
+      <a href="{% url 'store:all-products' %}?sort=newest" class="spring-edit-chip">{% trans "New in" %}</a>
+      <a href="{% url 'store:sale-products' %}" class="spring-edit-chip spring-edit-chip--sale">{% trans "Sale" %}</a>
+      <a href="{% url 'store:all-products' %}?max_price=1000" class="spring-edit-chip">{% trans "Under 1,000 ETB" %}</a>
       {% for category in categories|slice:":4" %}
       <a href="{% url 'store:category-products' category.slug %}" class="spring-edit-chip">{{ category.title }}</a>
       {% endfor %}
@@ -34,8 +40,8 @@
   {% if recently_viewed_products %}
   <section class="spring-section spring-container">
       <div class="spring-section__head">
-          <h2>Pick Up Where You Left Off</h2>
-          <a href="{% url 'store:all-products' %}">Browse more</a>
+          <h2>{% trans "Pick Up Where You Left Off" %}</h2>
+          <a href="{% url 'store:all-products' %}">{% trans "Browse more" %}</a>
       </div>
       <div class="spring-product-grid">
           {% for product in recently_viewed_products %}
@@ -50,29 +56,34 @@
   {% if request.user.is_authenticated %}
   {% include 'store/_home_sections.html' %}
   {% else %}
-  {% cache 600 home_sections catalog_version %}
+  {% cache 600 home_sections catalog_version LANGUAGE_CODE %}
   {% include 'store/_home_sections.html' %}
   {% endcache %}
   {% endif %}
 
   <section class="spring-section spring-container spring-trust-bar">
       <div class="spring-trust-item">
-          <strong>Free delivery</strong>
-          <p>On orders over 3,500 ETB in Addis Ababa</p>
+          <strong>{% trans "Free delivery" %}</strong>
+          <p>{% blocktrans with threshold=store.free_threshold fee=store.addis_fee %}On orders over {{ threshold }} ETB in Addis Ababa. Otherwise a flat {{ fee }} ETB.{% endblocktrans %}</p>
       </div>
       <div class="spring-trust-item">
-          <strong>Pay on delivery</strong>
-          <p>No online payment required. You pay when the order arrives.</p>
+          <strong>{% trans "Pay on delivery" %}</strong>
+          <p>{% trans "No online payment required. Inspect the order with the driver, then pay in cash." %}</p>
       </div>
       <div class="spring-trust-item">
-          <strong>Order on Telegram</strong>
-          <p>Place orders directly via <a href="https://t.me/zentanee_order_bot" target="_blank" rel="noopener">our Telegram bot</a></p>
+          <strong>{% trans "Order on Telegram" %}</strong>
+          <p>{% trans "Every drop is posted to our channel — order in chat or here on the site." %} <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">{% trans "Join the channel" %}</a></p>
+      </div>
+      <div class="spring-trust-item">
+          <strong>{% trans "Real people, real phone" %}</strong>
+          <p><a href="{{ store.phone_href }}">{{ store.phone }}</a> · {{ store.support_hours }}</p>
       </div>
   </section>
 </main>
 {% endblock content %}
 
 {% block extra_scripts %}
+<script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof Swiper === 'undefined') return; // rails degrade to a scrollable row

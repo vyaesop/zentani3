@@ -6,9 +6,19 @@ set_product_sizes(); Product.save() itself has no inventory side effects.
 """
 import re
 
+from django.conf import settings
 from django.db import models
 
 from store.models import Product, ProductSizeStock
+
+
+def default_stock_per_size():
+    """Units assigned to a brand-new size (settings.INVENTORY_DEFAULT_STOCK_PER_SIZE)."""
+    value = getattr(settings, "INVENTORY_DEFAULT_STOCK_PER_SIZE", Product.DEFAULT_STOCK_PER_SIZE)
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return Product.DEFAULT_STOCK_PER_SIZE
 
 
 def _notify_restock_watchers(product):
@@ -39,15 +49,18 @@ def parse_size_list(value):
     return normalized_sizes
 
 
-def set_product_sizes(product, sizes, default_stock=Product.DEFAULT_STOCK_PER_SIZE):
+def set_product_sizes(product, sizes, default_stock=None):
     """Reconcile ProductSizeStock rows against the desired size list.
 
-    Creates missing sizes at default_stock, keeps quantities of existing ones,
-    deletes removed ones, then updates the product's aggregate stock/sold-out
-    columns (without triggering Product.save side effects).
+    Creates missing sizes at default_stock (settings-driven when None), keeps
+    quantities of existing ones, deletes removed ones, then updates the
+    product's aggregate stock/sold-out columns (without triggering
+    Product.save side effects).
     """
     if not product.pk:
         raise ValueError("Product must be saved before assigning sizes.")
+    if default_stock is None:
+        default_stock = default_stock_per_size()
 
     desired_sizes = list(sizes)
     desired_keys = {size.casefold() for size in desired_sizes}
@@ -116,3 +129,24 @@ def reconcile_sold_out(product):
         if was_sold_out and not sold_out:
             _notify_restock_watchers(product)
     return sold_out
+
+
+def restore_stock(product, size, quantity):
+    """Return `quantity` units of `size` (or unsized stock) after a cancellation.
+
+    Mirrors the decrement in services.checkout.place_order: the size row (when
+    one exists) and the product aggregate both grow, and a product that was
+    marked sold out by the sale comes back on shelf.
+    """
+    quantity = int(quantity or 0)
+    if quantity <= 0 or not product.pk:
+        return
+
+    if size:
+        size_row = ProductSizeStock.objects.filter(product_id=product.pk, size=size).first()
+        if size_row is not None:
+            ProductSizeStock.objects.filter(pk=size_row.pk).update(quantity=models.F("quantity") + quantity)
+
+    Product.objects.filter(pk=product.pk).update(stock_quantity=models.F("stock_quantity") + quantity)
+    product.refresh_from_db(fields=["stock_quantity", "is_sold_out"])
+    reconcile_sold_out(product)
