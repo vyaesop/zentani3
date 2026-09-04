@@ -2,115 +2,125 @@
 {% load i18n %}
 {% load image_optim %}
 
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Latest Drops" %}</h2>
-          <a href="{% url 'store:all-products' %}?sort=newest">{% trans "See all new arrivals" %}</a>
-      </div>
-      {% include 'store/_product_rail.html' with rail_products=latest_products rail_empty_message=_("New arrivals land here first — follow the Telegram channel to hear about them the moment they drop.") %}
-  </section>
-
-  {% if story_category %}
-  <section class="spring-story-band">
-      {% cld_url story_category.category_image 1600 as story_image_url %}
-      <div class="spring-story-band__media" style="background-image:url('{{ story_image_url }}')" role="img" aria-label="{{ story_category.title }}"></div>
-      <div class="spring-story-band__overlay">
-          <p class="spring-story-band__kicker">{% trans "The edit" %}</p>
-          <h2 class="spring-story-band__title">{{ story_category.title }}</h2>
-          {% if story_category.description %}
-          <p class="spring-story-band__copy">{{ story_category.description|truncatechars:140 }}</p>
+  {% if drop_products %}
+  <section class="zh-section spring-container" aria-labelledby="zh-drop-title">
+      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-drop" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-drop-title">{% trans "The drop" %}</h2>
+          <a href="{% url 'store:all-products' %}?sort=newest">{% trans "Everything new" %}</a>
+          {% if brands and brands|length < 3 %}
+          <p class="zh-section__meta">{% trans "Every branded piece" %} — {{ brands|join:", " }} — {% trans "is a genuine original." %}</p>
           {% endif %}
-          <a href="{% url 'store:category-products' story_category.slug %}" class="btn btn-light spring-story-band__cta">{% trans "Shop the edit" %}</a>
       </div>
+      <div class="zh-rail zh-rail--weave">
+          {% for product in drop_products %}
+          {% include 'store/_home_product_module.html' with product=product %}
+          {% endfor %}
+      </div>
+  </section>
+  {% elif brands and brands|length < 3 %}
+  <section class="zh-section spring-container" aria-label="{% trans 'Authenticity' %}">
+      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-drop" %}</div>
+      <p class="zh-section__meta zh-section__meta--standalone">{% trans "Every branded piece" %} — {{ brands|join:", " }} — {% trans "is a genuine original." %}</p>
   </section>
   {% endif %}
 
   {% if categories %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Shop Collections" %}</h2>
-          <a href="{% url 'store:all-categories' %}">{% trans "View all collections" %}</a>
+  <section class="zh-section spring-container" aria-labelledby="zh-collections-title">
+      <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-collections" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-collections-title">{% trans "Collections" %}</h2>
+          <a href="{% url 'store:all-categories' %}">{% trans "All collections" %}</a>
       </div>
-      <div class="spring-collection-grid">
+      <ul class="zh-collections">
           {% for category in categories %}
-          <article class="spring-collection-card">
-              <a href="{% url 'store:category-products' category.slug %}">
-                  <div class="spring-collection-card__media">
-                      {% if category.category_image %}
-                      {% cld_img category.category_image width=600 alt=category.title %}
-                      {% else %}
-                      <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ category.title }}">
-                      {% endif %}
-                  </div>
-                  <div class="spring-collection-card__body">
-                      <h3>{{ category.title }}</h3>
-                  </div>
+          <li>
+              <a href="{% url 'store:category-products' category.slug %}" class="zh-collection">
+                  <span class="zh-collection__name">{{ category.title }}</span>
+                  <span class="zh-collection__count zh-num">{% blocktrans count counter=category.live_count %}{{ counter }} piece{% plural %}{{ counter }} pieces{% endblocktrans %}</span>
+                  {% if category.category_image %}
+                  {% cld_img category.category_image width=144 alt="" css_class="zh-collection__swatch" html_width=72 html_height=72 %}
+                  {% else %}
+                  <span class="zh-collection__swatch--empty" aria-hidden="true"></span>
+                  {% endif %}
               </a>
-          </article>
+          </li>
           {% endfor %}
-      </div>
+      </ul>
   </section>
   {% endif %}
+
+  <section class="zh-section spring-container" aria-labelledby="zh-how-title">
+      <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-how" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-how-title">{% trans "How a Zentanee order works" %}</h2>
+          <a href="{% url 'store:delivery-returns' %}">{% trans "Delivery & returns" %}</a>
+      </div>
+      <ol class="zh-steps">
+          <li class="zh-step">
+              <span class="zh-step__n zh-num" aria-hidden="true">1</span>
+              <div>
+                  <h3>{% trans "Place your order" %}</h3>
+                  <p>{% trans "On the site, or from any post in the Telegram channel. No account, no card." %}</p>
+              </div>
+          </li>
+          <li class="zh-step">
+              <span class="zh-step__n zh-num" aria-hidden="true">2</span>
+              <div>
+                  <h3>{% trans "We call to confirm" %}</h3>
+                  <p>{% trans "A real person checks the size and the delivery spot with you before anything ships." %}</p>
+                  <span class="zh-step__time zh-num">{% trans "Addis Ababa" %} <strong>1–3 {% trans "days" %}</strong> · {{ store.support_hours }}</span>
+              </div>
+          </li>
+          <li class="zh-step">
+              <span class="zh-step__n zh-num" aria-hidden="true">3</span>
+              <div>
+                  <h3>{% trans "Check it, then pay" %}</h3>
+                  <p>{% trans "The driver waits while you look it over. If it isn't right, hand it back —" %} <mark>{% trans "you pay nothing." %}</mark></p>
+                  <span class="zh-step__time zh-num">{% trans "Cash at the door" %} · <strong>{{ store.phone }}</strong></span>
+              </div>
+          </li>
+      </ol>
+  </section>
 
   {% if top_selling_products %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Most Wanted" %}</h2>
-          <span class="spring-section__meta">{% trans "The pieces shoppers order most" %}</span>
+  <section class="zh-section spring-container" aria-labelledby="zh-wanted-title">
+      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-wanted" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-wanted-title">{% trans "Most wanted" %}</h2>
+          <span class="zh-section__meta">{% trans "The pieces shoppers order most" %}</span>
       </div>
-      {% include 'store/_product_rail.html' with rail_products=top_selling_products %}
-  </section>
-  {% endif %}
-
-  {% if products %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Featured Products" %}</h2>
-          <a href="{% url 'store:all-products' %}">{% trans "View all" %}</a>
-      </div>
-      <div class="spring-product-grid">
-          {% for product in products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
+      <div class="zh-rail zh-rail--weave">
+          {% for product in top_selling_products %}
+          {% include 'store/_home_product_module.html' with product=product hide_bestseller_tag=True %}
           {% endfor %}
       </div>
   </section>
   {% endif %}
 
-  {% if spotlight_brand %}
-  <section class="spring-brand-hero spring-container">
-      <div class="spring-brand-hero__media">
-          {% cld_img spotlight_brand.brand_image width=900 alt=spotlight_brand.title %}
+  {% if brands and brands|length >= 3 %}
+  <section class="zh-section spring-container" aria-labelledby="zh-brands-title">
+      <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-brands" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-brands-title">{% trans "Genuine originals" %}</h2>
+          <a href="{% url 'store:all-brands' %}">{% trans "All brands" %}</a>
       </div>
-      <div class="spring-brand-hero__body">
-          <p class="spring-directory-header__eyebrow">{% trans "Brand spotlight" %}</p>
-          <h2 class="spring-brand-hero__title">{{ spotlight_brand.title }}</h2>
-          {% if spotlight_brand.description %}
-          <p>{{ spotlight_brand.description|truncatechars:220 }}</p>
-          {% endif %}
-          <a href="{% url 'store:brand-products' spotlight_brand.slug %}" class="btn btn-dark">{% blocktrans with brand=spotlight_brand.title %}Explore {{ brand }}{% endblocktrans %}</a>
-      </div>
-  </section>
-  {% endif %}
-
-  {% if brands %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Featured Brands" %}</h2>
-          <a href="{% url 'store:all-brands' %}">{% trans "View all brands" %}</a>
-      </div>
-      <div class="spring-brand-grid">
+      <ul class="zh-brands">
           {% for brand in brands %}
-          <a href="{% url 'store:brand-products' brand.slug %}" class="spring-brand-card">
-              {% if brand.brand_image %}
-              {% cld_img brand.brand_image width=320 alt=brand.title %}
-              {% else %}
-              <span>{{ brand.title }}</span>
-              {% endif %}
-              <strong>{{ brand.title }}</strong>
-          </a>
+          <li><a href="{% url 'store:brand-products' brand.slug %}">{{ brand.title }}</a></li>
           {% endfor %}
-      </div>
+      </ul>
   </section>
   {% endif %}
+
+  <section class="zh-section spring-container" aria-labelledby="zh-channel-title">
+      <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-channel" %}</div>
+      <div class="zh-channel">
+          <div>
+              <h2 id="zh-channel-title">{% trans "Every drop lands in the channel first." %}</h2>
+              <p>{% trans "Photos, price and sizes the moment a piece arrives, with a Choose Size button that orders in chat. Same store, same prices." %}</p>
+          </div>
+          <a href="{{ store.telegram_channel_url }}" class="zh-btn zh-btn--primary" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Join the channel" %}</a>
+      </div>
+      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_id="tibeb-foot" %}</div>
+  </section>

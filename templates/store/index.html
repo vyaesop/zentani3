@@ -6,6 +6,7 @@
 
 {% block title %}{{ store.name }} | {% trans "Shop clothes & fashion in Addis Ababa" %}{% endblock %}
 {% block meta_description %}{% blocktrans with name=store.name threshold=store.free_threshold %}{{ name }} — curated clothing, shoes and accessories with cash on delivery in Addis Ababa. Free delivery over {{ threshold }} ETB. Inspect your order before you pay.{% endblocktrans %}{% endblock %}
+{% block body_class %} zent-home-page{% endblock %}
 
 {% block seo_head %}
 {{ block.super }}
@@ -13,41 +14,73 @@
 {% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/swiper/swiper-bundle.min.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-home.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-home-bands.css' %}">
 {% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <section class="spring-hero spring-hero--ink spring-container">
-      <p class="spring-hero__eyebrow">{% blocktrans with threshold=store.free_threshold %}Free delivery in Addis over {{ threshold }} ETB · Pay on delivery{% endblocktrans %}</p>
-      <h1>{% trans "Fashion you love, delivered to your door." %}</h1>
-      <p class="spring-hero__copy">{% trans "Curated drops from local and international brands. No online payment required — check the item with the driver, then pay." %}</p>
-      <div class="spring-hero__actions">
-          <a href="{% url 'store:all-products' %}" class="btn btn-light">{% trans "Shop all products" %}</a>
-          <a href="{% url 'store:all-categories' %}" class="btn btn-outline-light">{% trans "Browse collections" %}</a>
+<main class="main spring-main zh-home">
+  <section class="zh-hero" aria-labelledby="zh-hero-title">
+      <div class="zh-band zh-band--weave">{% include 'store/_tibeb_band.html' with band_id="tibeb-hero" %}</div>
+
+      <div class="spring-container zh-hero__inner">
+          <div class="zh-hero__head">
+              <h1 id="zh-hero-title">{% blocktrans trimmed %}Real drops, <em>checked</em> at your door.{% endblocktrans %}</h1>
+          </div>
+
+          {% if hero_products %}
+          <div class="zh-hero__swatches">
+              <div class="zh-swatches" aria-label="{% trans 'Newest pieces' %}">
+                  {% for product in hero_products %}
+                  <a href="{% url 'store:product-detail' product.slug %}" class="zh-swatch">
+                      {% if product.product_image %}
+                      {% cld_img product.product_image width=480 alt=product.title html_width=480 html_height=600 loading="eager" fetchpriority="high" %}
+                      {% else %}
+                      <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="480" height="600">
+                      {% endif %}
+                      <span class="zh-swatch__label zh-num">{{ product.price|etb }}</span>
+                  </a>
+                  {% endfor %}
+              </div>
+              <p class="zh-swatches__caption zh-num">
+                  {% if latest_drop_date %}{% trans "Latest drop" %} <strong>{{ latest_drop_date|date:"j M" }}</strong> · {% endif %}{% blocktrans count counter=live_product_count %}{{ counter }} piece live{% plural %}{{ counter }} pieces live{% endblocktrans %}
+              </p>
+          </div>
+          {% else %}
+          <div class="zh-hero__swatches">
+              <div class="zh-swatches--empty">{% trans "The next drop is being photographed. Follow the channel to see it first." %}</div>
+          </div>
+          {% endif %}
+
+          <div class="zh-hero__body">
+              <p class="zh-truth">{% trans "Order it. We call. The driver waits while you look it over —" %} <mark>{% trans "then you pay." %}</mark></p>
+
+              <ul class="zh-ruler zh-num" aria-label="{% trans 'Delivery fees and times' %}">
+                  <li><span>{% trans "Addis Ababa" %}</span><strong>{{ store.addis_fee }} ETB</strong></li>
+                  <li><span>{% trans "Free in Addis over" %}</span><strong>{{ store.free_threshold }} ETB</strong></li>
+                  <li><span>{% trans "Outside Addis" %}</span><strong>{{ store.outside_fee }} ETB</strong></li>
+                  <li><span>{% trans "Delivered in" %}</span><strong>1–3 {% trans "days" %}</strong></li>
+              </ul>
+
+              <div class="zh-actions">
+                  <a href="{% url 'store:all-products' %}?sort=newest" class="zh-btn zh-btn--primary">{% trans "Shop the drop" %}</a>
+                  <a href="{{ store.telegram_channel_url }}" class="zh-btn zh-btn--ghost" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Order on Telegram" %}</a>
+              </div>
+          </div>
       </div>
   </section>
 
-  <nav class="spring-edit-chips spring-container" aria-label="{% trans 'Shop the edits' %}">
-      <a href="{% url 'store:all-products' %}?sort=newest" class="spring-edit-chip">{% trans "New in" %}</a>
-      <a href="{% url 'store:sale-products' %}" class="spring-edit-chip spring-edit-chip--sale">{% trans "Sale" %}</a>
-      <a href="{% url 'store:all-products' %}?max_price=1000" class="spring-edit-chip">{% trans "Under 1,000 ETB" %}</a>
-      {% for category in categories|slice:":4" %}
-      <a href="{% url 'store:category-products' category.slug %}" class="spring-edit-chip">{{ category.title }}</a>
-      {% endfor %}
-  </nav>
-
   {% if recently_viewed_products %}
-  <section class="spring-section spring-container">
-      <div class="spring-section__head">
-          <h2>{% trans "Pick Up Where You Left Off" %}</h2>
+  <section class="zh-section spring-container" aria-labelledby="zh-recent-title">
+      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-recent" %}</div>
+      <div class="zh-section__head">
+          <h2 id="zh-recent-title">{% trans "Pick up where you left off" %}</h2>
           <a href="{% url 'store:all-products' %}">{% trans "Browse more" %}</a>
       </div>
-      <div class="spring-product-grid">
+      <div class="zh-grid">
           {% for product in recently_viewed_products %}
-          <div class="spring-grid-item">
-              {% include 'store/_product_card_content.html' with product=product %}
-          </div>
+          {% include 'store/_home_product_module.html' with product=product %}
           {% endfor %}
       </div>
   </section>
@@ -60,44 +93,5 @@
   {% include 'store/_home_sections.html' %}
   {% endcache %}
   {% endif %}
-
-  <section class="spring-section spring-container spring-trust-bar">
-      <div class="spring-trust-item">
-          <strong>{% trans "Free delivery" %}</strong>
-          <p>{% blocktrans with threshold=store.free_threshold fee=store.addis_fee %}On orders over {{ threshold }} ETB in Addis Ababa. Otherwise a flat {{ fee }} ETB.{% endblocktrans %}</p>
-      </div>
-      <div class="spring-trust-item">
-          <strong>{% trans "Pay on delivery" %}</strong>
-          <p>{% trans "No online payment required. Inspect the order with the driver, then pay in cash." %}</p>
-      </div>
-      <div class="spring-trust-item">
-          <strong>{% trans "Order on Telegram" %}</strong>
-          <p>{% trans "Every drop is posted to our channel — order in chat or here on the site." %} <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">{% trans "Join the channel" %}</a></p>
-      </div>
-      <div class="spring-trust-item">
-          <strong>{% trans "Real people, real phone" %}</strong>
-          <p><a href="{{ store.phone_href }}">{{ store.phone }}</a> · {{ store.support_hours }}</p>
-      </div>
-  </section>
 </main>
 {% endblock content %}
-
-{% block extra_scripts %}
-<script src="{% static 'asset/vendor/swiper/swiper-bundle.min.js' %}" defer></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (typeof Swiper === 'undefined') return; // rails degrade to a scrollable row
-    document.querySelectorAll('.zent-rail').forEach(function (rail) {
-        new Swiper(rail, {
-            slidesPerView: 2.15,
-            spaceBetween: 12,
-            freeMode: true,
-            breakpoints: {
-                768: { slidesPerView: 3.15, spaceBetween: 16 },
-                1200: { slidesPerView: 4, spaceBetween: 20 }
-            }
-        });
-    });
-});
-</script>
-{% endblock extra_scripts %}

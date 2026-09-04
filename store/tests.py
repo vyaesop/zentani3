@@ -1034,17 +1034,46 @@ class StorefrontRefinementTests(TestCase):
         self.brand.description = "An Addis atelier."
         self.brand.save()
 
-    def test_home_shows_edit_chips_and_rails(self):
-        response = self.client.get(reverse("store:home"))
-        self.assertContains(response, "spring-edit-chips")
-        self.assertContains(response, "Under 1,000 ETB")
-        self.assertContains(response, "zent-rail")
+    def _add_products(self, count):
+        for index in range(count):
+            Product.objects.create(
+                title=f"Refine Extra {index}",
+                slug=f"refine-extra-{index}",
+                sku=f"SKU-REFINE-X-{index}",
+                short_description="Extra",
+                product_image="product/test.jpg",
+                price=Decimal("250.00"),
+                category=self.category,
+                brand=self.brand,
+                is_active=True,
+                is_featured=False,
+                is_sold_out=False,
+            )
 
-    def test_home_renders_story_and_brand_spotlight_bands(self):
+    def test_home_shows_tibeb_hero_ruler_and_drop_rail(self):
+        self._add_products(5)
         response = self.client.get(reverse("store:home"))
-        self.assertContains(response, "spring-story-band")
-        self.assertContains(response, "Brand spotlight")
+        self.assertContains(response, "zh-band--weave")
+        self.assertContains(response, "Shop the drop")
+        self.assertContains(response, "3,500 ETB")
+        self.assertContains(response, "zh-swatch")
+        self.assertContains(response, "zh-rail--weave")
+        # The hero's three newest pieces are not repeated inside "The drop".
+        self.assertEqual(response.content.decode().count("refine-extra-4/"), 1)
+
+    def test_home_hides_the_drop_when_the_hero_shows_everything(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "zh-swatch")
+        self.assertNotContains(response, "zh-rail--weave")
+
+    def test_home_lists_collections_and_states_authenticity(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, "zh-collections")
+        self.assertContains(response, self.category.title)
+        # One brand: the claim folds into a sentence instead of a stub section.
+        self.assertContains(response, "is a genuine original.")
         self.assertContains(response, self.brand.title)
+        self.assertNotContains(response, 'id="zh-brands-title"')
 
     def test_cards_carry_quick_add_chips(self):
         response = self.client.get(reverse("store:all-products"))

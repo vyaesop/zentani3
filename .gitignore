@@ -12,3 +12,19 @@ media/
 .DS_Store
 .vscode/
 .idea/
+
+# Impeccable design skill: local machine state only (skill + PRODUCT.md/DESIGN.md are tracked)
+.claude/settings.local.json
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/history/
+.impeccable/live/
+.impeccable/critique/*
+!.impeccable/critique/ignore.md
+
+# Node modules (impeccable detector parsers)
+node_modules/
+package-lock.json

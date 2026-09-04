@@ -1,0 +1,9 @@
+{% comment %}
+Woven tibeb band. The geometry is authored SVG shipped as a CSS background
+tile (zent-home-bands.css) so it repeats horizontally at the band's own
+height on every viewport. Pass `band_variant`: "full" (default, the hero
+band: selvedge, chevrons, dashes, diamond chain) or "thin" (a thread line).
+Tint by adding `zh-band--indigo` or `zh-band--green` on the wrapping .zh-band.
+Decorative only.
+{% endcomment %}
+<div class="zh-band__tile {% if band_variant == 'thin' %}zh-band__tile--thin{% else %}zh-band__tile--full{% endif %}" aria-hidden="true"></div>

@@ -1,0 +1,15 @@
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "noto sans ethiopic",
+        "createdAt": "2026-09-04T15:14:14.436Z",
+        "reason": "Claude: DESIGN.md Typography already declares Noto Sans Ethiopic as the Amharic swap under html[lang=am]; the hook reads only the frontmatter fontFamily entries"
+      }
+    ]
+  }
+}
