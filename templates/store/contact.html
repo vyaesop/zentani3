@@ -5,53 +5,75 @@
 {% block meta_description %}{% blocktrans with name=store.name phone=store.phone %}Contact {{ name }} by phone ({{ phone }}), Telegram or Instagram for questions about fit, delivery or an active order.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-static-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Contact" %}</p>
+<main class="zh-main zh-contact">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Get in touch" %}</h1>
-          <p>{% trans "Questions about fit, delivery, or a current order? Have your order number ready and reach us on any channel below." %}</p>
-          <p class="spring-static-hours"><i class="far fa-clock"></i> {{ store.support_hours }}</p>
-      </section>
-
-      <div class="spring-static-grid">
-          <article class="spring-static-card">
-              <h2>{% trans "Phone" %}</h2>
-              <p>{% trans "Fastest for urgent help with a delivery or an active order." %}</p>
-              <a href="{{ store.phone_href }}" class="btn btn-dark"><i class="fas fa-phone"></i> {{ store.phone }}</a>
-          </article>
-
-          <article class="spring-static-card">
-              <h2>Telegram</h2>
-              <p>{% trans "Order in chat, or ask about a product before you buy." %}</p>
-              <a href="{{ store.telegram_bot_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i> {% trans "Open the bot" %}</a>
-              <a href="{{ store.telegram_channel_url }}" class="spring-text-link" target="_blank" rel="noopener">{% trans "Join the channel for new drops" %}</a>
-          </article>
-
-          <article class="spring-static-card">
-              <h2>Instagram</h2>
-              <p>{% trans "Best for quick product or styling questions." %}</p>
-              <a href="{{ store.instagram_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener">{% trans "Open Instagram" %}</a>
-          </article>
-
-          {% if store.email %}
-          <article class="spring-static-card">
-              <h2>{% trans "Email" %}</h2>
-              <p>{% trans "For receipts, privacy requests and anything that needs a paper trail." %}</p>
-              <a href="mailto:{{ store.email }}" class="btn btn-outline-dark">{{ store.email }}</a>
-          </article>
-          {% endif %}
+          <p class="zh-lede">{% trans "Questions about fit, delivery, or a current order? Have your order number ready and reach us on any channel below." %}</p>
+          <p class="zh-meta zh-contact__hours zh-num"><i class="far fa-clock" aria-hidden="true"></i> {{ store.support_hours }}</p>
       </div>
 
-      <section class="spring-static-identity">
-          <h2>{% trans "Business details" %}</h2>
-          <p>
-              {% if store.legal_name %}<strong>{{ store.legal_name }}</strong><br>{% endif %}
-              {{ store.address }}
-              {% if store.trade_license %}<br>{% trans "Trade licence" %} {{ store.trade_license }}{% endif %}
-              {% if store.tin %}<br>TIN {{ store.tin }}{% endif %}
+      <div class="zh-actions">
+          <a href="{{ store.phone_href }}" class="zh-btn zh-btn--primary"><i class="fas fa-phone" aria-hidden="true"></i> <span class="zh-num">{{ store.phone }}</span></a>
+          <a href="{{ store.telegram_bot_url }}" class="zh-btn zh-btn--ghost" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Open the bot" %}</a>
+      </div>
+
+      <section class="zh-section" aria-label="{% trans 'Contact' %}">
+          <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <dl class="zh-rows zh-facts">
+              <div class="zh-row">
+                  <dt>{% trans "Phone" %}</dt>
+                  <dd>
+                      <p>{% trans "Fastest for urgent help with a delivery or an active order." %}</p>
+                      <a href="{{ store.phone_href }}" class="zh-link zh-num">{{ store.phone }}</a>
+                  </dd>
+              </div>
+              <div class="zh-row">
+                  <dt>Telegram</dt>
+                  <dd>
+                      <p>{% trans "Order in chat, or ask about a product before you buy." %}</p>
+                      <a href="{{ store.telegram_bot_url }}" class="zh-link" target="_blank" rel="noopener">{% trans "Open the bot" %}</a>
+                      <a href="{{ store.telegram_channel_url }}" class="zh-link" target="_blank" rel="noopener">{% trans "Join the channel for new drops" %}</a>
+                  </dd>
+              </div>
+              <div class="zh-row">
+                  <dt>Instagram</dt>
+                  <dd>
+                      <p>{% trans "Best for quick product or styling questions." %}</p>
+                      <a href="{{ store.instagram_url }}" class="zh-link" target="_blank" rel="noopener">{% trans "Open Instagram" %}</a>
+                  </dd>
+              </div>
+              {% if store.email %}
+              <div class="zh-row">
+                  <dt>{% trans "Email" %}</dt>
+                  <dd>
+                      <p>{% trans "For receipts, privacy requests and anything that needs a paper trail." %}</p>
+                      <a href="mailto:{{ store.email }}" class="zh-link">{{ store.email }}</a>
+                  </dd>
+              </div>
+              {% endif %}
+          </dl>
+      </section>
+
+      <section class="zh-section" aria-labelledby="zh-business-title">
+          <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-business-title">{% trans "Business details" %}</h2>
+          </div>
+          <address class="zh-prose">
+              <p>
+                  {% if store.legal_name %}<strong>{{ store.legal_name }}</strong><br>{% endif %}
+                  {{ store.address }}
+                  {% if store.trade_license %}<br>{% trans "Trade licence" %} {{ store.trade_license }}{% endif %}
+                  {% if store.tin %}<br>TIN {{ store.tin }}{% endif %}
+              </p>
+          </address>
+          <p class="zh-crumbs zh-meta">
+              <a href="{% url 'store:faq' %}" class="zh-link">{% trans "Read the FAQ" %}</a>
+              <a href="{% url 'store:delivery-returns' %}" class="zh-link">{% trans "Delivery &amp; returns" %}</a>
+              <a href="{% url 'store:terms' %}" class="zh-link">{% trans "Terms" %}</a>
+              <a href="{% url 'store:privacy' %}" class="zh-link">{% trans "Privacy" %}</a>
           </p>
-          <p><a href="{% url 'store:faq' %}">{% trans "Read the FAQ" %}</a> · <a href="{% url 'store:delivery-returns' %}">{% trans "Delivery &amp; returns" %}</a> · <a href="{% url 'store:terms' %}">{% trans "Terms" %}</a> · <a href="{% url 'store:privacy' %}">{% trans "Privacy" %}</a></p>
       </section>
   </div>
 </main>

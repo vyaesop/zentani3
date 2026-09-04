@@ -1,7 +1,8 @@
 {% comment %}
 Save/unsave toggle. htmx swaps the form in place; the plain form POST +
 redirect keeps working without JS. variant="inline" renders the product
-page styling; the default renders the product-card styling.
+page button (ghost button with text); the default renders the square save
+button pinned to the product module's photo.
 {% endcomment %}
 {% if request.user.is_authenticated %}
 {% if variant == "inline" %}
@@ -10,21 +11,21 @@ page styling; the default renders the product-card styling.
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
     <input type="hidden" name="variant" value="inline">
-    <button type="submit" class="spring-inline-action {% if saved %}is-saved{% endif %}">
+    <button type="submit" class="zh-btn zh-btn--ghost zh-btn--sm zh-save {% if saved %}is-saved{% endif %}">
         {% if saved %}
-        <i class="fas fa-heart"></i> Saved
+        <i class="fas fa-heart" aria-hidden="true"></i> Saved
         {% else %}
-        <i class="far fa-heart"></i> Save item
+        <i class="far fa-heart" aria-hidden="true"></i> Save item
         {% endif %}
     </button>
 </form>
 {% else %}
-<form action="{% url 'store:toggle-wishlist' product.id %}" method="POST" class="spring-product-card__save-form"
+<form action="{% url 'store:toggle-wishlist' product.id %}" method="POST" class="zh-module__save-form"
       hx-post="{% url 'store:toggle-wishlist' product.id %}" hx-target="this" hx-swap="outerHTML">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
     <button type="submit"
-        class="spring-product-card__save {% if saved %}is-saved{% endif %}"
+        class="zh-module__save {% if saved %}is-saved{% endif %}"
         aria-label="{% if saved %}Remove {{ product.title }} from saved items{% else %}Save {{ product.title }}{% endif %}">
         {% if saved %}
         <i class="fas fa-heart" aria-hidden="true"></i>
@@ -37,12 +38,12 @@ page styling; the default renders the product-card styling.
 </form>
 {% endif %}
 {% elif variant == "inline" %}
-<a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="spring-inline-action">
-    <i class="far fa-heart"></i> Save item
+<a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="zh-btn zh-btn--ghost zh-btn--sm zh-save">
+    <i class="far fa-heart" aria-hidden="true"></i> Save item
 </a>
 {% else %}
 <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}"
-    class="spring-product-card__save"
+    class="zh-module__save"
     aria-label="Log in to save {{ product.title }}">
     <i class="far fa-heart" aria-hidden="true"></i>
     <span>Save</span>

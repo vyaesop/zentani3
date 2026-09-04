@@ -5,15 +5,14 @@
 {% block meta_description %}{% blocktrans with name=store.name %}The terms that apply when you order from {{ name }}: pricing, delivery, cash on delivery, returns and cancellations.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-policy-page spring-legal-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Legal" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Terms of sale" %}</h1>
-          <p>{% trans "What you can expect from us, and what we ask of you. Last updated September 2026." %}</p>
-      </section>
+          <p class="zh-lede">{% trans "What you can expect from us, and what we ask of you. Last updated September 2026." %}</p>
+      </div>
 
-      <article class="spring-legal">
+      <article class="zh-prose">
           <h2>{% trans "The seller" %}</h2>
           <p>{% blocktrans with name=store.legal_name|default:store.name %}Orders placed on this site are fulfilled by {{ name }}{% endblocktrans %}{% if store.address %}, {{ store.address }}{% endif %}{% if store.trade_license %} ({% trans "trade licence" %} {{ store.trade_license }}){% endif %}.</p>
 
@@ -24,7 +23,7 @@
           <p>{% trans "An order is a request to buy. It becomes a contract when we confirm it by phone or message. We may decline an order when an item is unavailable, when we cannot reach you to confirm, or when a previous cash-on-delivery order was refused without reason." %}</p>
 
           <h2>{% trans "Delivery" %}</h2>
-          <p>{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB. Delivery in Addis usually takes 1-3 days after confirmation; times outside Addis depend on the courier.{% endblocktrans %} {% trans "If nobody is available at the agreed time we will call to rearrange; a second failed attempt may incur the delivery fee again." %}</p>
+          <p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB. Delivery in Addis usually takes 1-3 days after confirmation; times outside Addis depend on the courier.{% endblocktrans %} {% trans "If nobody is available at the agreed time we will call to rearrange; a second failed attempt may incur the delivery fee again." %}</p>
 
           <h2>{% trans "Payment" %}</h2>
           <p>{% trans "Cash on delivery: you pay the driver after inspecting the item." %}{% if online_payments_enabled %} {% trans "Online payment through Chapa (Telebirr, CBE Birr, cards) is optional; prepaid orders are dispatched first and are refunded in full if we cannot fulfil them." %}{% endif %}</p>
@@ -42,7 +41,7 @@
           <p>{% trans "Keep your password private. Reviews must be honest and about the product; we remove abusive or misleading reviews." %}</p>
 
           <h2>{% trans "Contact" %}</h2>
-          <p><a href="{{ store.phone_href }}">{{ store.phone }}</a>{% if store.email %} · <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %} · {{ store.support_hours }}</p>
+          <p class="zh-num"><a href="{{ store.phone_href }}">{{ store.phone }}</a>{% if store.email %} · <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %} · {{ store.support_hours }}</p>
       </article>
   </div>
 </main>

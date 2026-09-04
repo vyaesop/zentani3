@@ -552,7 +552,7 @@ class SecurityHardeningTests(TestCase):
 
     def test_static_urls_carry_content_hash(self):
         response = self.client.get(reverse("store:home"))
-        self.assertRegex(response.content.decode(), r"asset/css/zent-storefront\.css\?v=[0-9a-f]{10}")
+        self.assertRegex(response.content.decode(), r"asset/css/zent-tibeb.css\?v=[0-9a-f]{10}")
         self.assertNotContains(response, "style.min.css")
         self.assertNotContains(response, "jquery")
 
@@ -779,7 +779,7 @@ class PageSmokeTests(TestCase):
         response = self.client.get("/definitely-not-a-collection/")
         self.assertEqual(response.status_code, 404)
         self.assertContains(response, "We couldn't find that page.", status_code=404)
-        self.assertContains(response, "spring-bottom-nav", status_code=404)
+        self.assertContains(response, "zh-tabbar", status_code=404)
 
     def test_customer_pages_render(self):
         self.client.login(username="0911995001", password="test-pass-123")

@@ -5,30 +5,23 @@
 {% block meta_description %}{% blocktrans with name=store.name %}{{ name }} is an Addis Ababa fashion store: curated clothes, shoes and accessories, delivered to your door with cash on delivery.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-static-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "About" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% blocktrans with name=store.name %}About {{ name }}{% endblocktrans %}</h1>
-          <p>{% trans "A fashion storefront for shoppers who want a clean online experience and carefully selected pieces — delivered in Addis Ababa, paid for at the door." %}</p>
-      </section>
-
-      <div class="spring-static-grid spring-static-grid--wide">
-          <article class="spring-static-card">
-              <h2>{% trans "What we do" %}</h2>
-              <p>{% trans "We curate clothing, shoes and accessories and describe every piece honestly: brand, material, colour and measurements where we have them." %}</p>
-          </article>
-
-          <article class="spring-static-card">
-              <h2>{% trans "How we sell" %}</h2>
-              <p>{% trans "A simple path from browsing to your door: clear product pages, clear pricing, a phone call to confirm, and cash on delivery so you inspect before you pay." %}</p>
-          </article>
-
-          <article class="spring-static-card">
-              <h2>{% trans "Where we are based" %}</h2>
-              <p>{{ store.address }}. {% trans "Built for mobile-first shoppers in Addis Ababa, with delivery across Ethiopia by courier." %}</p>
-          </article>
+          <p class="zh-lede">{% trans "A fashion storefront for shoppers who want a clean online experience and carefully selected pieces — delivered in Addis Ababa, paid for at the door." %}</p>
       </div>
+
+      <article class="zh-prose">
+          <h2>{% trans "What we do" %}</h2>
+          <p>{% trans "We curate clothing, shoes and accessories and describe every piece honestly: brand, material, colour and measurements where we have them." %}</p>
+
+          <h2>{% trans "How we sell" %}</h2>
+          <p>{% trans "A simple path from browsing to your door: clear product pages, clear pricing, a phone call to confirm, and cash on delivery so you inspect before you pay." %}</p>
+
+          <h2>{% trans "Where we are based" %}</h2>
+          <p>{{ store.address }}. {% trans "Built for mobile-first shoppers in Addis Ababa, with delivery across Ethiopia by courier." %}</p>
+      </article>
   </div>
 </main>
 {% endblock content %}

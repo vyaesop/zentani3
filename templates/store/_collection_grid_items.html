@@ -1,9 +1,9 @@
 {% load i18n %}
-{# One page of product cards + the load-more sentinel. Rendered inside the #}
+{# One page of product modules + the load-more sentinel. Rendered inside the #}
 {# grid on first paint, and returned bare for ?fragment=items requests so #}
 {# htmx appends the next page in place of the sentinel. #}
 {% for product in products %}
-<div class="spring-grid-item">
+<div class="zh-grid__item">
     {% if forloop.first and not products.has_previous %}
     {% include 'store/_product_card_content.html' with product=product img_loading="eager" img_fetchpriority="high" %}
     {% else %}
@@ -14,28 +14,28 @@
 {% if empty_include %}
 {% include empty_include %}
 {% else %}
-<div class="spring-empty-state spring-empty-state--grid">
+<div class="zh-empty zh-collection__empty">
     <h2>{% trans "Nothing here yet" %}</h2>
     <p>{{ empty_message|default:_("New pieces land every week. Follow the Telegram channel to catch the next drop, or browse everything that is live now.") }}</p>
-    <div class="spring-hero__actions">
-        <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Shop all" %}</a>
-        <a href="{{ store.telegram_channel_url }}" class="btn btn-outline-dark" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i> {% trans "Join the channel" %}</a>
+    <div class="zh-actions">
+        <a href="{% url 'store:all-products' %}" class="zh-btn zh-btn--primary">{% trans "Shop all" %}</a>
+        <a href="{{ store.telegram_channel_url }}" class="zh-btn zh-btn--ghost" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Join the channel" %}</a>
     </div>
 </div>
 {% endif %}
 {% endfor %}
 
 {% if products.has_next %}
-<div class="spring-load-more" hx-disinherit="*">
-    <a class="btn btn-outline-dark spring-load-more__btn"
+<div class="zh-more" hx-disinherit="*">
+    <a class="zh-more__btn zh-btn zh-btn--ghost"
        href="{{ browse_state.form_action }}?{{ browse_state.page_query }}page={{ products.next_page_number }}"
        hx-get="{{ browse_state.form_action }}?{{ browse_state.page_query }}page={{ products.next_page_number }}&fragment=items"
-       hx-target="closest .spring-load-more"
+       hx-target="closest .zh-more"
        hx-swap="outerHTML"
        hx-trigger="revealed, click"
        rel="next">
         {% trans "Load more" %}
-        <span class="spring-load-more__hint">({{ products.end_index }} {% trans "of" %} {{ products.paginator.count }})</span>
+        <span class="zh-more__hint zh-num">({{ products.end_index }} {% trans "of" %} {{ products.paginator.count }})</span>
     </a>
 </div>
 {% endif %}

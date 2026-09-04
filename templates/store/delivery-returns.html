@@ -5,41 +5,41 @@
 {% block meta_description %}{% blocktrans with name=store.name %}How {{ name }} delivery works in Addis Ababa and across Ethiopia — fees, timing, cash on delivery, and our on-the-spot return policy.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-policy-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Customer care" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Delivery &amp; Returns" %}</h1>
-          <p>{% trans "Everything about how your order reaches you — and what to do if it isn't right." %}</p>
-      </section>
+          <p class="zh-lede">{% trans "Everything about how your order reaches you — and what to do if it isn't right." %}</p>
+      </div>
 
-      <section class="spring-policy-grid">
-          <article class="spring-policy-card">
-              <h2><i class="fas fa-truck"></i> {% trans "Delivery" %}</h2>
-              <p>{{ delivery_note }}</p>
-              <ul>
-                  <li>{% blocktrans with fee=addis_fee threshold=free_threshold %}Addis Ababa: <strong>{{ fee }} ETB</strong> flat fee — <strong>free</strong> on orders over {{ threshold }} ETB.{% endblocktrans %}</li>
-                  <li>{% blocktrans with fee=outside_fee %}Outside Addis Ababa: <strong>{{ fee }} ETB</strong> flat fee.{% endblocktrans %}</li>
-              </ul>
-          </article>
+      <ul class="zh-ruler zh-num zh-fees" aria-label="{% trans 'Delivery fees and times' %}">
+          <li><span>{% trans "Addis Ababa" %}</span><strong>{{ addis_fee }} ETB</strong></li>
+          <li><span>{% trans "Free in Addis over" %}</span><strong>{{ free_threshold }} ETB</strong></li>
+          <li><span>{% trans "Outside Addis" %}</span><strong>{{ outside_fee }} ETB</strong></li>
+          <li><span>{% trans "Delivered in" %}</span><strong>1–3 {% trans "days" %}</strong></li>
+      </ul>
 
-          <article class="spring-policy-card">
-              <h2><i class="fas fa-money-bill-wave"></i> {% trans "Cash on delivery" %}</h2>
-              <p>{% trans "Pay in cash when your order arrives — inspect it first, then pay. That's how we keep every order risk-free for you." %}{% if store.online_payments_enabled %} {% trans "Prefer to pay now? Telebirr, CBE Birr and cards are accepted at checkout." %}{% endif %}</p>
-          </article>
+      <article class="zh-prose">
+          <h2>{% trans "Delivery" %}</h2>
+          <p>{{ delivery_note }}</p>
+          <ul class="zh-num">
+              <li>{% blocktrans with fee=addis_fee threshold=free_threshold %}Addis Ababa: <strong>{{ fee }} ETB</strong> flat fee — <strong>free</strong> on orders over {{ threshold }} ETB.{% endblocktrans %}</li>
+              <li>{% blocktrans with fee=outside_fee %}Outside Addis Ababa: <strong>{{ fee }} ETB</strong> flat fee.{% endblocktrans %}</li>
+          </ul>
 
-          <article class="spring-policy-card">
-              <h2><i class="fas fa-undo"></i> {% trans "Returns" %}</h2>
-              <p>{{ return_note }}</p>
-              <p>{% trans "Try the item on or check it carefully while the driver waits. If it isn't right, hand it back on the spot — no payment, no questions." %}</p>
-          </article>
+          <h2>{% trans "Cash on delivery" %}</h2>
+          <p>{% trans "Pay in cash when your order arrives — inspect it first, then pay. That's how we keep every order risk-free for you." %}{% if store.online_payments_enabled %} {% trans "Prefer to pay now? Telebirr, CBE Birr and cards are accepted at checkout." %}{% endif %}</p>
 
-          <article class="spring-policy-card">
-              <h2><i class="fab fa-telegram-plane"></i> {% trans "Order updates" %}</h2>
-              <p>{% trans "You get an SMS when your order is confirmed and when the driver is on the way. Link Telegram from your confirmation page for richer updates and back-in-stock alerts." %}</p>
-              <a href="{{ store.telegram_bot_url }}" target="_blank" rel="noopener" class="btn btn-outline-dark">{% trans "Open our Telegram bot" %}</a>
-          </article>
-      </section>
+          <h2>{% trans "Returns" %}</h2>
+          <p>{{ return_note }}</p>
+          <p>{% trans "Try the item on or check it carefully while the driver waits. If it isn't right, hand it back on the spot — no payment, no questions." %}</p>
+
+          <h2>{% trans "Order updates" %}</h2>
+          <p>{% trans "You get an SMS when your order is confirmed and when the driver is on the way. Link Telegram from your confirmation page for richer updates and back-in-stock alerts." %}</p>
+          <div class="zh-actions">
+              <a href="{{ store.telegram_bot_url }}" target="_blank" rel="noopener" class="zh-btn zh-btn--ghost"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Open our Telegram bot" %}</a>
+          </div>
+      </article>
   </div>
 </main>
 {% endblock content %}

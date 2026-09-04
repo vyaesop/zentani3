@@ -1,27 +1,27 @@
 {% if page_obj.has_other_pages %}
-<nav class="spring-pagination" aria-label="{{ aria_label|default:'Browse pages' }}">
-    <small>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small>
-    <ul>
+<nav class="zh-pager" aria-label="{{ aria_label|default:'Browse pages' }}">
+    <p class="zh-meta zh-num">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
+    <ul class="zh-chips zh-pager__list zh-num">
         {% if page_obj.has_previous %}
-        <li><a href="?{{ page_query }}page={{ page_obj.previous_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.previous_page_number }}"{% endif %} aria-label="Previous">Prev</a></li>
+        <li><a class="zh-chip" href="?{{ page_query }}page={{ page_obj.previous_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.previous_page_number }}"{% endif %} aria-label="Previous">Prev</a></li>
         {% else %}
-        <li><span class="is-disabled">Prev</span></li>
+        <li><span class="zh-chip is-disabled" aria-disabled="true">Prev</span></li>
         {% endif %}
 
         {% for p in page_numbers %}
             {% if p == '…' or p == '...' or p == 'â€¦' or p == 'Ã¢â‚¬Â¦' %}
-            <li><span class="is-disabled">&hellip;</span></li>
+            <li><span class="zh-pager__gap" aria-hidden="true">&hellip;</span></li>
             {% elif p == page_obj.number %}
-            <li><span class="is-active">{{ p }}</span></li>
+            <li><span class="zh-chip is-active" aria-current="page">{{ p }}</span></li>
             {% else %}
-            <li><a href="?{{ page_query }}page={{ p }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ p }}"{% endif %}>{{ p }}</a></li>
+            <li><a class="zh-chip" href="?{{ page_query }}page={{ p }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ p }}"{% endif %}>{{ p }}</a></li>
             {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
-        <li><a href="?{{ page_query }}page={{ page_obj.next_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.next_page_number }}"{% endif %} aria-label="Next">Next</a></li>
+        <li><a class="zh-chip" href="?{{ page_query }}page={{ page_obj.next_page_number }}" {% if collection_htmx %}hx-get="?{{ page_query }}page={{ page_obj.next_page_number }}"{% endif %} aria-label="Next">Next</a></li>
         {% else %}
-        <li><span class="is-disabled">Next</span></li>
+        <li><span class="zh-chip is-disabled" aria-disabled="true">Next</span></li>
         {% endif %}
     </ul>
 </nav>

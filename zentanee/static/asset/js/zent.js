@@ -111,6 +111,15 @@
     }
   }
 
+  /* ── Collection filters: open as a column on wide viewports ─────── */
+  var wide = window.matchMedia('(min-width: 1024px)');
+  function syncFilters() {
+    document.querySelectorAll('details.zh-filters').forEach(function (d) { if (wide.matches) d.open = true; });
+  }
+  syncFilters();
+  if (wide.addEventListener) wide.addEventListener('change', syncFilters);
+  document.body.addEventListener('htmx:afterSettle', syncFilters);
+
   /* ── GA4 ecommerce ─────────────────────────────────────────────── */
   var viewItem = readJson('ga-view-item-data');
   if (viewItem) track('view_item', { currency: 'ETB', value: viewItem.price || 0, items: [viewItem] });

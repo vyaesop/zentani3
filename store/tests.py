@@ -1077,7 +1077,7 @@ class StorefrontRefinementTests(TestCase):
 
     def test_cards_carry_quick_add_chips(self):
         response = self.client.get(reverse("store:all-products"))
-        self.assertContains(response, "spring-size-chip--quick")
+        self.assertContains(response, "zh-size--quick")
         self.assertContains(response, reverse("store:add-to-cart"))
 
     def test_quick_add_posts_to_cart_and_returns_toast(self):
@@ -1099,11 +1099,11 @@ class StorefrontRefinementTests(TestCase):
         ProductImages.objects.create(product=self.product, image="product-images/alt.jpg")
         # Distinct query string dodges the anonymous fragment cache.
         response = self.client.get(reverse("store:all-products"), {"fresh": "1"})
-        self.assertContains(response, "spring-product-card__alt")
+        self.assertContains(response, "zh-module__alt")
 
     def test_brand_page_renders_mini_storefront_hero(self):
         response = self.client.get(reverse("store:brand-products", args=[self.brand.slug]))
-        self.assertContains(response, "spring-story-band--brand")
+        self.assertContains(response, "zh-brand-head")
         self.assertContains(response, self.brand.title)
 
     def test_delivery_returns_page_renders_policy(self):
@@ -1253,7 +1253,7 @@ class PwaShellTests(TestCase):
 
     def test_base_template_ships_bottom_nav_and_manifest(self):
         response = self.client.get(reverse("store:home"))
-        self.assertContains(response, "spring-bottom-nav")
+        self.assertContains(response, "zh-tabbar")
         self.assertContains(response, "manifest.webmanifest")
         self.assertContains(response, "serviceWorker")
 
@@ -1282,17 +1282,17 @@ class LoadMoreTests(TestCase):
     def test_first_page_renders_load_more_sentinel(self):
         response = self.client.get(reverse("store:all-products"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "spring-load-more")
+        self.assertContains(response, "zh-more")
         self.assertContains(response, "page=2")
         self.assertContains(response, "fragment=items")
 
     def test_fragment_request_returns_only_cards(self):
         response = self.client.get(reverse("store:all-products"), {"page": 2, "fragment": "items"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "spring-grid-item")
+        self.assertContains(response, "zh-grid__item")
         # Bare fragment: no page chrome, and the final page has no sentinel.
-        self.assertNotContains(response, "spring-nav")
-        self.assertNotContains(response, "spring-load-more")
+        self.assertNotContains(response, "zh-nav")
+        self.assertNotContains(response, "zh-more")
 
 
 class CustomerTelegramNotificationTests(TestCase):
@@ -1496,7 +1496,7 @@ class PromoPricingTests(TestCase):
         response = self.client.get(reverse("store:all-products"))
 
         self.assertContains(response, "-30%")
-        self.assertContains(response, "spring-price-was")
+        self.assertContains(response, "zh-price-was")
         # Prices render through the `etb` filter: thousands separator, no
         # trailing ".00" noise.
         self.assertContains(response, "500 ETB")
@@ -1798,7 +1798,7 @@ class HtmxInteractionTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="cart-contents"')
-        self.assertContains(response, '<span class="spring-cart-qty-display">2</span>', html=False)
+        self.assertContains(response, '<span class="zh-qty__n zh-num">2</span>', html=False)
         item.refresh_from_db()
         self.assertEqual(item.quantity, 2)
 

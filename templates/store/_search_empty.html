@@ -1,26 +1,32 @@
-<section class="spring-search-empty">
+{# Rendered inside the results grid when a search finds nothing. #}
+<div class="zh-empty zh-search-empty">
     <h2>No products matched that search</h2>
     <p>Try a broader keyword, or jump into one of the collections and brands below.</p>
 
-    <div class="spring-search-empty__links">
+    {% if search_help_categories or search_help_brands %}
+    <ul class="zh-chips zh-search-empty__links">
         {% for category in search_help_categories %}
-        <a href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a>
+        <li><a class="zh-chip" href="{% url 'store:category-products' category.slug %}">{{ category.title }}</a></li>
         {% endfor %}
         {% for brand in search_help_brands %}
-        <a href="{% url 'store:brand-products' brand.slug %}">{{ brand.title }}</a>
+        <li><a class="zh-chip" href="{% url 'store:brand-products' brand.slug %}">{{ brand.title }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+{% if recently_viewed_products %}
+<section class="zh-search-empty__recent" aria-labelledby="zh-search-recent-title">
+    <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-search-recent" %}</div>
+    <div class="zh-section__head">
+        <h3 id="zh-search-recent-title">Recently viewed</h3>
+    </div>
+    <div class="zh-grid">
+        {% for product in recently_viewed_products %}
+        <div class="zh-grid__item">
+            {% include 'store/_product_card_content.html' with product=product %}
+        </div>
         {% endfor %}
     </div>
-
-    {% if recently_viewed_products %}
-    <div class="spring-search-empty__recent">
-        <h3>Recently viewed</h3>
-        <div class="spring-product-grid">
-            {% for product in recently_viewed_products %}
-            <div class="spring-grid-item">
-                {% include 'store/_product_card_content.html' with product=product %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
 </section>
+{% endif %}

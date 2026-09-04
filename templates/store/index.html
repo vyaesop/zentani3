@@ -14,17 +14,18 @@
 {% endblock %}
 
 {% block extra_head %}
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-home.css' %}">
-<link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-home-bands.css' %}">
 {% endblock %}
 
+{# The hero band opens the page; the shell's thin header band would double it. #}
+{% block header_band %}{% endblock %}
+
 {% block content %}
-<main class="main spring-main zh-home">
+<main class="zh-main zh-home">
   <section class="zh-hero" aria-labelledby="zh-hero-title">
       <div class="zh-band zh-band--weave">{% include 'store/_tibeb_band.html' with band_id="tibeb-hero" %}</div>
 
-      <div class="spring-container zh-hero__inner">
+      <div class="zh-wrap zh-hero__inner">
           <div class="zh-hero__head">
               <h1 id="zh-hero-title">{% blocktrans trimmed %}Real drops, <em>checked</em> at your door.{% endblocktrans %}</h1>
           </div>
@@ -72,7 +73,7 @@
   </section>
 
   {% if recently_viewed_products %}
-  <section class="zh-section spring-container" aria-labelledby="zh-recent-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-recent-title">
       <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-recent" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-recent-title">{% trans "Pick up where you left off" %}</h2>

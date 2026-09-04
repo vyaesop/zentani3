@@ -1,97 +1,105 @@
-<aside class="spring-directory-sidebar">
-    <form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="spring-directory-filters"
+{% load i18n %}
+{# Filters: a ruled drawer under the toolbar on phones (details/summary), a #}
+{# ruled left column from 1024px. Field names and hx behaviour are the contract. #}
+{% if product_count or browse_state.active_filters %}
+<details class="zh-filters">
+    <summary class="zh-btn zh-btn--ghost zh-btn--sm zh-filters__toggle">
+        <i class="fas fa-sliders-h" aria-hidden="true"></i> {% trans "Filters" %}
+    </summary>
+    <form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="zh-form zh-filters__body"
           hx-get="{{ browse_state.form_action|default:request.path }}">
-        <div class="spring-directory-search">
-            <label for="spring-browse-search">Search</label>
-            <input id="spring-browse-search" type="text" name="q" class="form-control" placeholder="Search products" value="{{ browse_state.current_query|default:'' }}">
+        <div class="zh-filter-group">
+            <label for="zh-browse-search" class="zh-label">Search</label>
+            <input id="zh-browse-search" type="text" name="q" class="zh-input" placeholder="Search products" value="{{ browse_state.current_query|default:'' }}">
         </div>
 
-        <div class="spring-directory-filters__group">
-            <label for="spring-browse-sort-sidebar">Sort by</label>
-            <select id="spring-browse-sort-sidebar" name="sort" class="form-control">
-                {% for option in browse_state.sort_options %}
-                <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        {% for option in browse_state.sort_options %}{% if option.selected %}<input type="hidden" name="sort" value="{{ option.value }}">{% endif %}{% endfor %}
 
-        <div class="spring-directory-filters__group">
-            <h3>Price</h3>
-            <div class="spring-directory-price">
-                <input type="number" min="0" step="0.01" name="min_price" class="form-control" placeholder="Min" value="{{ browse_state.current_min_price }}">
-                <input type="number" min="0" step="0.01" name="max_price" class="form-control" placeholder="Max" value="{{ browse_state.current_max_price }}">
+        <fieldset class="zh-filter-group">
+            <legend class="zh-label">Price</legend>
+            <div class="zh-price-range zh-num">
+                <input type="number" min="0" step="0.01" name="min_price" class="zh-input" placeholder="Min" value="{{ browse_state.current_min_price }}" aria-label="Min">
+                <input type="number" min="0" step="0.01" name="max_price" class="zh-input" placeholder="Max" value="{{ browse_state.current_max_price }}" aria-label="Max">
             </div>
             {% if browse_state.min_price_bound or browse_state.max_price_bound %}
-            <p class="spring-directory-filters__hint">
+            <p class="zh-help zh-num">
                 Range:
                 {% firstof browse_state.min_price_bound '0.00' %} -
                 {% firstof browse_state.max_price_bound browse_state.min_price_bound '0.00' %} ETB
             </p>
             {% endif %}
-        </div>
+        </fieldset>
 
-        <div class="spring-directory-filters__group">
-            <label class="spring-directory-check">
+        <div class="zh-filter-group">
+            <label class="zh-check">
                 <input type="checkbox" name="availability" value="in-stock" {% if browse_state.availability == 'in-stock' %}checked{% endif %}>
                 <span>In stock only</span>
             </label>
         </div>
 
         {% if browse_state.show_category_filters %}
-        <div class="spring-directory-links">
-            <h3>Collections</h3>
-            <ul>
+        <fieldset class="zh-filter-group">
+            <legend class="zh-label">Collections</legend>
+            <ul class="zh-chips">
                 {% for cat_menu in categories_menu %}
                 <li>
-                    <label class="spring-directory-check">
+                    <label class="zh-chip zh-chip--check">
                         <input type="checkbox" name="category" value="{{ cat_menu.slug }}" {% if cat_menu.slug in browse_state.selected_categories %}checked{% endif %}>
                         <span>{{ cat_menu.title }}</span>
                     </label>
                 </li>
                 {% empty %}
-                <li><span>No collections available.</span></li>
+                <li><span class="zh-help">No collections available.</span></li>
                 {% endfor %}
             </ul>
-        </div>
+        </fieldset>
         {% endif %}
 
         {% if browse_state.show_brand_filters %}
-        <div class="spring-directory-links">
-            <h3>Brands</h3>
-            <ul>
+        <fieldset class="zh-filter-group">
+            <legend class="zh-label">Brands</legend>
+            <ul class="zh-chips">
                 {% for brand_link in brands_menu %}
                 <li>
-                    <label class="spring-directory-check">
+                    <label class="zh-chip zh-chip--check">
                         <input type="checkbox" name="brand" value="{{ brand_link.slug }}" {% if brand_link.slug in browse_state.selected_brands %}checked{% endif %}>
                         <span>{{ brand_link.title }}</span>
                     </label>
                 </li>
                 {% empty %}
-                <li><span>No brands available.</span></li>
+                <li><span class="zh-help">No brands available.</span></li>
                 {% endfor %}
             </ul>
-        </div>
+        </fieldset>
         {% endif %}
 
         {% if browse_state.size_options %}
-        <div class="spring-directory-links">
-            <h3>Sizes</h3>
-            <ul class="spring-directory-size-list">
+        <fieldset class="zh-filter-group">
+            <legend class="zh-label">Sizes</legend>
+            <ul class="zh-chips zh-num">
                 {% for size_option in browse_state.size_options %}
                 <li>
-                    <label class="spring-directory-check">
+                    <label class="zh-chip zh-chip--check">
                         <input type="checkbox" name="size" value="{{ size_option }}" {% if size_option in browse_state.selected_sizes %}checked{% endif %}>
                         <span>{{ size_option }}</span>
                     </label>
                 </li>
                 {% endfor %}
             </ul>
-        </div>
+        </fieldset>
         {% endif %}
 
-        <div class="spring-directory-filters__actions">
-            <button type="submit" class="btn btn-dark">Apply filters<span class="zent-spinner" aria-hidden="true"></span></button>
-            <a href="{{ browse_state.reset_filters_url }}" hx-get="{{ browse_state.reset_filters_url }}" class="btn btn-outline-dark">Reset</a>
+        <div class="zh-filter-group zh-filters__actions">
+            <button type="submit" class="zh-btn zh-btn--primary zh-btn--sm">Apply filters<span class="zent-spinner" aria-hidden="true"></span></button>
+            <a href="{{ browse_state.reset_filters_url }}" hx-get="{{ browse_state.reset_filters_url }}" class="zh-btn zh-btn--ghost zh-btn--sm">Reset</a>
         </div>
     </form>
-</aside>
+</details>
+{% else %}
+<form action="{{ browse_state.form_action|default:request.path }}" method="GET" class="zh-form zh-filters zh-filters--zero" hx-get="{{ browse_state.form_action|default:request.path }}">
+    <div class="zh-filter-group">
+        <label for="zh-browse-search" class="zh-label">Search</label>
+        <input id="zh-browse-search" type="text" name="q" class="zh-input" placeholder="Search products" value="{{ browse_state.current_query|default:'' }}">
+    </div>
+</form>
+{% endif %}

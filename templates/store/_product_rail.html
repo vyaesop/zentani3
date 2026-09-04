@@ -1,13 +1,9 @@
 {% load i18n %}
-{# Swipeable product rail (Marine Serre-style carousel). Pass rail_products. #}
-<div class="zent-rail swiper">
-    <div class="swiper-wrapper">
-        {% for product in rail_products %}
-        <div class="swiper-slide">
-            {% include 'store/_product_card_content.html' with product=product %}
-        </div>
-        {% empty %}
-        <p class="text-muted mb-0">{{ rail_empty_message|default:_("New pieces are on the way — follow the Telegram channel to see them first.") }}</p>
-        {% endfor %}
-    </div>
+{# Product rail: a snap rail on phones, a ruled 4-up grid from 768px. Pass rail_products. #}
+<div class="zh-rail">
+    {% for product in rail_products %}
+    {% include 'store/_product_card_content.html' with product=product %}
+    {% empty %}
+    <p class="zh-meta zh-rail__empty">{{ rail_empty_message|default:_("New pieces are on the way — follow the Telegram channel to see them first.") }}</p>
+    {% endfor %}
 </div>

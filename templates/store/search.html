@@ -3,20 +3,20 @@
 {% block title %}Zentanee | Search{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-directory zent-busy-region" id="collection-page"
+<main class="zh-main">
+  <div class="zh-wrap zh-collection zent-busy-region" id="collection-page"
        hx-target="#collection-page" hx-select="#collection-page" hx-swap="outerHTML show:window:top"
        hx-push-url="true" hx-indicator="#collection-page">
       {% if query %}
-      {% include 'store/_collection_header.html' with kicker='Search' title=query description='Products matching your search.' count=product_count browse_state=browse_state %}
+      {% include 'store/_collection_header.html' with title='Search' title_mark=query description='Products matching your search.' count=product_count browse_state=browse_state %}
       {% else %}
-      {% include 'store/_collection_header.html' with kicker='Search' title='Search the store' description='Use search to jump straight into products, collections, or brands.' count=product_count browse_state=browse_state %}
+      {% include 'store/_collection_header.html' with title='Search the store' description='Use search to jump straight into products, collections, or brands.' count=product_count browse_state=browse_state %}
       {% endif %}
 
-      <div class="spring-directory__layout">
-          {% include 'store/_collection_results.html' with empty_include='store/_search_empty.html' pagination_label='Search result pages' %}
-
+      <div class="zh-collection__layout">
           {% include 'store/_collection_sidebar.html' with browse_state=browse_state %}
+
+          {% include 'store/_collection_results.html' with empty_include='store/_search_empty.html' pagination_label='Search result pages' %}
       </div>
   </div>
 </main>

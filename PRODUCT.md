@@ -31,7 +31,7 @@ The mechanism a neighbouring shop cannot truthfully copy: inspect-before-you-pay
 
 ## Capabilities and Constraints
 
-- Django server-rendered templates with htmx; no JavaScript build step. Storefront CSS lives in `zentanee/static/asset/css/zent-core.css`, `zent-shim.css`, `zent-storefront.css`; behaviour in `asset/js/zent.js`.
+- Django server-rendered templates with htmx; no JavaScript build step. Storefront CSS is the Tibeb Band system in `zentanee/static/asset/css/zent-tibeb.css` (components and shell), `zent-tibeb-bands.css` (generated woven tiles), `zent-tibeb-pages.css` (page layouts) and `zent-home.css` (homepage only); behaviour in `asset/js/zent.js`. The Control Room dashboard keeps `zent-core.css` and `zent-dashboard.css`.
 - Images are Cloudinary-delivered through the `cld_img` / `cld_url` template tags (responsive, `f_auto,q_auto`). Product photos are supplier photos, usually one per product on a plain background; there is no lifestyle or campaign photography yet.
 - Content-Security-Policy allows external scripts only from Google Analytics, stylesheets and fonts from Google Fonts, images from any https origin. Static files are served by Vercel with content-hash query strings.
 - Currency is ETB (prices formatted through the `etb` filter). Delivery: 80 ETB in Addis, free over 3,500 ETB, 180 ETB outside Addis. UI strings are translatable (English, Amharic).
@@ -41,6 +41,7 @@ The mechanism a neighbouring shop cannot truthfully copy: inspect-before-you-pay
 ## Brand Commitments
 
 - Binding: the pop-art halftone black-and-white circular logo (`asset/images/logo-circle.png`, `logo-mark-80/160.png`) is the identity anchor.
+- Binding (confirmed 2026-09-04): no red and no yellow anywhere on the storefront; the palette is cotton-white, ink, indigo and green, chosen to sit under the black-and-white logo.
 - Open: palette, typography, layout, imagery treatment. Telegram does not have to lead the page.
 - Name: Zentanee. Voice (inferred from existing copy; confirm): direct, plain, warm, no hype — "inspect before you pay".
 
