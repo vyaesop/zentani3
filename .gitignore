@@ -22,6 +22,7 @@ media/
 .impeccable/mocks/
 .impeccable/history/
 .impeccable/live/
+.impeccable/questions/
 .impeccable/critique/*
 !.impeccable/critique/ignore.md
 
