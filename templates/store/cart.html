@@ -5,19 +5,21 @@
 {% block title %}{{ store.name }} | {% trans "Cart" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-cart-page">
+<main class="zh-main zh-cartpage">
+  <div class="zh-wrap">
       {% include 'partials/_messages.html' %}
 
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Cart" %}</p>
+      <header class="zh-page__head">
           <h1>{% trans "Your cart" %}</h1>
-          <p>{% trans "Review your selected items and continue to checkout." %}</p>
-      </section>
+          <p class="zh-page__count zh-num" id="cart-line-count">{% blocktrans count counter=cart_products|length %}{{ counter }} item{% plural %}{{ counter }} items{% endblocktrans %}</p>
+          <p class="zh-lede">{% trans "Review your selected items and continue to checkout." %}</p>
+      </header>
 
       {% include 'store/_cart_contents.html' %}
 
-      {% include 'store/_telegram_optin.html' %}
+      <div class="zh-cartpage__optin">
+          {% include 'store/_telegram_optin.html' %}
+      </div>
   </div>
 </main>
 {% endblock content %}

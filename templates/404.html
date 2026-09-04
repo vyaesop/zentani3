@@ -4,22 +4,24 @@
 {% block title %}{{ store.name }} | {% trans "Page not found" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-error-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">404</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "We couldn't find that page." %}</h1>
-          <p>{% trans "The link may be old, or the item may have moved. Try a search or start from the shop." %}</p>
-          <form action="{% url 'store:search' %}" method="GET" class="spring-error-search" role="search">
-              <input type="text" name="q" class="form-control" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}">
-              <button type="submit" class="btn btn-dark">{% trans "Search" %}</button>
+          <p class="zh-lede">{% trans "The link may be old, or the item may have moved. Try a search or start from the shop." %}</p>
+      </div>
+
+      <div class="zh-notfound">
+          <form action="{% url 'store:search' %}" method="GET" class="zh-form zh-inrow" role="search">
+              <input type="text" name="q" class="zh-input" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}">
+              <button type="submit" class="zh-btn zh-btn--ghost">{% trans "Search" %}</button>
           </form>
-          <div class="spring-hero__actions">
-              <a href="{% url 'store:all-products' %}" class="btn btn-outline-dark">{% trans "Shop all" %}</a>
-              <a href="{% url 'store:sale-products' %}" class="btn btn-outline-dark">{% trans "Sale" %}</a>
-              <a href="{% url 'store:faq' %}" class="btn btn-outline-dark">{% trans "Help" %}</a>
+          <div class="zh-actions">
+              <a href="{% url 'store:all-products' %}" class="zh-btn zh-btn--primary">{% trans "Shop all" %}</a>
+              <a href="{% url 'store:sale-products' %}" class="zh-btn zh-btn--ghost">{% trans "Sale" %}</a>
+              <a href="{% url 'store:faq' %}" class="zh-btn zh-btn--ghost">{% trans "Help" %}</a>
           </div>
-      </section>
+      </div>
   </div>
 </main>
 {% endblock content %}

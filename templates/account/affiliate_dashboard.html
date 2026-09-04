@@ -6,102 +6,97 @@
 {% block title %}{{ store.name }} | {% trans "Refer & earn" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-account spring-affiliate">
+<main class="zh-main zh-affiliate">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
+          <h1>{% trans "Share your link. Earn 5% on every order it brings." %}</h1>
+          <p class="zh-lede">{% trans "Friends shop with your link, you earn a commission on each delivered order. Payouts are made once the order is delivered." %}</p>
+      </div>
+
       {% include 'partials/_messages.html' %}
 
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Refer &amp; earn" %}</p>
-          <h1>{% trans "Share your link. Earn 5% on every order it brings." %}</h1>
-          <p>{% trans "Friends shop with your link, you earn a commission on each delivered order. Payouts are made once the order is delivered." %}</p>
+      <section class="zh-section" aria-labelledby="zh-reflink-title">
+          <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-reflink-title">{% trans "Your referral link" %}</h2>
+          </div>
+          <div class="zh-share">
+              <div class="zh-inrow">
+                  <input id="default-share-link" type="text" class="zh-input zh-num" value="{{ default_share_link }}" readonly aria-label="{% trans 'Referral link' %}">
+                  <button class="zh-btn zh-btn--ghost zh-btn--sm" type="button" data-copy-target="default-share-link"><i class="far fa-copy" aria-hidden="true"></i> {% trans "Copy" %}</button>
+              </div>
+              <div class="zh-actions">
+                  <a class="zh-btn zh-btn--ghost zh-btn--sm" href="https://wa.me/?text={{ default_share_link|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
+                  <a class="zh-btn zh-btn--ghost zh-btn--sm" href="https://t.me/share/url?url={{ default_share_link|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> Telegram</a>
+                  <a class="zh-btn zh-btn--ghost zh-btn--sm" href="mailto:?subject=Shop%20with%20my%20link&body={{ default_share_link|urlencode }}"><i class="far fa-envelope" aria-hidden="true"></i> Email</a>
+              </div>
+              <p class="zh-meta">{% trans "To share a specific product, use the per-product links below." %}</p>
+          </div>
+
+          <ul class="zh-ruler zh-num zh-stats" aria-label="{% trans 'Refer & earn' %}">
+              <li><span>{% trans "Clicks" %}</span><strong>{{ total_clicks }}</strong><span>{{ total_converted_clicks }} {% trans "converted" %}</span></li>
+              <li><span>{% trans "Pending" %}</span><strong>{{ pending_total|etb }}</strong></li>
+              <li><span>{% trans "Paid" %}</span><strong>{{ paid_total|etb }}</strong></li>
+              <li><span>{% trans "Lifetime" %}</span><strong>{{ lifetime_total|etb }}</strong></li>
+          </ul>
       </section>
 
-      <div class="spring-account__grid">
-          <section class="spring-account__card spring-account__card--wide">
-              <div class="spring-section__head">
-                  <h2>{% trans "Your referral link" %}</h2>
-              </div>
-              <div class="spring-copy-row">
-                  <input id="default-share-link" type="text" class="form-control" value="{{ default_share_link }}" readonly aria-label="{% trans 'Referral link' %}">
-                  <button class="btn btn-dark" type="button" data-copy-target="default-share-link">{% trans "Copy" %}</button>
-              </div>
-              <div class="spring-share-row">
-                  <a class="btn btn-outline-dark btn-sm" href="https://wa.me/?text={{ default_share_link|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-                  <a class="btn btn-outline-dark btn-sm" href="https://t.me/share/url?url={{ default_share_link|urlencode }}" target="_blank" rel="noopener"><i class="fab fa-telegram-plane"></i> Telegram</a>
-                  <a class="btn btn-outline-dark btn-sm" href="mailto:?subject=Shop%20with%20my%20link&body={{ default_share_link|urlencode }}"><i class="far fa-envelope"></i> Email</a>
-              </div>
-              <p class="text-muted small">{% trans "To share a specific product, use the per-product links below." %}</p>
-          </section>
+      <section class="zh-section" aria-labelledby="zh-perproduct-title">
+          <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-perproduct-title">{% trans "Per-product links" %}</h2>
+          </div>
+          {% if products_for_sharing %}
+          <ul class="zh-list zh-reflinks">
+              {% for product in products_for_sharing %}
+              <li>
+                  <p class="zh-reflinks__title"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></p>
+                  <div class="zh-inrow zh-inrow--compact">
+                      <input id="product-link-{{ product.id }}" type="text" class="zh-input zh-num" value="{{ base_ref_link }}?next=/product/{{ product.slug }}/" readonly aria-label="{% trans 'Referral link' %}">
+                      <button class="zh-btn zh-btn--ghost zh-btn--sm" type="button" data-copy-target="product-link-{{ product.id }}">{% trans "Copy" %}</button>
+                  </div>
+                  <div class="zh-actions">
+                      <a class="zh-btn zh-btn--ghost zh-btn--sm" href="https://wa.me/?text={{ base_ref_link|urlencode }}%3Fnext%3D%2Fproduct%2F{{ product.slug|urlencode }}%2F" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
+                      <a class="zh-btn zh-btn--ghost zh-btn--sm" href="https://t.me/share/url?url={{ base_ref_link|urlencode }}%3Fnext%3D%2Fproduct%2F{{ product.slug|urlencode }}%2F" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> Telegram</a>
+                  </div>
+              </li>
+              {% endfor %}
+          </ul>
+          {% else %}
+          <div class="zh-empty">
+              <p>{% trans "No live products to share right now — check back after the next drop." %}</p>
+          </div>
+          {% endif %}
+      </section>
 
-          <section class="spring-account__card">
-              <div class="spring-section__head"><h2>{% trans "Clicks" %}</h2></div>
-              <p class="spring-stat">{{ total_clicks }}</p>
-              <p class="text-muted small">{{ total_converted_clicks }} {% trans "converted" %}</p>
-          </section>
-          <section class="spring-account__card">
-              <div class="spring-section__head"><h2>{% trans "Pending" %}</h2></div>
-              <p class="spring-stat">{{ pending_total|etb }}</p>
-              <p class="text-muted small">{% trans "Paid" %} {{ paid_total|etb }} · {% trans "Lifetime" %} {{ lifetime_total|etb }}</p>
-          </section>
-
-          <section class="spring-account__card spring-account__card--wide">
-              <div class="spring-section__head">
-                  <h2>{% trans "Per-product links" %}</h2>
-              </div>
-              {% if products_for_sharing %}
-              <div class="spring-table-wrap">
-                  <table class="spring-table">
-                      <thead><tr><th>{% trans "Product" %}</th><th>{% trans "Referral link" %}</th><th>{% trans "Share" %}</th></tr></thead>
-                      <tbody>
-                      {% for product in products_for_sharing %}
-                      <tr>
-                          <td><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></td>
-                          <td>
-                              <div class="spring-copy-row spring-copy-row--compact">
-                                  <input id="product-link-{{ product.id }}" type="text" class="form-control" value="{{ base_ref_link }}?next=/product/{{ product.slug }}/" readonly aria-label="{% trans 'Referral link' %}">
-                                  <button class="btn btn-outline-dark btn-sm" type="button" data-copy-target="product-link-{{ product.id }}">{% trans "Copy" %}</button>
-                              </div>
-                          </td>
-                          <td class="spring-share-row">
-                              <a class="btn btn-outline-dark btn-sm" href="https://wa.me/?text={{ base_ref_link|urlencode }}%3Fnext%3D%2Fproduct%2F{{ product.slug|urlencode }}%2F" target="_blank" rel="noopener">WhatsApp</a>
-                              <a class="btn btn-outline-dark btn-sm" href="https://t.me/share/url?url={{ base_ref_link|urlencode }}%3Fnext%3D%2Fproduct%2F{{ product.slug|urlencode }}%2F" target="_blank" rel="noopener">Telegram</a>
-                          </td>
-                      </tr>
-                      {% endfor %}
-                      </tbody>
-                  </table>
-              </div>
-              {% else %}
-              <p class="text-muted">{% trans "No live products to share right now — check back after the next drop." %}</p>
-              {% endif %}
-          </section>
-
-          <section class="spring-account__card spring-account__card--wide">
-              <div class="spring-section__head">
-                  <h2>{% trans "Recent commissions" %}</h2>
-              </div>
-              {% if commissions %}
-              <div class="spring-table-wrap">
-                  <table class="spring-table">
-                      <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Order" %}</th><th>{% trans "Rate" %}</th><th>{% trans "Amount" %}</th><th>{% trans "Status" %}</th></tr></thead>
-                      <tbody>
-                      {% for commission in commissions %}
-                      <tr>
-                          <td>{{ commission.created_at|date:"Y-m-d H:i" }}</td>
-                          <td>{% if commission.order %}{{ commission.order.order_number }}{% else %}-{% endif %}</td>
-                          <td>{{ commission.rate|floatformat:0 }}%</td>
-                          <td>{{ commission.amount|etb }}</td>
-                          <td><span class="spring-order-status-pill spring-order-status-pill--{{ commission.status|slugify }}">{{ commission.status }}</span></td>
-                      </tr>
-                      {% endfor %}
-                      </tbody>
-                  </table>
-              </div>
-              {% else %}
-              <p class="text-muted">{% trans "No commissions yet. Share your link to start earning." %}</p>
-              {% endif %}
-          </section>
-      </div>
+      <section class="zh-section zh-commissions" aria-labelledby="zh-commissions-title">
+          <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-commissions-title">{% trans "Recent commissions" %}</h2>
+          </div>
+          {% if commissions %}
+          <div class="zh-table-wrap">
+              <table class="zh-table">
+                  <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Order" %}</th><th class="is-num">{% trans "Rate" %}</th><th class="is-num">{% trans "Amount" %}</th><th>{% trans "Status" %}</th></tr></thead>
+                  <tbody>
+                  {% for commission in commissions %}
+                  <tr>
+                      <td class="zh-num">{{ commission.created_at|date:"Y-m-d H:i" }}</td>
+                      <td class="zh-num">{% if commission.order %}{{ commission.order.order_number }}{% else %}-{% endif %}</td>
+                      <td class="is-num">{{ commission.rate|floatformat:0 }}%</td>
+                      <td class="is-num">{{ commission.amount|etb }}</td>
+                      <td><span class="zh-tag">{{ commission.status }}</span></td>
+                  </tr>
+                  {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+          {% else %}
+          <div class="zh-empty">
+              <p>{% trans "No commissions yet. Share your link to start earning." %}</p>
+          </div>
+          {% endif %}
+      </section>
   </div>
 </main>
 {% endblock content %}

@@ -1,23 +1,20 @@
 {% if flow_status %}
-<section class="spring-flow-status spring-flow-status--{{ flow_status.tone|default:'info' }}">
-    <div>
-        {% if flow_status.eyebrow %}
-        <p class="spring-flow-status__eyebrow">{{ flow_status.eyebrow }}</p>
-        {% endif %}
-        <h2>{{ flow_status.title }}</h2>
-        <p>{{ flow_status.message }}</p>
+<section class="zh-status zh-status--{{ flow_status.tone|default:'info' }}" aria-live="polite">
+    <div class="zh-status__body">
+        <h2 class="zh-status__title">{{ flow_status.title }}</h2>
+        <p class="zh-status__message">{{ flow_status.message }}</p>
         {% if flow_status.meta %}
-        <p class="spring-flow-status__meta">{{ flow_status.meta }}</p>
+        <p class="zh-status__meta">{{ flow_status.meta }}</p>
         {% endif %}
     </div>
 
     {% if flow_status.primary_url or flow_status.secondary_url %}
-    <div class="spring-flow-status__actions">
+    <div class="zh-status__actions">
         {% if flow_status.primary_url %}
-        <a href="{{ flow_status.primary_url }}" class="btn btn-dark">{{ flow_status.primary_label|default:"Continue" }}</a>
+        <a href="{{ flow_status.primary_url }}" class="zh-btn zh-btn--primary zh-btn--sm">{{ flow_status.primary_label|default:"Continue" }}</a>
         {% endif %}
         {% if flow_status.secondary_url %}
-        <a href="{{ flow_status.secondary_url }}" class="btn btn-outline-dark">{{ flow_status.secondary_label|default:"Learn more" }}</a>
+        <a href="{{ flow_status.secondary_url }}" class="zh-btn zh-btn--ghost zh-btn--sm">{{ flow_status.secondary_label|default:"Learn more" }}</a>
         {% endif %}
     </div>
     {% endif %}

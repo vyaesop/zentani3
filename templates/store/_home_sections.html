@@ -3,7 +3,7 @@
 {% load image_optim %}
 
   {% if drop_products %}
-  <section class="zh-section spring-container" aria-labelledby="zh-drop-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-drop-title">
       <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-drop" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-drop-title">{% trans "The drop" %}</h2>
@@ -19,14 +19,14 @@
       </div>
   </section>
   {% elif brands and brands|length < 3 %}
-  <section class="zh-section spring-container" aria-label="{% trans 'Authenticity' %}">
+  <section class="zh-section zh-wrap" aria-label="{% trans 'Authenticity' %}">
       <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-drop" %}</div>
       <p class="zh-section__meta zh-section__meta--standalone">{% trans "Every branded piece" %} — {{ brands|join:", " }} — {% trans "is a genuine original." %}</p>
   </section>
   {% endif %}
 
   {% if categories %}
-  <section class="zh-section spring-container" aria-labelledby="zh-collections-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-collections-title">
       <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-collections" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-collections-title">{% trans "Collections" %}</h2>
@@ -50,7 +50,7 @@
   </section>
   {% endif %}
 
-  <section class="zh-section spring-container" aria-labelledby="zh-how-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-how-title">
       <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-how" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-how-title">{% trans "How a Zentanee order works" %}</h2>
@@ -84,7 +84,7 @@
   </section>
 
   {% if top_selling_products %}
-  <section class="zh-section spring-container" aria-labelledby="zh-wanted-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-wanted-title">
       <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-wanted" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-wanted-title">{% trans "Most wanted" %}</h2>
@@ -99,7 +99,7 @@
   {% endif %}
 
   {% if brands and brands|length >= 3 %}
-  <section class="zh-section spring-container" aria-labelledby="zh-brands-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-brands-title">
       <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-brands" %}</div>
       <div class="zh-section__head">
           <h2 id="zh-brands-title">{% trans "Genuine originals" %}</h2>
@@ -113,7 +113,7 @@
   </section>
   {% endif %}
 
-  <section class="zh-section spring-container" aria-labelledby="zh-channel-title">
+  <section class="zh-section zh-wrap" aria-labelledby="zh-channel-title">
       <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-channel" %}</div>
       <div class="zh-channel">
           <div>
@@ -122,5 +122,4 @@
           </div>
           <a href="{{ store.telegram_channel_url }}" class="zh-btn zh-btn--primary" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Join the channel" %}</a>
       </div>
-      <div class="zh-band">{% include 'store/_tibeb_band.html' with band_id="tibeb-foot" %}</div>
   </section>

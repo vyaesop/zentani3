@@ -1,72 +1,61 @@
 {% load static %}
 {% load i18n %}
 {% load image_optim %}
-
-<article class="spring-product-card">
-    <div class="spring-product-card__media-wrap">
-        <a href="{% url 'store:product-detail' product.slug %}" class="spring-product-card__media">
-            {% if product.product_image %}
-            {% cld_img product.product_image width=420 alt=product.title html_width=420 html_height=520 loading=img_loading|default:"lazy" fetchpriority=img_fetchpriority|default:"" %}
-            {% else %}
-            <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="520">
-            {% endif %}
-            {% with alt_image=product.p_images.all|first %}
-            {% if alt_image and alt_image.image %}
-            <span class="spring-product-card__alt" aria-hidden="true">
-                {% cld_img alt_image.image width=420 alt="" html_width=420 html_height=520 loading="lazy" %}
-            </span>
-            {% endif %}
-            {% endwith %}
-        </a>
-
-        {% if product.id in saved_product_ids %}
-        {% include 'store/_wishlist_button.html' with saved=True %}
+{# The product module: 4:5 photo in an ink frame, one status tag, save button, #}
+{# title, brand, price and size quick-add. Shared by the catalog, the homepage #}
+{# rails and the unavailable-product page. No card chrome. #}
+<article class="zh-module">
+    <a href="{% url 'store:product-detail' product.slug %}" class="zh-module__media">
+        {% if product.product_image %}
+        {% cld_img product.product_image width=420 alt=product.title html_width=420 html_height=525 loading=img_loading|default:"lazy" fetchpriority=img_fetchpriority|default:"" %}
         {% else %}
-        {% include 'store/_wishlist_button.html' with saved=False %}
+        <img loading="lazy" src="{% static 'asset/images/default-product.webp' %}" alt="{{ product.title }}" width="420" height="525">
         {% endif %}
-
+        {% with alt_image=product.p_images.all|first %}
+        {% if alt_image and alt_image.image %}
+        <span class="zh-module__alt" aria-hidden="true">
+            {% cld_img alt_image.image width=420 alt="" html_width=420 html_height=525 loading="lazy" %}
+        </span>
+        {% endif %}
+        {% endwith %}
         {% if product.is_sold_out %}
-        <span class="spring-product-card__badge spring-product-card__badge--soldout">{% trans "Sold out" %}</span>
+        <span class="zh-module__tag zh-module__tag--soldout">{% trans "Sold out" %}</span>
         {% elif product.is_on_sale %}
-        <span class="spring-product-card__badge spring-product-card__badge--sale">-{{ product.discount_percent }}%</span>
-        {% elif product.id in bestseller_product_ids %}
-        <span class="spring-product-card__badge spring-product-card__badge--bestseller">{% trans "Bestseller" %}</span>
+        <span class="zh-module__tag zh-module__tag--sale zh-num">-{{ product.discount_percent }}%</span>
+        {% elif product.id in bestseller_product_ids and not hide_bestseller_tag %}
+        <span class="zh-module__tag">{% trans "Most wanted" %}</span>
         {% elif product.is_new %}
-        <span class="spring-product-card__badge spring-product-card__badge--new">{% trans "New" %}</span>
+        <span class="zh-module__tag">{% trans "New" %}</span>
         {% endif %}
-    </div>
+    </a>
 
-    <div class="spring-product-card__body">
-        <h3><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>
-        {% if product.brand %}
-        <p class="spring-product-card__meta">{{ product.brand }}</p>
-        {% endif %}
+    {% if product.id in saved_product_ids %}
+    {% include 'store/_wishlist_button.html' with saved=True %}
+    {% else %}
+    {% include 'store/_wishlist_button.html' with saved=False %}
+    {% endif %}
 
+    <div class="zh-module__body">
+        <h3 class="zh-module__title"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>
+        {% if product.brand %}<p class="zh-module__meta">{{ product.brand }}</p>{% endif %}
         {% if product.is_sold_out %}
-        <p class="spring-product-card__price spring-product-card__price--soldout">
-            {% trans "Sold out" %}
-            <a href="{% url 'store:product-detail' product.slug %}#restock" class="spring-product-card__notify">{% trans "Notify me" %}</a>
-        </p>
+        <p class="zh-module__price zh-module__price--soldout zh-num">{% trans "Sold out" %}<a href="{% url 'store:product-detail' product.slug %}#restock">{% trans "Notify me" %}</a></p>
         {% elif product.is_on_sale %}
-        <p class="spring-product-card__price spring-product-card__price--sale">
-            <span class="spring-price-now">{{ product.price|etb }}</span>
-            <s class="spring-price-was">{{ product.compare_at_price|etb }}</s>
-        </p>
+        <p class="zh-module__price zh-num">{{ product.price|etb }}<s class="zh-price-was">{{ product.compare_at_price|etb }}</s></p>
         {% else %}
-        <p class="spring-product-card__price">{{ product.price|etb }}</p>
+        <p class="zh-module__price zh-num">{{ product.price|etb }}</p>
         {% endif %}
-
         {% if product.available_sizes and not product.is_sold_out %}
-        <div class="spring-product-card__sizes" aria-label="{% blocktrans with title=product.title %}Quick add {{ title }} to cart{% endblocktrans %}"
-             hx-disinherit="hx-target hx-select hx-swap hx-push-url hx-indicator">
+        <ul class="zh-sizes" aria-label="{% blocktrans with title=product.title %}Add {{ title }} to cart by size{% endblocktrans %}"
+            hx-disinherit="hx-target hx-select hx-swap hx-push-url hx-indicator">
             {% for size in product.available_sizes|split:"," %}
-            <button type="button" class="spring-size-chip spring-size-chip--quick"
+            <li><button type="button" class="zh-size zh-size--quick zh-num"
                     hx-post="{% url 'store:add-to-cart' %}"
                     hx-vals='{"prod_id": "{{ product.id }}", "size": "{{ size|strip }}"}'
                     hx-target="#zent-toast" hx-swap="innerHTML"
-                    aria-label="{% blocktrans with size=size|strip %}Add size {{ size }} to cart{% endblocktrans %}">{{ size|strip }}</button>
+                    aria-label="{% blocktrans with size=size|strip %}Add size {{ size }} to cart{% endblocktrans %}">{{ size|strip }}</button></li>
             {% endfor %}
-        </div>
+        </ul>
         {% endif %}
     </div>
 </article>

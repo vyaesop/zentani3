@@ -9,6 +9,15 @@
         "value": "noto sans ethiopic",
         "createdAt": "2026-09-04T15:14:14.436Z",
         "reason": "Claude: DESIGN.md Typography already declares Noto Sans Ethiopic as the Amharic swap under html[lang=am]; the hook reads only the frontmatter fontFamily entries"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/base.html"
+        ],
+        "createdAt": "2026-09-04T16:00:25.975Z",
+        "reason": "Claude: base.html is the shell only (footer titles, nav labels); page h1 scale lives in the child templates' .zh-page__head"
       }
     ]
   }

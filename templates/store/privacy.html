@@ -5,17 +5,16 @@
 {% block meta_description %}{% blocktrans with name=store.name %}How {{ name }} collects, uses and protects the details you share when you browse and order.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-policy-page spring-legal-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Legal" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Privacy policy" %}</h1>
-          <p>{% trans "Plain language, because that is the only kind worth reading. Last updated September 2026." %}</p>
-      </section>
+          <p class="zh-lede">{% trans "Plain language, because that is the only kind worth reading. Last updated September 2026." %}</p>
+      </div>
 
-      <article class="spring-legal">
+      <article class="zh-prose">
           <h2>{% trans "Who we are" %}</h2>
-          <p>{{ store.legal_name|default:store.name }}{% if store.address %}, {{ store.address }}{% endif %}. {% trans "Reach us at" %} <a href="{{ store.phone_href }}">{{ store.phone }}</a>{% if store.email %} {% trans "or" %} <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %}.</p>
+          <p>{{ store.legal_name|default:store.name }}{% if store.address %}, {{ store.address }}{% endif %}. {% trans "Reach us at" %} <a href="{{ store.phone_href }}" class="zh-num">{{ store.phone }}</a>{% if store.email %} {% trans "or" %} <a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %}.</p>
 
           <h2>{% trans "What we collect" %}</h2>
           <ul>

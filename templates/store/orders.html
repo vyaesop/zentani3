@@ -6,87 +6,101 @@
 {% block title %}{{ store.name }} | {% trans "Orders" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-orders-page">
-      {% include 'partials/_flow_status.html' with flow_status=flow_status %}
+<main class="zh-main zh-orders-page">
+  <div class="zh-wrap">
       {% include 'partials/_messages.html' %}
 
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Orders" %}</p>
+      <header class="zh-page__head">
           <h1>{% trans "Your orders" %}</h1>
-          <p>{% trans "Track current and previous orders from one place." %}</p>
-      </section>
+          <p class="zh-lede">{% trans "Track current and previous orders from one place." %}</p>
+      </header>
+
+      {% if orders %}{% include 'partials/_flow_status.html' with flow_status=flow_status %}{% endif %}
 
       {% include 'store/_telegram_optin.html' %}
 
       {% if orders %}
-      <section class="spring-orders-summary">
-          {% for item in order_status_summary %}
-          <article class="spring-orders-summary__card">
-              <strong>{{ item.count }}</strong>
-              <span>{{ item.label }}</span>
-          </article>
-          {% endfor %}
-      </section>
-
-      <section class="spring-orders-list">
-          {% for order in orders %}
-          <article class="spring-order-item">
-              {% if order.product.product_image %}
-              {% cld_img order.product.product_image width=160 alt=order.product.title %}
-              {% else %}
-              <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ order.product.title }}">
-              {% endif %}
-
-              <div class="spring-order-item__info">
-                  <h2><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h2>
-                  <p>{% trans "Placed" %} {{ order.ordered_date|date:"F d, Y, P" }}</p>
-                  <p>{% trans "Order" %} {% if order.group %}<a href="{% url 'store:order-confirmation' order.group.claim_token %}">{{ order.group.number }}</a>{% else %}#{{ order.id }}{% endif %}</p>
-                  <p>{% trans "Qty" %} {{ order.quantity }}{% if order.size %} / {% trans "Size" %} {{ order.size }}{% endif %}</p>
-                  {% if order.group and order.group.delivery_fee %}<p>{% trans "Delivery" %} {{ order.group.delivery_fee|etb }} · {% trans "Order total" %} {{ order.group.total|etb }}</p>{% endif %}
-              </div>
-
-              <div class="spring-order-item__aside">
-                  <span>{{ order.status }}</span>
-                  <strong>{{ order.line_total|default:0|etb }}</strong>
-                  {% if order.can_cancel %}
-                  <form action="{% url 'store:cancel-order' order.id %}" method="POST">
-                      {% csrf_token %}
-                      <button type="submit" class="spring-text-link">{% trans "Cancel order" %}</button>
-                  </form>
-                  {% endif %}
-              </div>
-
-              <div class="spring-order-item__timeline">
-                  <p class="spring-order-item__status-copy">{{ order.status_copy }}</p>
-                  <div class="spring-order-timeline" aria-label="{% trans 'Order timeline' %}">
-                      {% for step in order.timeline %}
-                      <span class="spring-order-timeline__step is-{{ step.state }}">{{ step.label }}</span>
-                      {% endfor %}
+      <section class="zh-section" aria-label="{% trans 'Orders' %}">
+          <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-orders" %}</div>
+          <ul class="zh-orders">
+              {% for order in orders %}
+              <li class="zh-order">
+                  <div class="zh-order__head">
+                      <p class="zh-order__number zh-num">{% trans "Order" %} {% if order.group %}<a href="{% url 'store:order-confirmation' order.group.claim_token %}">{{ order.group.number }}</a>{% else %}#{{ order.id }}{% endif %}</p>
+                      <p class="zh-order__date">{% trans "Placed" %} <time class="zh-num" datetime="{{ order.ordered_date|date:'c' }}">{{ order.ordered_date|date:"F d, Y, P" }}</time></p>
+                      <span class="zh-tag{% if order.status == 'Cancelled' %} zh-tag--inverse{% endif %}">{{ order.status }}</span>
                   </div>
-                  {% if order.staff_notes %}
-                  <p class="spring-order-item__notes"><strong>{% trans "Note" %}:</strong> {{ order.staff_notes }}</p>
+
+                  <div class="zh-line zh-line--compact zh-order__line">
+                      <a href="{% url 'store:product-detail' order.product.slug %}" class="zh-line__media" tabindex="-1" aria-hidden="true">
+                          {% if order.product.product_image %}
+                          {% cld_img order.product.product_image width=144 alt="" %}
+                          {% else %}
+                          <img src="{% static 'asset/images/default-product.webp' %}" alt="" width="72" height="90">
+                          {% endif %}
+                      </a>
+                      <div class="zh-line__body">
+                          <h2 class="zh-line__title"><a href="{% url 'store:product-detail' order.product.slug %}">{{ order.product.title }}</a></h2>
+                          <p class="zh-line__meta zh-num">{% trans "Qty" %} {{ order.quantity }}{% if order.size %} · {% trans "Size" %} {{ order.size }}{% endif %}</p>
+                      </div>
+                      <div class="zh-line__aside">
+                          <strong class="zh-line__total zh-num">{{ order.line_total|default:0|etb }}</strong>
+                      </div>
+                  </div>
+
+                  <div class="zh-order__track">
+                      <ol class="zh-timeline" aria-label="{% trans 'Order timeline' %}">
+                          {% for step in order.timeline %}
+                          <li class="zh-timeline__step is-{{ step.state }}" {% if step.state == 'current' %}aria-current="step"{% endif %}>
+                              <span class="zh-timeline__mark" aria-hidden="true"></span>
+                              <span class="zh-timeline__label">{{ step.label }}</span>
+                          </li>
+                          {% endfor %}
+                      </ol>
+                      <p class="zh-order__copy">{{ order.status_copy }}</p>
+                      {% if order.staff_notes %}
+                      <p class="zh-order__note"><strong>{% trans "Note" %}:</strong> {{ order.staff_notes }}</p>
+                      {% endif %}
+                  </div>
+
+                  {% if order.group and order.group.delivery_fee %}
+                  <dl class="zh-rows zh-order__rows">
+                      <div class="zh-row"><dt>{% trans "Delivery" %}</dt><dd>{{ order.group.delivery_fee|etb }}</dd></div>
+                      <div class="zh-row zh-row--total"><dt>{% trans "Order total" %}</dt><dd>{{ order.group.total|etb }}</dd></div>
+                  </dl>
                   {% endif %}
-              </div>
-          </article>
-          {% endfor %}
+
+                  {% if order.can_cancel %}
+                  <div class="zh-order__actions">
+                      <form action="{% url 'store:cancel-order' order.id %}" method="POST">
+                          {% csrf_token %}
+                          <button type="submit" class="zh-btn zh-btn--ghost zh-btn--sm">{% trans "Cancel order" %}</button>
+                      </form>
+                  </div>
+                  {% endif %}
+              </li>
+              {% endfor %}
+          </ul>
       </section>
 
       {% include 'store/_collection_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_query=page_query aria_label='Order history pages' %}
 
-      <section class="spring-order-help">
-          <div class="spring-section__head">
-              <h2>{% trans "Need help with an order?" %}</h2>
+      <section class="zh-section zh-orders__help" aria-labelledby="orders-help-title">
+          <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-orders-help" %}</div>
+          <div class="zh-section__head">
+              <h2 id="orders-help-title">{% trans "Need help with an order?" %}</h2>
           </div>
           <p>{% trans "If an order is still pending or accepted, you can cancel it here. For delivery issues after that, call us with your order number." %}</p>
-          <a href="{{ store.phone_href }}" class="btn btn-outline-dark"><i class="fas fa-phone"></i> {{ store.phone }}</a>
-          <a href="{% url 'store:contact' %}" class="btn btn-outline-dark">{% trans "Contact support" %}</a>
+          <div class="zh-actions">
+              <a href="{{ store.phone_href }}" class="zh-btn zh-btn--ghost"><i class="fas fa-phone" aria-hidden="true"></i> <span class="zh-num">{{ store.phone }}</span></a>
+              <a href="{% url 'store:contact' %}" class="zh-btn zh-btn--ghost">{% trans "Contact support" %}</a>
+          </div>
       </section>
       {% else %}
-      <section class="spring-empty-state">
+      <section class="zh-empty">
           <h2>{% trans "You have no orders yet" %}</h2>
           <p>{% trans "Once you place an order, it will appear here." %}</p>
-          <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Shop all" %}</a>
+          <a href="{% url 'store:all-products' %}" class="zh-btn zh-btn--primary">{% trans "Shop all" %}</a>
       </section>
       {% endif %}
   </div>

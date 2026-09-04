@@ -4,107 +4,150 @@
 {% block title %}{{ store.name }} | {% trans "Account" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-account">
+<main class="zh-main zh-account">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
+          <h1>{% firstof request.user.first_name request.user.username %}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
+          <p class="zh-lede">{% trans "View your saved addresses, recent orders, and account shortcuts from one place." %}</p>
+      </div>
+
       {% include 'partials/_messages.html' %}
       {% include 'partials/_flow_status.html' with flow_status=profile_flow_status %}
 
-      <section class="spring-account__hero">
-          <div>
-              <p class="spring-directory-header__eyebrow">{% trans "My account" %}</p>
-              <h1>{% firstof request.user.first_name request.user.username %}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</h1>
-              <p>{% trans "View your saved addresses, recent orders, and account shortcuts from one place." %}</p>
+      <section class="zh-section" aria-labelledby="zh-account-title">
+          <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-account-title">{% trans "Account" %}</h2>
           </div>
-          <div class="spring-account__hero-actions">
-              <a class="btn btn-dark" href="{% url 'store:home' %}">{% trans "Continue shopping" %}</a>
-              <a class="btn btn-outline-dark" href="{% url 'store:add-address' %}">{% trans "Add address" %}</a>
-              <a class="btn btn-outline-dark" href="{% url 'store:orders' %}">{% trans "Orders" %}</a>
-              <a class="btn btn-outline-dark" href="{% url 'store:password-change' %}">{% trans "Change password" %}</a>
-          </div>
+          <dl class="zh-rows">
+              <div class="zh-row">
+                  <dt>{% trans "Full Name" %}</dt>
+                  <dd>{% firstof request.user.first_name request.user.username %}{% if request.user.last_name %} {{ request.user.last_name }}{% endif %}</dd>
+              </div>
+              <div class="zh-row">
+                  <dt>{% trans "Phone Number" %}</dt>
+                  <dd class="zh-num">{{ request.user.username }}</dd>
+              </div>
+              {% if request.user.email %}
+              <div class="zh-row">
+                  <dt>{% trans "Email" %}</dt>
+                  <dd>{{ request.user.email }}</dd>
+              </div>
+              {% endif %}
+          </dl>
+          <ul class="zh-list zh-linklist">
+              <li>
+                  <a href="{% url 'store:orders' %}">
+                      <span class="zh-linklist__text"><span class="zh-link">{% trans "Orders" %}</span></span>
+                      <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                  </a>
+              </li>
+              <li>
+                  <a href="{% url 'store:password-change' %}">
+                      <span class="zh-linklist__text"><span class="zh-link">{% trans "Change password" %}</span></span>
+                      <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                  </a>
+              </li>
+              <li>
+                  <a href="{% url 'store:affiliate-dashboard' %}">
+                      <span class="zh-linklist__text">
+                          <span class="zh-link">{% if has_affiliate_profile %}{% trans "Open my referral dashboard" %}{% else %}{% trans "Get my referral link" %}{% endif %}</span>
+                          <span class="zh-meta">{% trans "Share your personal link with friends. You earn 5% of every order they place, paid once it is delivered." %}</span>
+                      </span>
+                      <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                  </a>
+              </li>
+              <li>
+                  <a href="{% url 'store:logout' %}">
+                      <span class="zh-linklist__text"><span class="zh-link">{% trans "Log out" %}</span></span>
+                      <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                  </a>
+              </li>
+          </ul>
       </section>
 
-      <div class="spring-account__grid">
-          <section class="spring-account__card">
-              <div class="spring-section__head">
-                  <h2>{% trans "Saved Addresses" %}</h2>
+      <div class="zh-account__two">
+          <section class="zh-section" aria-labelledby="zh-addresses-title">
+              <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+              <div class="zh-section__head">
+                  <h2 id="zh-addresses-title">{% trans "Saved Addresses" %}</h2>
                   <a href="{% url 'store:add-address' %}">{% trans "Add address" %}</a>
               </div>
 
               {% if addresses %}
-              <div class="spring-account__stack">
+              <ul class="zh-list">
                   {% for address in addresses %}
-                  <article class="spring-account__item">
-                      <div>
+                  <li class="zh-objrow">
+                      <div class="zh-objrow__body">
                           <strong>{% trans "Address" %} {{ forloop.counter }}</strong>
                           <p>{{ address.address }}</p>
                           <p>{{ address.city }}</p>
-                          <p>{{ address.phone }}</p>
+                          <p class="zh-num">{{ address.phone }}</p>
                       </div>
                       <form action="{% url 'store:remove-address' address.id %}" method="POST">
                           {% csrf_token %}
-                          <button type="submit" class="spring-text-link">{% trans "Remove" %}</button>
+                          <button type="submit" class="zh-btn zh-btn--ghost zh-btn--sm">{% trans "Remove" %}</button>
                       </form>
-                  </article>
+                  </li>
                   {% endfor %}
-              </div>
+              </ul>
               {% else %}
-              <p class="text-muted mb-3">{% trans "You have not saved an address yet." %}</p>
-              <a href="{% url 'store:add-address' %}" class="btn btn-dark">{% trans "Add your first address" %}</a>
+              <div class="zh-empty">
+                  <p>{% trans "You have not saved an address yet." %}</p>
+                  <a href="{% url 'store:add-address' %}" class="zh-btn zh-btn--primary">{% trans "Add your first address" %}</a>
+              </div>
               {% endif %}
           </section>
 
-          <section class="spring-account__card">
-              <div class="spring-section__head">
-                  <h2>{% trans "Recent Orders" %}</h2>
+          <section class="zh-section" aria-labelledby="zh-orders-title">
+              <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+              <div class="zh-section__head">
+                  <h2 id="zh-orders-title">{% trans "Recent Orders" %}</h2>
                   <a href="{% url 'store:orders' %}">{% trans "View all" %}</a>
               </div>
 
               {% if orders %}
-              <div class="spring-account__stack">
+              <ul class="zh-list">
                   {% for order in orders %}
-                  <article class="spring-account__item">
-                      <div>
+                  <li class="zh-objrow">
+                      <div class="zh-objrow__body">
                           <strong>{{ order.product.title }}</strong>
-                          <p>{% trans "Order" %} {{ order.order_number }}</p>
+                          <p class="zh-meta zh-num">{% trans "Order" %} {{ order.order_number }}</p>
                       </div>
-                      <span class="spring-order-status-pill spring-order-status-pill--{{ order.status|slugify }}">{{ order.status }}</span>
-                  </article>
+                      <span class="zh-tag">{{ order.status }}</span>
+                  </li>
                   {% endfor %}
-              </div>
+              </ul>
               {% else %}
-              <p class="text-muted mb-3">{% trans "You have not placed any orders yet." %}</p>
-              <a href="{% url 'store:home' %}" class="btn btn-dark">{% trans "Browse products" %}</a>
-              {% endif %}
-          </section>
-
-          <section class="spring-account__card spring-account__card--referral">
-              <div class="spring-section__head">
-                  <h2>{% trans "Refer &amp; earn" %}</h2>
+              <div class="zh-empty">
+                  <p>{% trans "You have not placed any orders yet." %}</p>
+                  <a href="{% url 'store:home' %}" class="zh-btn zh-btn--primary">{% trans "Browse products" %}</a>
               </div>
-              <p>{% trans "Share your personal link with friends. You earn 5% of every order they place, paid once it is delivered." %}</p>
-              <a href="{% url 'store:affiliate-dashboard' %}" class="btn btn-outline-dark">{% if has_affiliate_profile %}{% trans "Open my referral dashboard" %}{% else %}{% trans "Get my referral link" %}{% endif %}</a>
-          </section>
-
-          <section class="spring-account__card spring-account__card--wide">
-              <div class="spring-section__head">
-                  <h2>{% trans "Saved Items" %}</h2>
-                  <a href="{% url 'store:all-products' %}">{% trans "Browse more" %}</a>
-              </div>
-
-              {% if saved_items %}
-              <div class="spring-product-grid spring-product-grid--account">
-                  {% for saved_item in saved_items %}
-                  <div class="spring-grid-item">
-                      {% include 'store/_product_card_content.html' with product=saved_item.product %}
-                  </div>
-                  {% endfor %}
-              </div>
-              {% else %}
-              <p class="text-muted mb-3">{% trans "You have not saved any products yet." %}</p>
-              <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Start saving items" %}</a>
               {% endif %}
           </section>
       </div>
+
+      <section class="zh-section" aria-labelledby="zh-saved-title">
+          <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" %}</div>
+          <div class="zh-section__head">
+              <h2 id="zh-saved-title">{% trans "Saved Items" %}</h2>
+              <a href="{% url 'store:all-products' %}">{% trans "Browse more" %}</a>
+          </div>
+
+          {% if saved_items %}
+          <div class="zh-grid">
+              {% for saved_item in saved_items %}
+              {% include 'store/_product_card_content.html' with product=saved_item.product %}
+              {% endfor %}
+          </div>
+          {% else %}
+          <div class="zh-empty">
+              <p>{% trans "You have not saved any products yet." %}</p>
+              <a href="{% url 'store:all-products' %}" class="zh-btn zh-btn--primary">{% trans "Start saving items" %}</a>
+          </div>
+          {% endif %}
+
+      </section>
   </div>
 </main>
 {% endblock content %}

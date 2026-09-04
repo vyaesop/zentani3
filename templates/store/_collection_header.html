@@ -1,38 +1,42 @@
-<section class="spring-directory-header">
-    <p class="spring-directory-header__eyebrow">{{ kicker }}</p>
-    <h1>{{ title }}</h1>
+{# Collection heading: title, lede, live count, then the ruled sort toolbar and #}
+{# active filter chips. Pass title (and optionally title_mark for a highlighted #}
+{# search term), description, count, browse_state, head_class. #}
+<header class="zh-page__head zh-collection__head{% if head_class %} {{ head_class }}{% endif %}">
+    <h1>{{ title }}{% if title_mark %} <mark class="zh-mark">{{ title_mark }}</mark>{% endif %}</h1>
     {% if description %}
-    <p>{{ description }}</p>
+    <p class="zh-lede">{{ description }}</p>
     {% endif %}
-    <span class="spring-directory-header__count">{{ count }} item{{ count|pluralize }}</span>
+    <span class="zh-page__count zh-num">{{ count }} item{{ count|pluralize }}</span>
 
     {% if browse_state %}
-    <div class="spring-directory-toolbar">
-        <p class="spring-directory-toolbar__summary">{{ browse_state.result_summary }}</p>
+    {% if count %}
+    <div class="zh-toolbar">
+        <p class="zh-toolbar__summary zh-num">{{ browse_state.result_summary }}</p>
 
-        <form action="{{ browse_state.form_action }}" method="GET" class="spring-directory-toolbar__sort"
+        <form action="{{ browse_state.form_action }}" method="GET" class="zh-toolbar__sort"
               hx-get="{{ browse_state.form_action }}">
             {% for name, value in browse_state.sort_hidden_fields %}
             <input type="hidden" name="{{ name }}" value="{{ value }}">
             {% endfor %}
 
-            <label for="spring-sort-select">Sort</label>
+            <label for="zh-sort-select" class="zh-label">Sort</label>
             {# requestSubmit (not submit) so the htmx submit listener can intercept; falls back to a normal GET without JS-enhancement. #}
-            <select id="spring-sort-select" name="sort" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <select id="zh-sort-select" name="sort" class="zh-select zh-select--sm" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
                 {% for option in browse_state.sort_options %}
                 <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>
                 {% endfor %}
             </select>
         </form>
     </div>
+    {% endif %}
 
     {% if browse_state.active_filters %}
-    <div class="spring-active-filters" aria-label="Active filters">
+    <ul class="zh-chips zh-active-filters" aria-label="Active filters">
         {% for active_filter in browse_state.active_filters %}
-        <span>{{ active_filter }}</span>
+        <li><span class="zh-chip is-active">{{ active_filter }}<span class="zh-chip__x" aria-hidden="true">&times;</span></span></li>
         {% endfor %}
-        <a href="{{ browse_state.reset_filters_url }}" hx-get="{{ browse_state.reset_filters_url }}">Clear filters</a>
-    </div>
+        <li><a href="{{ browse_state.reset_filters_url }}" hx-get="{{ browse_state.reset_filters_url }}" class="zh-link zh-active-filters__clear">Clear filters</a></li>
+    </ul>
     {% endif %}
     {% endif %}
-</section>
+</header>

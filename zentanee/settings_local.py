@@ -54,3 +54,8 @@ ONLINE_PAYMENTS_ENABLED = False
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
+
+# Design review runs render every fragment live: `ZENT_NOCACHE=1` swaps the
+# fragment/rate-limit cache for a no-op so template edits show without a restart.
+if os.environ.get("ZENT_NOCACHE"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}

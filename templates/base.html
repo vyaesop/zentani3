@@ -37,7 +37,7 @@
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
     {% if LANGUAGE_CODE == 'am' %}
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
     {% endif %}
@@ -46,214 +46,214 @@
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
 
     <link rel="stylesheet" type="text/css" href="{% static 'asset/vendor/fontawesome-free/css/all.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-core.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-shim.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-storefront.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-tibeb.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-tibeb-bands.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-tibeb-pages.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="spring-body{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-    <div class="spring-announcement">
-        <div class="spring-container">
+<body class="zh-body{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <a class="zh-skip" href="#zh-content">{% trans "Skip to content" %}</a>
+
+    <div class="zh-announce">
+        <div class="zh-wrap">
             <p>{% blocktrans with threshold=store.free_threshold %}Free delivery in Addis Ababa on orders over {{ threshold }} ETB · Pay on delivery{% endblocktrans %}</p>
         </div>
     </div>
 
-    <div class="page-wrapper spring-shell">
-        <header class="spring-header">
-            <div class="spring-header__utility spring-container d-none d-lg-grid">
-                <div class="spring-header__utility-left">
-                    <button type="button" class="spring-link mobile-menu-toggle" aria-label="{% trans 'Open menu' %}" aria-controls="mobile-menu" aria-expanded="false">
-                        <i class="fas fa-bars"></i>
-                        <span>{% trans "Menu" %}</span>
-                    </button>
-                    <form action="{% url 'store:search' %}" method="GET" class="spring-header-search zent-search" role="search">
-                        <input type="text" name="q" autocomplete="off" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}"
-                               hx-get="{% url 'store:search-suggestions' %}"
-                               hx-trigger="keyup changed delay:300ms"
-                               hx-target="next .zent-search-suggest"
-                               hx-swap="innerHTML">
-                        <button type="submit" class="spring-link" aria-label="{% trans 'Search' %}">
-                            <i class="fas fa-search"></i>
-                            <span>{% trans "Search" %}</span>
-                        </button>
-                        <div class="zent-search-suggest" role="listbox" aria-label="{% trans 'Search suggestions' %}"></div>
-                    </form>
-                </div>
-
-                <a href="{% url 'store:home' %}" class="spring-logo" aria-label="{{ store.name }} home">
-                    <img src="{% static 'asset/images/logo-mark-80.png' %}" srcset="{% static 'asset/images/logo-mark-80.png' %} 2x" alt="" class="spring-logo__mark" width="40" height="40">
-                    <span>{{ store.name }}</span>
-                </a>
-
-                <div class="spring-header__utility-right">
-                    {% if request.user.is_staff %}
-                    <a href="{% url 'store:dashboard-home' %}" class="spring-link">Control Room</a>
-                    {% endif %}
-                    {% if request.user.is_authenticated %}
-                    <a href="{% url 'store:profile' %}" class="spring-link">
-                        {% trans "Account" %}
-                        {% if wishlist_count %}
-                        <span class="spring-wishlist-count" title="{{ wishlist_count }} saved item{{ wishlist_count|pluralize }}">{{ wishlist_count }}</span>
-                        {% endif %}
-                    </a>
-                    {% else %}
-                    <a href="{% url 'store:login' %}" class="spring-link">{% trans "Log in" %}</a>
-                    {% endif %}
-                    <a href="{% url 'store:cart' %}" class="spring-link spring-cart-link">
-                        <span>{% trans "Cart" %}</span>
-                        <span class="spring-cart-count" id="cart-count-desktop">{{ cart_items_count }}</span>
-                    </a>
-                </div>
-            </div>
-
-            <div class="spring-header__mobile spring-container d-flex d-lg-none">
-                <button type="button" class="spring-mobile-icon mobile-menu-toggle" aria-label="{% trans 'Open menu' %}" aria-controls="mobile-menu" aria-expanded="false">
-                    <i class="fas fa-bars"></i>
+    {% with url_name=request.resolver_match.url_name %}
+    <header class="zh-header">
+        <div class="zh-wrap zh-header__row">
+            <div class="zh-header__left">
+                <button type="button" class="zh-iconbtn mobile-menu-toggle" aria-label="{% trans 'Open menu' %}" aria-controls="mobile-menu" aria-expanded="false">
+                    <i class="fas fa-bars" aria-hidden="true"></i>
                 </button>
-                <a href="{% url 'store:home' %}" class="spring-logo spring-logo--mobile" aria-label="{{ store.name }} home">
-                    <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="spring-logo__mark" width="30" height="30">
-                    <span>{{ store.name }}</span>
+                <form action="{% url 'store:search' %}" method="GET" class="zh-search zh-header__search zent-search" role="search">
+                    <input type="text" name="q" autocomplete="off" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}"
+                           hx-get="{% url 'store:search-suggestions' %}"
+                           hx-trigger="keyup changed delay:300ms"
+                           hx-target="next .zent-search-suggest"
+                           hx-swap="innerHTML">
+                    <button type="submit" class="zh-iconbtn zh-iconbtn--flat" aria-label="{% trans 'Search' %}">
+                        <i class="fas fa-search" aria-hidden="true"></i>
+                    </button>
+                    <div class="zent-search-suggest" role="listbox" aria-label="{% trans 'Search suggestions' %}"></div>
+                </form>
+            </div>
+
+            <a href="{% url 'store:home' %}" class="zh-logo" aria-label="{{ store.name }} home">
+                <img src="{% static 'asset/images/logo-mark-80.png' %}" srcset="{% static 'asset/images/logo-mark-80.png' %} 2x" alt="" class="zh-logo__mark" width="40" height="40">
+                <span class="zh-logo__word">{{ store.name }}</span>
+            </a>
+
+            <div class="zh-header__right">
+                {% if request.user.is_staff %}
+                <a href="{% url 'store:dashboard-home' %}" class="zh-header__link">Control Room</a>
+                {% endif %}
+                {% if request.user.is_authenticated %}
+                <a href="{% url 'store:profile' %}" class="zh-header__link">
+                    {% trans "Account" %}
+                    {% if wishlist_count %}
+                    <span class="zh-header__badge zh-num" title="{{ wishlist_count }} saved item{{ wishlist_count|pluralize }}">{{ wishlist_count }}</span>
+                    {% endif %}
                 </a>
-                <a href="{% url 'store:cart' %}" class="spring-mobile-icon spring-mobile-icon--cart" aria-label="{% trans 'Open cart' %}">
-                    <i class="fas fa-shopping-bag"></i>
-                    <span class="spring-cart-count" id="cart-count-mobile">{{ cart_items_count }}</span>
+                {% else %}
+                <a href="{% url 'store:login' %}" class="zh-header__link">{% trans "Log in" %}</a>
+                {% endif %}
+                <a href="{% url 'store:cart' %}" class="zh-cart" aria-label="{% trans 'Open cart' %}">
+                    <i class="fas fa-shopping-bag" aria-hidden="true"></i>
+                    <span class="zh-cart__text">{% trans "Cart" %}</span>
+                    <span class="zh-cart__count zh-num" id="cart-count-desktop">{{ cart_items_count }}</span>
+                </a>
+            </div>
+        </div>
+
+        <nav class="zh-nav" aria-label="{% trans 'Primary' %}">
+            <div class="zh-wrap">
+                <ul>
+                    <li><a href="{% url 'store:home' %}" {% if url_name == 'home' %}aria-current="page"{% endif %}>{% trans "Home" %}</a></li>
+                    <li><a href="{% url 'store:all-products' %}?sort=newest">{% trans "New In" %}</a></li>
+                    <li><a href="{% url 'store:all-products' %}" {% if url_name == 'all-products' %}aria-current="page"{% endif %}>{% trans "Shop All" %}</a></li>
+                    <li><a href="{% url 'store:sale-products' %}" class="zh-nav__sale" {% if url_name == 'sale-products' %}aria-current="page"{% endif %}>{% trans "Sale" %}</a></li>
+                    <li><a href="{% url 'store:all-categories' %}" {% if url_name == 'all-categories' or url_name == 'category-products' %}aria-current="page"{% endif %}>{% trans "Collections" %}</a></li>
+                    <li><a href="{% url 'store:all-brands' %}" {% if url_name == 'all-brands' or url_name == 'brand-products' %}aria-current="page"{% endif %}>{% trans "Brands" %}</a></li>
+                    <li><a href="{% url 'store:faq' %}" {% if url_name == 'faq' %}aria-current="page"{% endif %}>{% trans "Help" %}</a></li>
+                    <li><a href="{% url 'store:contact' %}" {% if url_name == 'contact' %}aria-current="page"{% endif %}>{% trans "Contact" %}</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        {% block header_band %}
+        <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-header" %}</div>
+        {% endblock %}
+    </header>
+
+    <div id="zh-content">
+        {% block content %}{% endblock content %}
+    </div>
+
+    <footer class="zh-footer">
+        <div class="zh-band">{% include 'store/_tibeb_band.html' with band_id="tibeb-foot" %}</div>
+        <div class="zh-wrap">
+            <div class="zh-footer__channel">
+                <div>
+                    <h3>{% blocktrans with name=store.name %}{{ name }} on Telegram{% endblocktrans %}</h3>
+                    <p>{% trans "New drops, sale alerts, and order updates — where Addis actually is." %}</p>
+                </div>
+                <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener" class="zh-btn zh-btn--primary">
+                    <i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Join the channel" %}
                 </a>
             </div>
 
-            <nav class="spring-nav d-none d-lg-block" aria-label="{% trans 'Primary' %}">
-                <div class="spring-container">
-                    <ul class="spring-nav__list">
-                        <li><a href="{% url 'store:home' %}">{% trans "Home" %}</a></li>
-                        <li><a href="{% url 'store:all-products' %}?sort=newest">{% trans "New In" %}</a></li>
-                        <li><a href="{% url 'store:all-products' %}">{% trans "Shop All" %}</a></li>
-                        <li><a href="{% url 'store:sale-products' %}" class="spring-nav__sale">{% trans "Sale" %}</a></li>
+            <div class="zh-footer__grid">
+                <div class="zh-footer__brand">
+                    <a href="{% url 'store:home' %}" class="zh-logo">
+                        <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="zh-logo__mark" width="28" height="28">
+                        <span class="zh-logo__word">{{ store.name }}</span>
+                    </a>
+                    <p>{% trans "Clothes, shoes and accessories for Addis shoppers. Cash on delivery — inspect before you pay." %}</p>
+                    <address class="zh-footer__identity">
+                        {% if store.legal_name %}<strong>{{ store.legal_name }}</strong><br>{% endif %}
+                        {{ store.address }}<br>
+                        <a href="{{ store.phone_href }}" class="zh-num">{{ store.phone }}</a>
+                        {% if store.email %}<br><a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %}
+                        {% if store.trade_license %}<br>{% trans "Trade licence" %} {{ store.trade_license }}{% endif %}
+                        {% if store.tin %}<br>TIN {{ store.tin }}{% endif %}
+                    </address>
+                </div>
+
+                <div>
+                    <h4 class="zh-footer__title">{% trans "Shop" %}</h4>
+                    <ul class="zh-footer__links">
+                        <li><a href="{% url 'store:all-products' %}?sort=newest">{% trans "New in" %}</a></li>
+                        <li><a href="{% url 'store:all-products' %}">{% trans "All products" %}</a></li>
+                        <li><a href="{% url 'store:sale-products' %}">{% trans "Sale" %}</a></li>
                         <li><a href="{% url 'store:all-categories' %}">{% trans "Collections" %}</a></li>
                         <li><a href="{% url 'store:all-brands' %}">{% trans "Brands" %}</a></li>
-                        <li><a href="{% url 'store:faq' %}">{% trans "Help" %}</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="zh-footer__title">{% trans "Customer care" %}</h4>
+                    <ul class="zh-footer__links">
+                        <li><a href="{% url 'store:delivery-returns' %}">{% trans "Delivery &amp; returns" %}</a></li>
+                        <li><a href="{% url 'store:faq' %}">{% trans "FAQ &amp; size help" %}</a></li>
+                        <li><a href="{% url 'store:orders' %}">{% trans "Track your orders" %}</a></li>
+                        <li><a href="{% url 'store:about' %}">{% trans "About" %}</a></li>
                         <li><a href="{% url 'store:contact' %}">{% trans "Contact" %}</a></li>
                     </ul>
                 </div>
-            </nav>
-        </header>
 
-        {% block content %}{% endblock content %}
-
-        <footer class="spring-footer">
-            <div class="spring-container">
-                <div class="spring-footer__telegram">
-                    <div>
-                        <h3>{% blocktrans with name=store.name %}{{ name }} on Telegram{% endblocktrans %}</h3>
-                        <p>{% trans "New drops, sale alerts, and order updates — where Addis actually is." %}</p>
-                    </div>
-                    <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener" class="btn btn-light">
-                        <i class="fab fa-telegram-plane"></i> {% trans "Join the channel" %}
-                    </a>
-                </div>
-
-                <div class="spring-footer__grid">
-                    <div class="spring-footer__brand">
-                        <a href="{% url 'store:home' %}" class="spring-logo spring-logo--footer">
-                            <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="spring-logo__mark" width="26" height="26">
-                            <span>{{ store.name }}</span>
-                        </a>
-                        <p>{% trans "Clothes, shoes and accessories for Addis shoppers. Cash on delivery — inspect before you pay." %}</p>
-                        <address class="spring-footer__identity">
-                            {% if store.legal_name %}<strong>{{ store.legal_name }}</strong><br>{% endif %}
-                            {{ store.address }}<br>
-                            <a href="{{ store.phone_href }}">{{ store.phone }}</a>
-                            {% if store.email %}<br><a href="mailto:{{ store.email }}">{{ store.email }}</a>{% endif %}
-                            {% if store.trade_license %}<br>{% trans "Trade licence" %} {{ store.trade_license }}{% endif %}
-                            {% if store.tin %}<br>TIN {{ store.tin }}{% endif %}
-                        </address>
-                    </div>
-
-                    <div>
-                        <h3>{% trans "Shop" %}</h3>
-                        <ul>
-                            <li><a href="{% url 'store:all-products' %}?sort=newest">{% trans "New in" %}</a></li>
-                            <li><a href="{% url 'store:all-products' %}">{% trans "All products" %}</a></li>
-                            <li><a href="{% url 'store:sale-products' %}">{% trans "Sale" %}</a></li>
-                            <li><a href="{% url 'store:all-categories' %}">{% trans "Collections" %}</a></li>
-                            <li><a href="{% url 'store:all-brands' %}">{% trans "Brands" %}</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3>{% trans "Customer care" %}</h3>
-                        <ul>
-                            <li><a href="{% url 'store:delivery-returns' %}">{% trans "Delivery &amp; returns" %}</a></li>
-                            <li><a href="{% url 'store:faq' %}">{% trans "FAQ &amp; size help" %}</a></li>
-                            <li><a href="{% url 'store:orders' %}">{% trans "Track your orders" %}</a></li>
-                            <li><a href="{% url 'store:about' %}">{% trans "About" %}</a></li>
-                            <li><a href="{% url 'store:contact' %}">{% trans "Contact" %}</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3>{% trans "Account" %}</h3>
-                        <ul>
-                            {% if request.user.is_authenticated %}
-                            <li><a href="{% url 'store:profile' %}">{% trans "My account" %}</a></li>
-                            <li><a href="{% url 'store:add-address' %}">{% trans "Delivery address" %}</a></li>
-                            <li><a href="{{ affiliate_program_url }}">{% trans "Refer &amp; earn 5%" %}</a></li>
-                            <li><a href="{% url 'store:logout' %}">{% trans "Log out" %}</a></li>
-                            {% else %}
-                            <li><a href="{% url 'store:login' %}">{% trans "Log in" %}</a></li>
-                            <li><a href="{% url 'store:register' %}">{% trans "Create account" %}</a></li>
-                            <li><a href="{{ affiliate_program_url }}">{% trans "Refer &amp; earn 5%" %}</a></li>
-                            {% endif %}
-                        </ul>
-                        <form action="{% url 'store:set-language' %}" method="post" class="spring-footer__language">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <label for="footer-language">{% trans "Language" %}</label>
-                            <select id="footer-language" name="language" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
-                                {% get_current_language as CURRENT_LANGUAGE %}
-                                {% get_available_languages as AVAILABLE_LANGUAGES %}
-                                {% for code, name in AVAILABLE_LANGUAGES %}
-                                <option value="{{ code }}" {% if code == CURRENT_LANGUAGE %}selected{% endif %}>{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="spring-footer__bottom">
-                    <p>&copy; 2026 {{ store.legal_name|default:store.name }}. {% trans "All rights reserved." %}
-                        · <a href="{% url 'store:privacy' %}">{% trans "Privacy" %}</a>
-                        · <a href="{% url 'store:terms' %}">{% trans "Terms" %}</a></p>
-                    <div class="spring-footer__social">
-                        <a href="{{ store.instagram_url }}" target="_blank" rel="noopener">Instagram</a>
-                        <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">Telegram</a>
-                    </div>
+                <div>
+                    <h4 class="zh-footer__title">{% trans "Account" %}</h4>
+                    <ul class="zh-footer__links">
+                        {% if request.user.is_authenticated %}
+                        <li><a href="{% url 'store:profile' %}">{% trans "My account" %}</a></li>
+                        <li><a href="{% url 'store:add-address' %}">{% trans "Delivery address" %}</a></li>
+                        <li><a href="{{ affiliate_program_url }}">{% trans "Refer &amp; earn 5%" %}</a></li>
+                        <li><a href="{% url 'store:logout' %}">{% trans "Log out" %}</a></li>
+                        {% else %}
+                        <li><a href="{% url 'store:login' %}">{% trans "Log in" %}</a></li>
+                        <li><a href="{% url 'store:register' %}">{% trans "Create account" %}</a></li>
+                        <li><a href="{{ affiliate_program_url }}">{% trans "Refer &amp; earn 5%" %}</a></li>
+                        {% endif %}
+                    </ul>
+                    <form action="{% url 'store:set-language' %}" method="post" class="zh-footer__language">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <label for="footer-language" class="zh-label">{% trans "Language" %}</label>
+                        <select id="footer-language" name="language" class="zh-select zh-select--sm" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+                            {% get_current_language as CURRENT_LANGUAGE %}
+                            {% get_available_languages as AVAILABLE_LANGUAGES %}
+                            {% for code, name in AVAILABLE_LANGUAGES %}
+                            <option value="{{ code }}" {% if code == CURRENT_LANGUAGE %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
                 </div>
             </div>
-        </footer>
-    </div>
+
+            <div class="zh-footer__bottom">
+                <p>&copy; 2026 {{ store.legal_name|default:store.name }}. {% trans "All rights reserved." %}
+                    · <a href="{% url 'store:privacy' %}">{% trans "Privacy" %}</a>
+                    · <a href="{% url 'store:terms' %}">{% trans "Terms" %}</a></p>
+                <div class="zh-footer__social">
+                    <a href="{{ store.instagram_url }}" target="_blank" rel="noopener">Instagram</a>
+                    <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">Telegram</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <div class="mobile-menu-wrapper" id="mobile-menu" aria-hidden="true">
         <div class="mobile-menu-overlay"></div>
-        <button type="button" class="mobile-menu-close" aria-label="{% trans 'Close menu' %}"><i class="fas fa-times"></i></button>
+        <button type="button" class="mobile-menu-close" aria-label="{% trans 'Close menu' %}"><i class="fas fa-times" aria-hidden="true"></i></button>
 
-        <div class="mobile-menu-container scrollable spring-mobile-drawer">
-            <form action="{% url 'store:search' %}" method="GET" class="spring-mobile-search zent-search" role="search">
-                <input type="text" class="form-control" name="q" autocomplete="off" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}" required
+        <div class="mobile-menu-container zh-drawer">
+            <a href="{% url 'store:home' %}" class="zh-logo" aria-label="{{ store.name }} home">
+                <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="zh-logo__mark" width="32" height="32">
+                <span class="zh-logo__word">{{ store.name }}</span>
+            </a>
+            <form action="{% url 'store:search' %}" method="GET" class="zh-search zent-search" role="search">
+                <input type="text" name="q" autocomplete="off" placeholder="{% trans 'Search products' %}" aria-label="{% trans 'Search products' %}" required
                        hx-get="{% url 'store:search-suggestions' %}"
                        hx-trigger="keyup changed delay:300ms"
                        hx-target="next .zent-search-suggest"
                        hx-swap="innerHTML">
-                <button class="btn btn-dark" type="submit">{% trans "Search" %}</button>
+                <button class="zh-iconbtn" type="submit" aria-label="{% trans 'Search' %}"><i class="fas fa-search" aria-hidden="true"></i></button>
                 <div class="zent-search-suggest" role="listbox" aria-label="{% trans 'Search suggestions' %}"></div>
             </form>
 
-            <ul class="spring-mobile-menu">
-                <li><a href="{% url 'store:home' %}">{% trans "Home" %}</a></li>
+            <ul class="zh-drawer__menu">
+                <li><a href="{% url 'store:home' %}" {% if url_name == 'home' %}aria-current="page"{% endif %}>{% trans "Home" %}</a></li>
                 <li><a href="{% url 'store:all-products' %}?sort=newest">{% trans "New In" %}</a></li>
-                <li><a href="{% url 'store:all-products' %}">{% trans "Shop All" %}</a></li>
-                <li><a href="{% url 'store:sale-products' %}" class="spring-nav__sale">{% trans "Sale" %}</a></li>
+                <li><a href="{% url 'store:all-products' %}" {% if url_name == 'all-products' %}aria-current="page"{% endif %}>{% trans "Shop All" %}</a></li>
+                <li><a href="{% url 'store:sale-products' %}" {% if url_name == 'sale-products' %}aria-current="page"{% endif %}>{% trans "Sale" %}</a></li>
                 <li><a href="{% url 'store:all-products' %}?max_price=1000">{% trans "Under 1,000 ETB" %}</a></li>
-                <li><a href="{% url 'store:all-categories' %}">{% trans "Collections" %}</a></li>
-                <li><a href="{% url 'store:all-brands' %}">{% trans "Brands" %}</a></li>
+                <li><a href="{% url 'store:all-categories' %}" {% if url_name == 'all-categories' %}aria-current="page"{% endif %}>{% trans "Collections" %}</a></li>
+                <li><a href="{% url 'store:all-brands' %}" {% if url_name == 'all-brands' %}aria-current="page"{% endif %}>{% trans "Brands" %}</a></li>
+            </ul>
+
+            <ul class="zh-drawer__account">
                 <li><a href="{% url 'store:faq' %}">{% trans "Help &amp; FAQ" %}</a></li>
                 <li><a href="{% url 'store:delivery-returns' %}">{% trans "Delivery &amp; returns" %}</a></li>
                 <li><a href="{% url 'store:contact' %}">{% trans "Contact" %}</a></li>
@@ -270,31 +270,30 @@
         </div>
     </div>
 
-    {% with url_name=request.resolver_match.url_name %}
-    <nav class="spring-bottom-nav d-lg-none" aria-label="{% trans 'Primary mobile navigation' %}">
-        <a href="{% url 'store:home' %}" class="spring-bottom-nav__item {% if url_name == 'home' %}is-active{% endif %}">
-            <i class="fas fa-home"></i><span>{% trans "Home" %}</span>
+    <nav class="zh-tabbar" aria-label="{% trans 'Primary mobile navigation' %}">
+        <a href="{% url 'store:home' %}" class="zh-tabbar__item {% if url_name == 'home' %}is-active{% endif %}">
+            <i class="fas fa-home" aria-hidden="true"></i><span>{% trans "Home" %}</span>
         </a>
-        <a href="{% url 'store:all-products' %}" class="spring-bottom-nav__item {% if url_name == 'all-products' %}is-active{% endif %}">
-            <i class="fas fa-th-large"></i><span>{% trans "Shop" %}</span>
+        <a href="{% url 'store:all-products' %}" class="zh-tabbar__item {% if url_name == 'all-products' %}is-active{% endif %}">
+            <i class="fas fa-th-large" aria-hidden="true"></i><span>{% trans "Shop" %}</span>
         </a>
-        <a href="{% url 'store:sale-products' %}" class="spring-bottom-nav__item spring-bottom-nav__item--sale {% if url_name == 'sale-products' %}is-active{% endif %}">
-            <i class="fas fa-tags"></i><span>{% trans "Sale" %}</span>
+        <a href="{% url 'store:sale-products' %}" class="zh-tabbar__item {% if url_name == 'sale-products' %}is-active{% endif %}">
+            <i class="fas fa-tags" aria-hidden="true"></i><span>{% trans "Sale" %}</span>
         </a>
-        <a href="{% url 'store:cart' %}" class="spring-bottom-nav__item {% if url_name == 'cart' %}is-active{% endif %}">
-            <span class="spring-bottom-nav__icon-wrap">
-                <i class="fas fa-shopping-bag"></i>
-                <span class="spring-bottom-nav__badge {% if not cart_items_count %}is-zero{% endif %}" id="cart-count-bottomnav">{{ cart_items_count }}</span>
+        <a href="{% url 'store:cart' %}" class="zh-tabbar__item {% if url_name == 'cart' %}is-active{% endif %}">
+            <span class="zh-tabbar__icon-wrap">
+                <i class="fas fa-shopping-bag" aria-hidden="true"></i>
+                <span class="zh-tabbar__badge zh-num {% if not cart_items_count %}is-zero{% endif %}" id="cart-count-bottomnav">{{ cart_items_count }}</span>
             </span>
             <span>{% trans "Cart" %}</span>
         </a>
         {% if request.user.is_authenticated %}
-        <a href="{% url 'store:profile' %}" class="spring-bottom-nav__item {% if url_name == 'profile' or url_name == 'orders' %}is-active{% endif %}">
-            <i class="fas fa-user"></i><span>{% trans "Me" %}</span>
+        <a href="{% url 'store:profile' %}" class="zh-tabbar__item {% if url_name == 'profile' or url_name == 'orders' %}is-active{% endif %}">
+            <i class="fas fa-user" aria-hidden="true"></i><span>{% trans "Me" %}</span>
         </a>
         {% else %}
-        <a href="{% url 'store:login' %}" class="spring-bottom-nav__item {% if url_name == 'login' %}is-active{% endif %}">
-            <i class="fas fa-user"></i><span>{% trans "Me" %}</span>
+        <a href="{% url 'store:login' %}" class="zh-tabbar__item {% if url_name == 'login' %}is-active{% endif %}">
+            <i class="fas fa-user" aria-hidden="true"></i><span>{% trans "Me" %}</span>
         </a>
         {% endif %}
     </nav>

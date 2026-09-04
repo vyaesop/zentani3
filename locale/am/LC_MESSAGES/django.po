@@ -724,3 +724,19 @@ msgstr "እቃ እንደደረሰ ፎቶዎች፣ ዋጋ እና መጠኖች፣ 
 #, python-format
 msgid "Add %(title)s to cart by size"
 msgstr "%(title)s ን በመጠን ወደ ጋሪ ጨምር"
+
+# ── Shell ─────────────────────────────────────────────────────────────
+msgid "Skip to content"
+msgstr "ወደ ይዘቱ ይሂዱ"
+
+msgid "Filters"
+msgstr "ማጣሪያዎች"
+
+#, python-format
+msgid "%(counter)s item"
+msgid_plural "%(counter)s items"
+msgstr[0] "%(counter)s እቃ"
+msgstr[1] "%(counter)s እቃዎች"
+
+msgid "That phone number and password don't match. Check the number, or reset your password."
+msgstr "ያ ስልክ ቁጥር እና የይለፍ ቃል አይዛመዱም። ቁጥሩን ያረጋግጡ ወይም የይለፍ ቃልዎን ዳግም ያስጀምሩ።"

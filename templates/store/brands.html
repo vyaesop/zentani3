@@ -5,18 +5,18 @@
 {% block meta_description %}{% blocktrans with name=store.name %}Shop by brand at {{ name }} — every label currently in stock, delivered in Addis Ababa with cash on delivery.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-directory">
-      {% include 'store/_collection_header.html' with kicker=_('Brands') title=_('All Brands') description=_('Shop by brand.') count=directory_count %}
+<main class="zh-main">
+  <div class="zh-wrap">
+      {% include 'store/_collection_header.html' with title=_('All Brands') description=_('Shop by brand.') count=directory_count %}
 
-      <div class="spring-collection-grid">
+      <ul class="zh-directory">
           {% for brand in brands %}
           {% url 'store:brand-products' brand.slug as brand_href %}
-          {% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title %}
+          <li>{% include 'store/_directory_card.html' with href=brand_href image_file=brand.brand_image title=brand.title %}</li>
           {% empty %}
-          <p class="text-muted mb-0">{% trans "Brands appear here as soon as their first pieces go live." %}</p>
+          <li class="zh-directory__note">{% trans "Brands appear here as soon as their first pieces go live." %}</li>
           {% endfor %}
-      </div>
+      </ul>
 
       {% include 'store/_collection_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_query=page_query aria_label='Brand directory pages' %}
   </div>

@@ -4,45 +4,48 @@
 {% block title %}{{ store.name }} | {% trans "Create account" %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-auth">
-      <section class="spring-auth__panel">
-          <p class="spring-directory-header__eyebrow">{% trans "Account" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Create an account" %}</h1>
-          <p class="spring-auth__copy">{% trans "Optional — you can order as a guest. An account keeps your addresses, orders and saved items in one place." %}</p>
+          <p class="zh-lede">{% trans "Optional — you can order as a guest. An account keeps your addresses, orders and saved items in one place." %}</p>
+      </div>
 
+      <div class="zh-auth">
           {% include 'partials/_messages.html' %}
           {% if rate_limited_minutes %}
           <p class="zent-alert zent-alert--warning">{% blocktrans with minutes=rate_limited_minutes %}Too many attempts from this connection. Please wait about {{ minutes }} minutes and try again.{% endblocktrans %}</p>
           {% endif %}
 
-          <form method="post" action="" class="spring-auth__form">
+          <form method="post" action="" class="zh-form zh-form--narrow">
               {% csrf_token %}
               {% if next_url %}
               <input type="hidden" name="next" value="{{ next_url }}">
               {% endif %}
 
-              {% for fm in form %}
-              <div class="spring-auth__field">
-                  {{ fm.label_tag }}
-                  {{ fm }}
-                  {% if fm.help_text %}<small>{{ fm.help_text|safe }}</small>{% endif %}
-                  <small class="text-danger">{{ fm.errors|striptags }}</small>
-              </div>
-              {% endfor %}
-
               {% for error in form.non_field_errors %}
               <p class="zent-alert zent-alert--danger">{{ error }}</p>
               {% endfor %}
 
-              <button class="btn btn-dark w-100" type="submit" {% if rate_limited_minutes %}disabled{% endif %}>{% trans "Create account" %}</button>
-              <p class="spring-cart-summary__terms">{% url 'store:terms' as terms_url %}{% url 'store:privacy' as privacy_url %}{% blocktrans %}By creating an account you agree to our <a href="{{ terms_url }}">terms</a> and <a href="{{ privacy_url }}">privacy policy</a>.{% endblocktrans %}</p>
+              {% for fm in form %}
+              <div class="zh-field{% if fm.errors %} is-error{% endif %}">
+                  {{ fm.label_tag }}
+                  {{ fm }}
+                  {% if fm.help_text %}<div class="zh-help">{{ fm.help_text|safe }}</div>{% endif %}
+                  {% if fm.errors %}<p class="zh-error">{{ fm.errors|striptags }}</p>{% endif %}
+              </div>
+              {% endfor %}
+
+              <div class="zh-form__actions">
+                  <button class="zh-btn zh-btn--primary zh-btn--block" type="submit" {% if rate_limited_minutes %}disabled{% endif %}>{% trans "Create account" %}</button>
+              </div>
+              <p class="zh-auth__terms">{% url 'store:terms' as terms_url %}{% url 'store:privacy' as privacy_url %}{% blocktrans %}By creating an account you agree to our <a href="{{ terms_url }}">terms</a> and <a href="{{ privacy_url }}">privacy policy</a>.{% endblocktrans %}</p>
           </form>
 
-          <div class="spring-auth__footer">
-              <a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}">{% trans "Already have an account? Log in" %}</a>
-          </div>
-      </section>
+          <ul class="zh-auth__links zh-meta">
+              <li><a href="{% url 'store:login' %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" class="zh-link">{% trans "Already have an account? Log in" %}</a></li>
+          </ul>
+      </div>
   </div>
 </main>
 {% endblock content %}

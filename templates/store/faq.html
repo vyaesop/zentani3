@@ -5,37 +5,50 @@
 {% block meta_description %}{% blocktrans with name=store.name %}Answers about ordering from {{ name }}: delivery times, cash on delivery, sizing, exchanges, Telegram ordering and tracking.{% endblocktrans %}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-policy-page spring-legal-page">
-      <section class="spring-page-header">
-          <p class="spring-directory-header__eyebrow">{% trans "Help" %}</p>
+<main class="zh-main">
+  <div class="zh-wrap">
+      <div class="zh-page__head">
           <h1>{% trans "Questions, answered" %}</h1>
-          <p>{% trans "Everything about ordering, paying, sizing and delivery. Still stuck?" %} <a href="{{ store.phone_href }}">{% trans "Call" %} {{ store.phone }}</a>.</p>
+          <p class="zh-lede">{% trans "Everything about ordering, paying, sizing and delivery. Still stuck?" %} <a href="{{ store.phone_href }}" class="zh-num">{% trans "Call" %} {{ store.phone }}</a>.</p>
+      </div>
+
+      <section class="zh-faq-group" aria-labelledby="zh-faq-ordering">
+          <h2 class="zh-h2" id="zh-faq-ordering">{% trans "Ordering & payment" %}</h2>
+          <div class="zh-faq">
+              <details open><summary>{% trans "Do I need an account to order?" %}</summary><p>{% trans "No. Add items to your cart, enter your name, phone, city and address, and place the order. You get an order number and a tracking link straight away." %}</p></details>
+              <details><summary>{% trans "How do I pay?" %}</summary><p>{% trans "Cash on delivery: the driver hands you the item, you check it, then you pay." %}{% if online_payments_enabled %} {% trans "You can also pay online with Telebirr, CBE Birr or a card at checkout; prepaid orders go out first." %}{% endif %}</p></details>
+              <details><summary>{% trans "What happens after I order?" %}</summary><p>{% trans "We call the number you gave to confirm the items and the delivery spot, then pack and dispatch. You are messaged when the driver is on the way." %}</p></details>
+              <details><summary>{% trans "Can I order on Telegram instead?" %}</summary><p>{% trans "Yes. Every product post in our channel has a Choose Size button that starts an order in chat, and every product page has an Order on Telegram button." %} <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">{% trans "Join the channel" %}</a>.</p></details>
+          </div>
       </section>
 
-      <div class="spring-faq">
-          <h2>{% trans "Ordering & payment" %}</h2>
-          <details open><summary>{% trans "Do I need an account to order?" %}</summary><p>{% trans "No. Add items to your cart, enter your name, phone, city and address, and place the order. You get an order number and a tracking link straight away." %}</p></details>
-          <details><summary>{% trans "How do I pay?" %}</summary><p>{% trans "Cash on delivery: the driver hands you the item, you check it, then you pay." %}{% if online_payments_enabled %} {% trans "You can also pay online with Telebirr, CBE Birr or a card at checkout; prepaid orders go out first." %}{% endif %}</p></details>
-          <details><summary>{% trans "What happens after I order?" %}</summary><p>{% trans "We call the number you gave to confirm the items and the delivery spot, then pack and dispatch. You are messaged when the driver is on the way." %}</p></details>
-          <details><summary>{% trans "Can I order on Telegram instead?" %}</summary><p>{% trans "Yes. Every product post in our channel has a Choose Size button that starts an order in chat, and every product page has an Order on Telegram button." %} <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener">{% trans "Join the channel" %}</a>.</p></details>
+      <section class="zh-faq-group" aria-labelledby="zh-faq-delivery">
+          <h2 class="zh-h2" id="zh-faq-delivery">{% trans "Delivery" %}</h2>
+          <div class="zh-faq">
+              <details><summary>{% trans "How much is delivery?" %}</summary><p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB flat.{% endblocktrans %}</p></details>
+              <details><summary>{% trans "How long does it take?" %}</summary><p>{{ delivery_note }}</p></details>
+              <details><summary>{% trans "What if I'm not home?" %}</summary><p>{% trans "The driver calls before arriving. If you cannot be reached we will rearrange; give us a landmark and a second phone number if you can." %}</p></details>
+              <details><summary>{% trans "Do you deliver outside Addis Ababa?" %}</summary><p class="zh-num">{% blocktrans with outside=outside_fee %}Yes, via courier for a flat {{ outside }} ETB. Timing depends on the destination; we confirm it on the call.{% endblocktrans %}</p></details>
+          </div>
+      </section>
 
-          <h2>{% trans "Delivery" %}</h2>
-          <details><summary>{% trans "How much is delivery?" %}</summary><p>{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB flat.{% endblocktrans %}</p></details>
-          <details><summary>{% trans "How long does it take?" %}</summary><p>{{ delivery_note }}</p></details>
-          <details><summary>{% trans "What if I'm not home?" %}</summary><p>{% trans "The driver calls before arriving. If you cannot be reached we will rearrange; give us a landmark and a second phone number if you can." %}</p></details>
-          <details><summary>{% trans "Do you deliver outside Addis Ababa?" %}</summary><p>{% blocktrans with outside=outside_fee %}Yes, via courier for a flat {{ outside }} ETB. Timing depends on the destination; we confirm it on the call.{% endblocktrans %}</p></details>
+      <section class="zh-faq-group" aria-labelledby="zh-faq-sizing">
+          <h2 class="zh-h2" id="zh-faq-sizing">{% trans "Sizing & returns" %}</h2>
+          <div class="zh-faq">
+              <details><summary>{% trans "How do I pick the right size?" %}</summary><p>{% trans "Product pages show measurements or a size guide for the collection, plus fit feedback from other buyers. Between sizes? Order both — you only pay for the one you keep when the driver arrives." %}</p></details>
+              <details><summary>{% trans "Can I return or exchange?" %}</summary><p>{{ return_note }} {% trans "After the driver leaves, sales are final except for hidden defects reported within 24 hours." %}</p></details>
+              <details><summary>{% trans "Are branded items genuine?" %}</summary><p>{% trans "Each listing states what the item is. Where a product is not an original branded product the description says so — if you are unsure, ask us before ordering." %}</p></details>
+          </div>
+      </section>
 
-          <h2>{% trans "Sizing & returns" %}</h2>
-          <details><summary>{% trans "How do I pick the right size?" %}</summary><p>{% trans "Product pages show measurements or a size guide for the collection, plus fit feedback from other buyers. Between sizes? Order both — you only pay for the one you keep when the driver arrives." %}</p></details>
-          <details><summary>{% trans "Can I return or exchange?" %}</summary><p>{{ return_note }} {% trans "After the driver leaves, sales are final except for hidden defects reported within 24 hours." %}</p></details>
-          <details><summary>{% trans "Are branded items genuine?" %}</summary><p>{% trans "Each listing states what the item is. Where a product is not an original branded product the description says so — if you are unsure, ask us before ordering." %}</p></details>
-
-          <h2>{% trans "Tracking & account" %}</h2>
-          <details><summary>{% trans "How do I track my order?" %}</summary><p>{% trans "Use the link on your confirmation page or in the SMS we sent. Account holders also see every order under My account." %}</p></details>
-          <details><summary>{% trans "How do I cancel?" %}</summary><p>{% trans "While the order is Pending or Accepted, cancel from your orders page or call us. Later, just decline at the door." %}</p></details>
-          <details><summary>{% trans "I forgot my password." %}</summary><p><a href="{% url 'store:password-reset' %}">{% trans "Reset it here" %}</a> {% trans "— we email you a link. Your login is your phone number." %}</p></details>
-      </div>
+      <section class="zh-faq-group" aria-labelledby="zh-faq-tracking">
+          <h2 class="zh-h2" id="zh-faq-tracking">{% trans "Tracking & account" %}</h2>
+          <div class="zh-faq">
+              <details><summary>{% trans "How do I track my order?" %}</summary><p>{% trans "Use the link on your confirmation page or in the SMS we sent. Account holders also see every order under My account." %}</p></details>
+              <details><summary>{% trans "How do I cancel?" %}</summary><p>{% trans "While the order is Pending or Accepted, cancel from your orders page or call us. Later, just decline at the door." %}</p></details>
+              <details><summary>{% trans "I forgot my password." %}</summary><p><a href="{% url 'store:password-reset' %}">{% trans "Reset it here" %}</a> {% trans "— we email you a link. Your login is your phone number." %}</p></details>
+          </div>
+      </section>
   </div>
 </main>
 {% endblock content %}

@@ -6,75 +6,101 @@
 {% block title %}{{ store.name }} | {% trans "Order" %} {{ group.number }}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-confirmation-page">
+<main class="zh-main zh-confirm">
+  <div class="zh-wrap">
       {% include 'partials/_messages.html' %}
 
-      <section class="spring-page-header spring-confirmation-head">
-          <p class="spring-directory-header__eyebrow">{% trans "Order received" %}</p>
-          <h1>{% trans "Thank you" %}{% if group.customer_name and group.customer_name != "Guest" %}, {{ group.customer_name }}{% endif %}.</h1>
-          <p class="spring-confirmation-number">{% trans "Your order number is" %} <strong>{{ group.number }}</strong>. {% trans "Save this page or the link we sent you — it is your receipt and tracker." %}</p>
+      <header class="zh-page__head zh-confirm__head">
+          <h1>{% trans "Order" %} <span class="zh-num">{{ group.number }}</span></h1>
+          <p class="zh-lede zh-confirm__lede">{% trans "Thank you" %}{% if group.customer_name and group.customer_name != "Guest" %}, {{ group.customer_name }}{% endif %}. {% trans "Save this page or the link we sent you — it is your receipt and tracker." %}</p>
+      </header>
+
+      <section class="zh-section" aria-labelledby="confirm-next-title">
+          <div class="zh-band zh-band--green">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-confirm-next" %}</div>
+          <div class="zh-section__head">
+              <h2 id="confirm-next-title">{% trans "What happens next" %}</h2>
+          </div>
+          <ol class="zh-steps">
+              <li class="zh-step {% if group_status == 'Pending' %}is-current{% elif group_status != 'Cancelled' %}is-done{% endif %}">
+                  <span class="zh-step__n zh-num" aria-hidden="true">1</span>
+                  <div>
+                      <h3>{% trans "We call to confirm." %}</h3>
+                      <p>{% blocktrans with phone=group.customer_phone %}Expect a call on {{ phone }} shortly to confirm the items and the delivery spot.{% endblocktrans %}</p>
+                  </div>
+              </li>
+              <li class="zh-step {% if group_status == 'Accepted' or group_status == 'Packed' or group_status == 'On The Way' %}is-current{% elif group_status == 'Delivered' %}is-done{% endif %}">
+                  <span class="zh-step__n zh-num" aria-hidden="true">2</span>
+                  <div>
+                      <h3>{% trans "We pack and dispatch." %}</h3>
+                      <p>{% trans "Delivery in Addis Ababa usually lands within 1-3 days after confirmation." %}</p>
+                  </div>
+              </li>
+              <li class="zh-step {% if group_status == 'Delivered' %}is-current{% endif %}">
+                  <span class="zh-step__n zh-num" aria-hidden="true">3</span>
+                  <div>
+                      <h3>{% if group.is_paid_online %}{% trans "You inspect at the door." %}{% else %}{% trans "You inspect, then pay the driver." %}{% endif %}</h3>
+                      <p>{% trans "Try it on or check it while the driver waits. If it isn't right, hand it back on the spot." %}</p>
+                  </div>
+              </li>
+          </ol>
       </section>
 
-      <div class="spring-confirmation-layout">
-          <section class="spring-confirmation-main">
-              <div class="spring-confirmation-card">
-                  <h2>{% trans "What happens next" %}</h2>
-                  <ol class="spring-next-steps">
-                      <li><strong>{% trans "We call to confirm." %}</strong> {% blocktrans with phone=group.customer_phone %}Expect a call on {{ phone }} shortly to confirm the items and the delivery spot.{% endblocktrans %}</li>
-                      <li><strong>{% trans "We pack and dispatch." %}</strong> {% trans "Delivery in Addis Ababa usually lands within 1-3 days after confirmation." %}</li>
-                      <li><strong>{% if group.is_paid_online %}{% trans "You inspect at the door." %}{% else %}{% trans "You inspect, then pay the driver." %}{% endif %}</strong> {% trans "Try it on or check it while the driver waits. If it isn't right, hand it back on the spot." %}</li>
-                  </ol>
+      <div class="zh-confirm__split">
+          <section class="zh-section" aria-labelledby="confirm-items-title">
+              <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-confirm-items" %}</div>
+              <div class="zh-section__head">
+                  <h2 id="confirm-items-title">{% trans "Items" %}</h2>
               </div>
-
-              <div class="spring-confirmation-card">
-                  <h2>{% trans "Items" %}</h2>
-                  <div class="spring-confirmation-lines">
-                      {% for line in lines %}
-                      <article class="spring-confirmation-line">
+              <ul class="zh-list zh-lines">
+                  {% for line in lines %}
+                  <li class="zh-line zh-line--compact">
+                      <a href="{% url 'store:product-detail' line.product.slug %}" class="zh-line__media" tabindex="-1" aria-hidden="true">
                           {% if line.product.product_image %}
-                          {% cld_img line.product.product_image width=120 alt=line.product.title %}
+                          {% cld_img line.product.product_image width=144 alt="" %}
                           {% else %}
-                          <img src="{% static 'asset/images/default-product.webp' %}" alt="{{ line.product.title }}" width="60" height="60">
+                          <img src="{% static 'asset/images/default-product.webp' %}" alt="" width="72" height="90">
                           {% endif %}
-                          <div class="spring-confirmation-line__info">
-                              <h3><a href="{% url 'store:product-detail' line.product.slug %}">{{ line.product.title }}</a></h3>
-                              <p>{% trans "Qty" %} {{ line.quantity }}{% if line.size %} · {% trans "Size" %} {{ line.size }}{% endif %} · <span class="spring-order-status-pill spring-order-status-pill--{{ line.status|slugify }}">{{ line.status }}</span></p>
-                          </div>
-                          <strong>{{ line.line_total|etb }}</strong>
-                      </article>
-                      {% endfor %}
-                  </div>
-              </div>
+                      </a>
+                      <div class="zh-line__body">
+                          <h3 class="zh-line__title"><a href="{% url 'store:product-detail' line.product.slug %}">{{ line.product.title }}</a></h3>
+                          <p class="zh-line__meta zh-num">{% trans "Qty" %} {{ line.quantity }}{% if line.size %} · {% trans "Size" %} {{ line.size }}{% endif %} · <span class="zh-tag{% if line.status == 'Cancelled' %} zh-tag--inverse{% endif %}">{{ line.status }}</span></p>
+                      </div>
+                      <div class="zh-line__aside">
+                          <strong class="zh-line__total zh-num">{{ line.line_total|etb }}</strong>
+                      </div>
+                  </li>
+                  {% endfor %}
+              </ul>
           </section>
 
-          <aside class="spring-confirmation-aside">
-              <div class="spring-confirmation-card">
-                  <h2>{% trans "Summary" %}</h2>
-                  <div class="spring-cart-summary__rows">
-                      <div><span>{% trans "Subtotal" %}</span><strong>{{ group.subtotal|etb }}</strong></div>
-                      <div><span>{% trans "Delivery" %}</span><strong>{% if group.delivery_fee == 0 %}{% trans "Free" %}{% else %}{{ group.delivery_fee|etb }}{% endif %}</strong></div>
-                      {% if group.coupon_code %}
-                      <div><span>{% trans "Coupon" %}</span><strong>{{ group.coupon_code }}</strong></div>
-                      {% endif %}
-                      <div class="spring-cart-summary__total"><span>{% trans "Total" %}</span><strong>{{ group.total|etb }}</strong></div>
-                      <div><span>{% trans "Payment" %}</span><strong>{% if group.is_paid_online %}{% trans "Paid online" %}{% elif group.payment_status == "pending" %}{% trans "Awaiting online payment" %}{% else %}{% trans "Cash on delivery" %}{% endif %}</strong></div>
-                  </div>
+          <aside class="zh-section zh-confirm__aside" aria-labelledby="confirm-summary-title">
+              <div class="zh-band zh-band--indigo">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-confirm-summary" %}</div>
+              <div class="zh-section__head">
+                  <h2 id="confirm-summary-title">{% trans "Summary" %}</h2>
               </div>
+              <dl class="zh-rows">
+                  <div class="zh-row"><dt>{% trans "Subtotal" %}</dt><dd>{{ group.subtotal|etb }}</dd></div>
+                  <div class="zh-row"><dt>{% trans "Delivery" %}</dt><dd>{% if group.delivery_fee == 0 %}{% trans "Free" %}{% else %}{{ group.delivery_fee|etb }}{% endif %}</dd></div>
+                  {% if group.coupon_code %}
+                  <div class="zh-row"><dt>{% trans "Coupon" %}</dt><dd>{{ group.coupon_code }}</dd></div>
+                  {% endif %}
+                  <div class="zh-row zh-row--total"><dt>{% trans "Total" %}</dt><dd>{{ group.total|etb }}</dd></div>
+                  <div class="zh-row"><dt>{% trans "Payment" %}</dt><dd><span class="zh-row__text">{% if group.is_paid_online %}{% trans "Paid online" %}{% elif group.payment_status == "pending" %}{% trans "Awaiting online payment" %}{% else %}{% trans "Cash on delivery" %}{% endif %}</span></dd></div>
+              </dl>
 
-              <div class="spring-confirmation-card">
+              <div class="zh-confirm__block">
                   <h2>{% trans "Delivering to" %}</h2>
-                  <p>{{ group.customer_name }}<br>{{ group.customer_address }}<br>{{ group.customer_city }}<br>{{ group.customer_phone }}</p>
-                  <p class="spring-confirmation-help">{% trans "Need to change something?" %} <a href="{{ store.phone_href }}">{% trans "Call" %} {{ store.phone }}</a> {% trans "and quote your order number." %}</p>
+                  <address>{{ group.customer_name }}<br>{{ group.customer_address }}<br>{{ group.customer_city }}<br><span class="zh-num">{{ group.customer_phone }}</span></address>
+                  <p class="zh-confirm__help">{% trans "Need to change something?" %} <a href="{{ store.phone_href }}">{% trans "Call" %} <span class="zh-num">{{ store.phone }}</span></a> {% trans "and quote your order number." %}</p>
               </div>
 
               {% include 'store/_telegram_optin.html' %}
 
-              <div class="spring-confirmation-actions">
+              <div class="zh-actions zh-confirm__actions">
                   {% if request.user.is_authenticated %}
-                  <a href="{% url 'store:orders' %}" class="btn btn-outline-dark">{% trans "View all orders" %}</a>
+                  <a href="{% url 'store:orders' %}" class="zh-btn zh-btn--ghost">{% trans "View all orders" %}</a>
                   {% endif %}
-                  <a href="{% url 'store:all-products' %}" class="btn btn-dark">{% trans "Continue shopping" %}</a>
+                  <a href="{% url 'store:all-products' %}" class="zh-btn zh-btn--primary">{% trans "Continue shopping" %}</a>
               </div>
           </aside>
       </div>

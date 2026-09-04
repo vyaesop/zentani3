@@ -1,42 +1,111 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load i18n %}
 {% load image_optim %}
 
 {% block title %}{{ store.name }} | {% trans "Review" %} {{ product.title }}{% endblock %}
 
 {% block content %}
-<main class="main spring-main">
-  <div class="spring-container spring-auth spring-review-invite">
-      <section class="spring-auth__panel spring-auth__panel--wide">
-          <p class="spring-directory-header__eyebrow">{% trans "Verified purchase" %} · {{ order.order_number }}</p>
-          <h1>{% blocktrans with title=product.title %}How was your {{ title }}?{% endblocktrans %}</h1>
-          <p class="spring-auth__copy">{% trans "Thirty seconds from you saves the next shopper a wrong size. Your review is marked as a verified purchase." %}</p>
+<main class="zh-main zh-review-page">
+  <div class="zh-wrap">
+      <div class="zh-review">
+          <header class="zh-page__head">
+              <h1>{% blocktrans with title=product.title %}How was your {{ title }}?{% endblocktrans %}</h1>
+              <p class="zh-page__count zh-num">{% trans "Verified purchase" %} · {{ order.order_number }}</p>
+              <p class="zh-lede">{% trans "Thirty seconds from you saves the next shopper a wrong size. Your review is marked as a verified purchase." %}</p>
+          </header>
 
           {% include 'partials/_messages.html' %}
 
-          <div class="spring-review-invite__product">
-              {% if product.product_image %}
-              {% cld_img product.product_image width=160 alt=product.title %}
-              {% endif %}
-              <div>
-                  <strong>{{ product.title }}</strong>
-                  <p>{% trans "Qty" %} {{ order.quantity }}{% if order.size %} · {% trans "Size" %} {{ order.size }}{% endif %} · {% trans "Delivered" %}</p>
+          <div class="zh-review__product">
+              <div class="zh-line zh-line--compact">
+                  {% if product.product_image %}
+                  <a href="{% url 'store:product-detail' product.slug %}" class="zh-line__media" tabindex="-1" aria-hidden="true">{% cld_img product.product_image width=144 alt="" %}</a>
+                  {% else %}
+                  <a href="{% url 'store:product-detail' product.slug %}" class="zh-line__media" tabindex="-1" aria-hidden="true"><img src="{% static 'asset/images/default-product.webp' %}" alt="" width="72" height="90"></a>
+                  {% endif %}
+                  <div class="zh-line__body">
+                      <p class="zh-line__title"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></p>
+                      <p class="zh-line__meta zh-num">{% trans "Qty" %} {{ order.quantity }}{% if order.size %} · {% trans "Size" %} {{ order.size }}{% endif %} · <span class="zh-tag">{% trans "Delivered" %}</span></p>
+                  </div>
               </div>
           </div>
 
-          <form method="post" action="" enctype="multipart/form-data" class="spring-auth__form spring-review-form">
+          <form method="post" action="" enctype="multipart/form-data" class="zh-form" novalidate>
               {% csrf_token %}
-              {% for fm in form %}
-              <div class="spring-auth__field">
-                  {{ fm.label_tag }}
+              {% if form.non_field_errors %}
+              <div class="zent-alert zent-alert--danger" role="alert">{{ form.non_field_errors|striptags }}</div>
+              {% endif %}
+
+              {% with fm=form.reviewer_name %}
+              <div class="zh-field{% if fm.errors %} is-error{% endif %}">
+                  <label for="{{ fm.id_for_label }}">{{ fm.label }}</label>
                   {{ fm }}
-                  {% if fm.help_text %}<small>{{ fm.help_text|safe }}</small>{% endif %}
-                  <small class="text-danger">{{ fm.errors|striptags }}</small>
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
               </div>
-              {% endfor %}
-              <button class="btn btn-dark w-100" type="submit">{% if existing_review %}{% trans "Update my review" %}{% else %}{% trans "Post my review" %}{% endif %}</button>
+              {% endwith %}
+
+              {% with fm=form.rating %}
+              <fieldset class="zh-fieldset zh-field{% if fm.errors %} is-error{% endif %}">
+                  <legend>{{ fm.label }}</legend>
+                  <div class="zh-chips zh-chips--radio" role="radiogroup" aria-label="{{ fm.label }}">
+                      {% for n in "12345" %}
+                      <input type="radio" class="zh-visually-hidden" name="{{ fm.html_name }}" id="{{ fm.id_for_label }}_{{ n }}" value="{{ n }}" {% if fm.value|stringformat:"s" == n %}checked{% endif %} required>
+                      <label class="zh-chip zh-num" for="{{ fm.id_for_label }}_{{ n }}">{{ n }}</label>
+                      {% endfor %}
+                  </div>
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
+              </fieldset>
+              {% endwith %}
+
+              {% with fm=form.title %}
+              <div class="zh-field{% if fm.errors %} is-error{% endif %}">
+                  <label for="{{ fm.id_for_label }}">{{ fm.label }}</label>
+                  {{ fm }}
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
+              </div>
+              {% endwith %}
+
+              {% with fm=form.comment %}
+              <div class="zh-field{% if fm.errors %} is-error{% endif %}">
+                  <label for="{{ fm.id_for_label }}">{{ fm.label }}</label>
+                  {{ fm }}
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
+              </div>
+              {% endwith %}
+
+              {% with fm=form.fit_feedback %}
+              <fieldset class="zh-fieldset zh-field{% if fm.errors %} is-error{% endif %}">
+                  <legend>{{ fm.label }}</legend>
+                  <div class="zh-chips zh-chips--radio" role="radiogroup" aria-label="{{ fm.label }}">
+                      {% for radio in fm %}{% if radio.data.value %}
+                      <input type="radio" class="zh-visually-hidden" name="{{ fm.html_name }}" id="{{ radio.id_for_label }}" value="{{ radio.data.value }}" {% if radio.data.selected %}checked{% endif %}>
+                      <label class="zh-chip" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                      {% endif %}{% endfor %}
+                  </div>
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
+              </fieldset>
+              {% endwith %}
+
+              {% with fm=form.image %}
+              <div class="zh-field{% if fm.errors %} is-error{% endif %}">
+                  <label for="{{ fm.id_for_label }}">{{ fm.label }}</label>
+                  {{ fm }}
+                  {% if fm.help_text %}<p class="zh-help">{{ fm.help_text|safe }}</p>{% endif %}
+                  {{ fm.errors }}
+              </div>
+              {% endwith %}
+
+              <div class="zh-form__actions">
+                  <button class="zh-btn zh-btn--primary zh-btn--block" type="submit">{% if existing_review %}{% trans "Update my review" %}{% else %}{% trans "Post my review" %}{% endif %}</button>
+              </div>
           </form>
-      </section>
+      </div>
   </div>
 </main>
 {% endblock content %}
