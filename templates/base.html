@@ -38,6 +38,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% if LANGUAGE_CODE == 'am' %}
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
+    {% endif %}
 
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
     <link rel="preload" href="{% static 'asset/vendor/fontawesome-free/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin="anonymous">
@@ -48,7 +51,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'asset/css/zent-storefront.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="spring-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="spring-body{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <div class="spring-announcement">
         <div class="spring-container">
             <p>{% blocktrans with threshold=store.free_threshold %}Free delivery in Addis Ababa on orders over {{ threshold }} ETB · Pay on delivery{% endblocktrans %}</p>

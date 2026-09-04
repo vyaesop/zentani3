@@ -608,3 +608,119 @@ msgstr "ገጹ አልተገኘም"
 
 msgid "We couldn't find that page."
 msgstr "ያንን ገጽ ማግኘት አልቻልንም።"
+
+# ── Homepage (Tibeb Band redesign) ────────────────────────────────────
+msgid "Latest drop"
+msgstr "የቅርብ ጊዜ ምርት"
+
+#, python-format
+msgid "%(counter)s piece live"
+msgid_plural "%(counter)s pieces live"
+msgstr[0] "%(counter)s እቃ ቀርቧል"
+msgstr[1] "%(counter)s እቃዎች ቀርበዋል"
+
+msgid "Real drops, <em>checked</em> at your door."
+msgstr "እውነተኛ ምርቶች — <em>ተመልክተው</em> በበርዎ ላይ።"
+
+msgid "Order it. We call. The driver waits while you look it over —"
+msgstr "ይዘዙ። እንደውላለን። እየተመለከቱ አሽከርካሪው ይጠብቃል —"
+
+msgid "then you pay."
+msgstr "ከዛ ይክፈሉ።"
+
+msgid "Delivery fees and times"
+msgstr "የአቅርቦት ክፍያዎች እና ጊዜዎች"
+
+msgid "Addis Ababa"
+msgstr "አዲስ አበባ"
+
+msgid "Free in Addis over"
+msgstr "በአዲስ ነጻ ከ"
+
+msgid "Outside Addis"
+msgstr "ከአዲስ ውጭ"
+
+msgid "Delivered in"
+msgstr "የሚደርስበት"
+
+msgid "days"
+msgstr "ቀናት"
+
+msgid "Shop the drop"
+msgstr "አዲሶቹን ይግዙ"
+
+msgid "Newest pieces"
+msgstr "አዳዲስ እቃዎች"
+
+msgid "The next drop is being photographed. Follow the channel to see it first."
+msgstr "ቀጣዩ ምርት ፎቶ እየተነሳ ነው። መጀመሪያ ለማየት ቻናሉን ይከተሉ።"
+
+msgid "Pick up where you left off"
+msgstr "ካቆሙበት ይቀጥሉ"
+
+msgid "The drop"
+msgstr "አዲስ የገቡት"
+
+msgid "Everything new"
+msgstr "ሁሉም አዲስ"
+
+msgid "New pieces land here first — follow the Telegram channel to catch the next drop."
+msgstr "አዳዲስ እቃዎች መጀመሪያ እዚህ ይደርሳሉ — ቀጣዩን ላለማምለጥ የቴሌግራም ቻናሉን ይከተሉ።"
+
+msgid "All collections"
+msgstr "ሁሉም ስብስቦች"
+
+#, python-format
+msgid "%(counter)s piece"
+msgid_plural "%(counter)s pieces"
+msgstr[0] "%(counter)s እቃ"
+msgstr[1] "%(counter)s እቃዎች"
+
+msgid "How a Zentanee order works"
+msgstr "የዘንታኒ ትዕዛዝ እንዴት ይሰራል"
+
+msgid "Delivery & returns"
+msgstr "አቅርቦት እና ተመላሽ"
+
+msgid "Place your order"
+msgstr "ትዕዛዝዎን ይስጡ"
+
+msgid "On the site, or from any post in the Telegram channel. No account, no card."
+msgstr "በድር ጣቢያው ወይም በቴሌግራም ቻናል ከማንኛውም ልጥፍ። መለያ የለም፣ ካርድ የለም።"
+
+msgid "We call to confirm"
+msgstr "ለማረጋገጥ እንደውላለን"
+
+msgid "A real person checks the size and the delivery spot with you before anything ships."
+msgstr "ምንም ከመላኩ በፊት እውነተኛ ሰው መጠኑን እና የመላኪያ ቦታውን ከእርስዎ ጋር ያረጋግጣል።"
+
+msgid "Check it, then pay"
+msgstr "ይመልከቱ፣ ከዛ ይክፈሉ"
+
+msgid "The driver waits while you look it over. If it isn't right, hand it back —"
+msgstr "እየተመለከቱ አሽከርካሪው ይጠብቃል። ትክክል ካልሆነ ይመልሱት —"
+
+msgid "you pay nothing."
+msgstr "ምንም አይከፍሉም።"
+
+msgid "Cash at the door"
+msgstr "በበር ላይ በጥሬ ገንዘብ"
+
+msgid "Most wanted"
+msgstr "በጣም የተፈለጉ"
+
+msgid "Genuine originals"
+msgstr "እውነተኛ ኦሪጅናል"
+
+msgid "All brands"
+msgstr "ሁሉም ብራንዶች"
+
+msgid "Every drop lands in the channel first."
+msgstr "እያንዳንዱ ምርት መጀመሪያ ቻናሉ ላይ ይደርሳል።"
+
+msgid "Photos, price and sizes the moment a piece arrives, with a Choose Size button that orders in chat. Same store, same prices."
+msgstr "እቃ እንደደረሰ ፎቶዎች፣ ዋጋ እና መጠኖች፣ በቻት የሚያዝ የ«መጠን ይምረጡ» ቁልፍ ጋር። ያው መደብር፣ ያው ዋጋ።"
+
+#, python-format
+msgid "Add %(title)s to cart by size"
+msgstr "%(title)s ን በመጠን ወደ ጋሪ ጨምር"

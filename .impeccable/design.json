@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04T00:00:00Z",
+  "title": "Design System: Zentanee",
+  "scope": "Homepage only (body.zent-home-page). Header, footer and other storefront pages run the shared spring theme.",
+  "extensions": {
+    "colorMeta": {
+      "cotton-white": { "role": "primary", "displayName": "Cotton White", "canonical": "#fbfbf8", "tonalRamp": ["oklch(20% 0.004 100)", "oklch(32% 0.004 100)", "oklch(45% 0.004 100)", "oklch(58% 0.004 100)", "oklch(70% 0.004 100)", "oklch(82% 0.004 100)", "oklch(92% 0.004 100)", "oklch(98.8% 0.004 100)"] },
+      "ink": { "role": "primary", "displayName": "Ink", "canonical": "#111111", "tonalRamp": ["oklch(17.8% 0 0)", "oklch(28% 0 0)", "oklch(40% 0 0)", "oklch(52% 0 0)", "oklch(64% 0 0)", "oklch(76% 0 0)", "oklch(88% 0 0)", "oklch(96% 0 0)"] },
+      "ink-soft": { "role": "neutral", "displayName": "Ink Soft", "canonical": "#3d3a36", "tonalRamp": ["oklch(18% 0.006 70)", "oklch(35.5% 0.006 70)", "oklch(46% 0.006 70)", "oklch(57% 0.006 70)", "oklch(68% 0.006 70)", "oklch(79% 0.006 70)", "oklch(88% 0.006 70)", "oklch(95% 0.006 70)"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0 0)", "oklch(30% 0 0)", "oklch(45% 0 0)", "oklch(60% 0 0)", "oklch(72% 0 0)", "oklch(84% 0 0)", "oklch(93% 0 0)", "oklch(100% 0 0)"] },
+      "thread-red": { "role": "secondary", "displayName": "Thread Red", "canonical": "#c8102e", "tonalRamp": ["oklch(18% 0.08 22)", "oklch(28% 0.13 22)", "oklch(38% 0.17 22)", "oklch(50.5% 0.2 22)", "oklch(62% 0.18 22)", "oklch(74% 0.13 22)", "oklch(86% 0.07 22)", "oklch(95% 0.03 22)"] },
+      "thread-gold": { "role": "secondary", "displayName": "Thread Gold", "canonical": "#f2b705", "tonalRamp": ["oklch(20% 0.05 85)", "oklch(32% 0.08 85)", "oklch(45% 0.11 85)", "oklch(58% 0.14 85)", "oklch(70% 0.16 85)", "oklch(82% 0.17 85)", "oklch(90% 0.12 85)", "oklch(96% 0.06 85)"] },
+      "thread-indigo": { "role": "secondary", "displayName": "Thread Indigo", "canonical": "#1f3a93", "tonalRamp": ["oklch(18% 0.09 268)", "oklch(28% 0.13 268)", "oklch(37% 0.16 268)", "oklch(48% 0.16 268)", "oklch(60% 0.14 268)", "oklch(72% 0.1 268)", "oklch(84% 0.06 268)", "oklch(95% 0.02 268)"] },
+      "thread-green": { "role": "secondary", "displayName": "Thread Green", "canonical": "#1b7f4c", "tonalRamp": ["oklch(18% 0.06 155)", "oklch(30% 0.09 155)", "oklch(42% 0.12 155)", "oklch(52% 0.13 155)", "oklch(64% 0.12 155)", "oklch(76% 0.1 155)", "oklch(87% 0.06 155)", "oklch(95% 0.03 155)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only. From 768px: clamp(44px, 5.6vw, 82px). Under html[lang=am]: Noto Sans Ethiopic, line-height 1.15, letter-spacing 0." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles. Collection row names run clamp(20px, 5vw, 36px) at line-height 1." },
+      "title": { "displayName": "Title", "purpose": "Money and commitments: fee values (17px), prices (15px, 19px on the lead module), step titles (16px), brand names. Step numerals: same face, 700, 30px." },
+      "body": { "displayName": "Body", "purpose": "Truth line (16px, 18px from 768px, max 34ch), step and channel copy (15px, max 46/52ch). Product titles: Archivo 500 15px, line-height 1.35." },
+      "label": { "displayName": "Label", "purpose": "Fee labels, brand under a product, counts, captions, delivery times; Ink Soft. Uppercase only on the status tag (700, 10.5px, +0.06em)." },
+      "button": { "displayName": "Button", "purpose": "All .zh-btn labels." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "zh-ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The world ease: hero band weave-in and button transform." },
+      { "name": "zh-weave", "value": "clip-path inset(0 100% 0 0) -> inset(0), 1100ms zh-ease both, once", "purpose": "Hero band reveals left to right. Only under prefers-reduced-motion: no-preference." },
+      { "name": "button-transform", "value": "220ms zh-ease", "purpose": "Button :active translateY(1px)." },
+      { "name": "colour-swap", "value": "160ms ease (buttons), 140ms ease (size chips)", "purpose": "Ink/white inversion on hover and focus." }
+    ],
+    "focus": [
+      { "name": "focus-visible", "value": "outline: 3px solid #1f3a93; outline-offset: 3px; border-radius: 2px", "purpose": "Global focus ring on the homepage; indigo's one appearance outside a band." }
+    ],
+    "breakpoints": [
+      { "name": "tablet", "value": "768px", "notes": "band-h 72px, gap 20px, hero 2-col, ruler 4-col, rail becomes 4-col dense grid with 2x2 lead, steps 3-col" },
+      { "name": "wide", "value": "1200px", "notes": "band-h 88px, hero column gap 72px, section padding 56px" }
+    ],
+    "bandTiles": {
+      "full": "120x64 SVG tile; selvedge lines, chevrons, dashes, diamond chain; heights 56/72/88px",
+      "thin": "24x12 SVG tile; two selvedge lines and alternating stripes; height 10px; also the under-tile beneath hero swatches",
+      "tints": ["default (red/gold; indigo dashes and diamonds, green centres)", "zh-band--indigo (indigo/red; gold dashes and diamonds, green centres)", "zh-band--green (green/gold; ink dashes and diamonds, red centres)"],
+      "regenerate": "docs/homepage-tibeb-band.md"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button (selvedge)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Black bar in Unbounded with a 6px gold bottom edge. Hover inverts to white; the selvedge stays gold.",
+      "html": "<a href=\"#\" class=\"ds-btn ds-btn--primary\">Shop the drop</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 0 16px; font-family: 'Unbounded', 'Archivo', sans-serif; font-weight: 600; font-size: 12.5px; letter-spacing: 0.02em; border: 2px solid #111111; background: #111111; color: #fff; text-decoration: none; white-space: nowrap; border-radius: 0; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background 160ms ease, color 160ms ease; } .ds-btn--primary { border-bottom: 6px solid #f2b705; } .ds-btn:hover, .ds-btn:focus-visible { background: #fff; color: #111111; } .ds-btn:focus-visible { outline: 3px solid #1f3a93; outline-offset: 3px; } .ds-btn:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Same bar, transparent; hover fills with ink.",
+      "html": "<a href=\"#\" class=\"ds-btn-ghost\">Order on Telegram</a>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 0 16px; font-family: 'Unbounded', 'Archivo', sans-serif; font-weight: 600; font-size: 12.5px; letter-spacing: 0.02em; border: 2px solid #111111; background: transparent; color: #111111; text-decoration: none; white-space: nowrap; border-radius: 0; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background 160ms ease, color 160ms ease; } .ds-btn-ghost:hover, .ds-btn-ghost:focus-visible { background: #111111; color: #fff; } .ds-btn-ghost:focus-visible { outline: 3px solid #1f3a93; outline-offset: 3px; } .ds-btn-ghost:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Size Chip",
+      "kind": "chip",
+      "refersTo": "size-chip",
+      "description": "Quick-add size button under a product module; inverts on hover.",
+      "html": "<ul class=\"ds-sizes\"><li><button type=\"button\" class=\"ds-size\">40</button></li><li><button type=\"button\" class=\"ds-size\">41</button></li><li><button type=\"button\" class=\"ds-size\">42</button></li></ul>",
+      "css": ".ds-sizes { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; } .ds-size { min-width: 34px; height: 30px; padding: 0 8px; font: 600 11.5px/28px 'Archivo', sans-serif; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0.02em; border: 2px solid #111111; border-radius: 0; background: transparent; color: #111111; cursor: pointer; transition: background 140ms ease, color 140ms ease; } .ds-size:hover, .ds-size:focus-visible { background: #111111; color: #fff; } .ds-size:focus-visible { outline: 3px solid #1f3a93; outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Tag",
+      "kind": "chip",
+      "refersTo": "status-tag",
+      "description": "Flag pinned to a product photo's top-left; inverse variant for sale and sold out.",
+      "html": "<span class=\"ds-tag\">New</span> <span class=\"ds-tag ds-tag--inverse\">Sold out</span>",
+      "css": ".ds-tag { display: inline-block; padding: 4px 10px; font-family: 'Archivo', sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: #fff; color: #111111; border: 2px solid #111111; border-left: 0; border-radius: 0; } .ds-tag--inverse { background: #111111; color: #fff; }"
+    },
+    {
+      "name": "Product Module",
+      "kind": "card",
+      "refersTo": "status-tag",
+      "description": "Photo on a white frame with 2px ink border, title, brand, tabular price, size chips. No card chrome, no shadow.",
+      "html": "<article class=\"ds-module\"><a href=\"#\" class=\"ds-module__media\"><div class=\"ds-module__img\"></div><span class=\"ds-module__tag\">Most wanted</span></a><div class=\"ds-module__body\"><h3 class=\"ds-module__title\"><a href=\"#\">Product title</a></h3><p class=\"ds-module__meta\">Brand</p><p class=\"ds-module__price\">1,999 ETB</p></div></article>",
+      "css": ".ds-module { display: grid; gap: 10px; width: 220px; font-family: 'Archivo', sans-serif; color: #111111; } .ds-module__media { position: relative; display: block; background: #fff; border: 2px solid #111111; } .ds-module__img { aspect-ratio: 4 / 5; background: #f2f1ee; } .ds-module__tag { position: absolute; top: 10px; left: -2px; padding: 4px 10px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: #fff; color: #111111; border: 2px solid #111111; border-left: 0; } .ds-module__body { display: grid; gap: 4px; } .ds-module__title { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.35; } .ds-module__title a { color: #111111; text-decoration: none; } .ds-module:hover .ds-module__title a { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #f2b705; text-underline-offset: 0.14em; } .ds-module__meta { margin: 0; font-size: 12px; color: #3d3a36; letter-spacing: 0.02em; } .ds-module__price { margin: 2px 0 0; font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; font-variant-numeric: tabular-nums lining-nums; }"
+    },
+    {
+      "name": "Fee Ruler",
+      "kind": "custom",
+      "refersTo": "title",
+      "description": "Real fees and times in tabular figures between 2px ink rules.",
+      "html": "<ul class=\"ds-ruler\"><li><span>Addis Ababa</span><strong>80 ETB</strong></li><li><span>Free in Addis over</span><strong>3,500 ETB</strong></li><li><span>Outside Addis</span><strong>180 ETB</strong></li><li><span>Delivered in</span><strong>1-3 days</strong></li></ul>",
+      "css": ".ds-ruler { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; border-top: 2px solid #111111; border-bottom: 2px solid #111111; font-family: 'Archivo', sans-serif; font-variant-numeric: tabular-nums lining-nums; } .ds-ruler li { display: grid; gap: 1px; padding: 12px 12px 12px 0; font-size: 12px; letter-spacing: 0.02em; color: #3d3a36; } .ds-ruler li + li { border-left: 2px solid #111111; padding-left: 12px; } .ds-ruler strong { font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 17px; color: #111111; letter-spacing: -0.01em; }"
+    },
+    {
+      "name": "Gold Thread Underline",
+      "kind": "custom",
+      "refersTo": "thread-gold",
+      "description": "The one emphasis and link device: a 3px gold underline under ink text.",
+      "html": "<p class=\"ds-truth\">The driver waits while you look it over &mdash; <mark class=\"ds-thread\">then you pay.</mark></p>",
+      "css": ".ds-truth { margin: 0; font-family: 'Archivo', sans-serif; font-size: 16px; line-height: 1.5; color: #3d3a36; max-width: 34ch; } .ds-thread { background: transparent; color: #111111; font-weight: 600; text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #f2b705; text-underline-offset: 0.14em; text-decoration-skip-ink: none; }"
+    },
+    {
+      "name": "Thin Woven Band",
+      "kind": "custom",
+      "refersTo": "thread-red",
+      "description": "Section divider: the 24x12 thread-line tile repeated at 10px height. Default red/gold tint.",
+      "html": "<div class=\"ds-band\" aria-hidden=\"true\"></div>",
+      "css": ".ds-band { display: block; width: 100%; height: 10px; background-repeat: repeat-x; background-position: left center; background-size: auto 100%; background-image: url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2012%27%20width%3D%2724%27%20height%3D%2712%27%3E%3Crect%20x%3D%270%27%20y%3D%270%27%20width%3D%2724%27%20height%3D%271.5%27%20fill%3D%27%23111111%27%2F%3E%3Crect%20x%3D%271%27%20y%3D%274%27%20width%3D%2710%27%20height%3D%274%27%20fill%3D%27%23c8102e%27%2F%3E%3Crect%20x%3D%2713%27%20y%3D%274%27%20width%3D%2710%27%20height%3D%274%27%20fill%3D%27%23f2b705%27%2F%3E%3Crect%20x%3D%270%27%20y%3D%2710.5%27%20width%3D%2724%27%20height%3D%271.5%27%20fill%3D%27%23111111%27%2F%3E%3C%2Fsvg%3E\"); }"
+    },
+    {
+      "name": "Ruled Collection Row",
+      "kind": "nav",
+      "refersTo": "headline",
+      "description": "A list row, not a card: display name, tabular count, 2px-bordered square swatch; gold underline on hover.",
+      "html": "<ul class=\"ds-collections\"><li><a href=\"#\" class=\"ds-collection\"><span class=\"ds-collection__name\">Tracksuits</span><span class=\"ds-collection__count\">6 pieces</span><span class=\"ds-collection__swatch\"></span></a></li><li><a href=\"#\" class=\"ds-collection\"><span class=\"ds-collection__name\">Caps</span><span class=\"ds-collection__count\">2 pieces</span><span class=\"ds-collection__swatch\"></span></a></li></ul>",
+      "css": ".ds-collections { list-style: none; margin: 0; padding: 0; border-top: 2px solid #111111; font-family: 'Archivo', sans-serif; } .ds-collections li { border-bottom: 2px solid #111111; } .ds-collection { display: grid; grid-template-columns: 1fr auto 56px; align-items: center; gap: 16px; padding: 14px 0; color: #111111; text-decoration: none; } .ds-collection__name { font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.02em; line-height: 1; } .ds-collection__count { font-size: 13px; color: #3d3a36; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; } .ds-collection__swatch { display: block; width: 56px; height: 56px; border: 2px solid #111111; background: #fff; } .ds-collection:hover .ds-collection__name { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #f2b705; text-underline-offset: 0.12em; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Tibeb Band",
+    "overview": "The homepage is a length of white cotton with one dense woven border. The tibeb (the patterned band on Ethiopian cotton dress) is the only ornament and the only structure: a full band opens the page and closes it, a thin thread line opens every section, and the products sit on top like cut cloth. Everything else is ink on cotton: black type, 2px black rules, black-bordered photos, black buttons. Depth comes from things overlapping, never from shadows or gradients.\n\nThe system is deliberately narrow in scope. It is built by zentanee/static/asset/css/zent-home.css and applies only to body.zent-home-page (the homepage). Header, footer, product pages, cart and account still run the shared \"spring\" storefront theme in zent-core.css / zent-shim.css / zent-storefront.css. The one element binding both worlds is the pop-art halftone black-and-white circular logo; the homepage's ink-on-white palette is chosen to sit under it. The direction contract and the build agree on every invariant; nothing in the shipped code diverges from the OWN-WORLD block.\n\nDensity is confident-sparse: a small catalogue (20 to 30 pieces) shown as a few large modules on a ruled grid, never padded to fill. Rulers, not cards: lists are separated by 2px ink rules and never boxed. Amharic swaps the type to Noto Sans Ethiopic with more leading; the palette and rules are unchanged.",
+    "keyCharacteristics": [
+      "Cotton-white ground with ink type; the four thread colours never appear as text or as fills outside the woven devices.",
+      "One woven band motif, authored as SVG geometry and tiled as CSS backgrounds; full (120x64) for the page's top and foot, thin (24x12) for every section divider.",
+      "Depth by overlap and 2px ink borders only; no box-shadow anywhere on the page.",
+      "Tabular lining numerals on every fee, price, size, count and time.",
+      "Buttons are black bars; the primary carries a 6px gold bottom edge (the selvedge).",
+      "One motion moment: the hero band clip-paths in left to right once, and only when prefers-reduced-motion: no-preference."
+    ],
+    "rules": [
+      { "name": "The Thread Stays in the Weave Rule", "body": "Red, gold, indigo and green exist as SVG fills inside the band tiles. Outside the tiles, only gold is allowed, and only as a line: the 3px underline, the 6px button selvedge, the selection highlight. No thread colour is ever text, a background area, or a border around a box.", "section": "colors" },
+      { "name": "The Two-Ink Rule", "body": "Text is either Ink or Ink Soft. There is no third grey, no tinted text, no coloured link. Links are distinguished by weight and the gold underline, not by hue.", "section": "colors" },
+      { "name": "The Tabular Truth Rule", "body": "Every fee, price, size, count and time carries font-variant-numeric: tabular-nums lining-nums (.zh-num). Numbers that describe money or delivery are set in the display face so they align and read as commitments, not footnotes.", "section": "typography" },
+      { "name": "The Gold Underline Rule", "body": "Emphasis and links use one device: a 3px gold underline, offset 0.14em, text-decoration-skip-ink: none. No bold-only emphasis, no coloured text, no italics. On hover the underline turns ink or appears under the linked title.", "section": "typography" },
+      { "name": "The Overlap Not Shadow Rule", "body": "If two things need to read as layered, one overlaps the other and both keep a 2px ink edge. box-shadow does not appear in this system, at rest or on hover.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do scope new homepage styles under body.zent-home-page with the .zh- prefix; the shared theme's .spring-body a colour rules otherwise win.",
+      "Do open every new section with a thin woven band and a 2px-ruled heading row; use the --indigo or --green tint to vary sections, not new colours.",
+      "Do set every number a shopper can act on (fee, price, size, count, days, hours) in .zh-num tabular lining figures, and set money in Unbounded 600.",
+      "Do emphasise with the 3px gold underline (.zh-thread or <mark>), and mark the primary action with the 6px gold selvedge.",
+      "Do layer by overlap with 2px ink edges; show hover and focus by inverting ink and white or thickening a border.",
+      "Do keep the empty state honest: the dashed ink box with one sentence, never placeholder products."
+    ],
+    "donts": [
+      "Don't use box-shadow, gradients, or blur anywhere on the homepage.",
+      "Don't use red, indigo or green as text, backgrounds or borders outside the band tiles (indigo's one exception is the focus outline); don't use gold as text or as a filled area.",
+      "Don't round corners; every box is 0px.",
+      "Don't box content into cards; separate rows with 2px ink rules.",
+      "Don't add a photo hero, stock imagery or asset/images/banner.webp; the band and the products carry the viewport.",
+      "Don't invent testimonials, review counts or metrics; the page shows only real fees, times, phone number and channel.",
+      "Don't apply this system to other storefront pages by default; they run the shared spring theme, and the halftone logo is the only element both worlds share."
+    ]
+  }
+}

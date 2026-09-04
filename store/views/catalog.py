@@ -539,7 +539,24 @@ def home(request):
         .order_by("-created_at")[:12]
     )
     products = Product.objects.filter(is_active=True, is_featured=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS)[:24]
-    latest_products = Product.objects.filter(is_active=True).select_related("category", "brand").prefetch_related("size_inventory", "p_images").only(*PRODUCT_LIST_FIELDS).order_by("-created_at")[:8]
+    latest_products = list(
+        Product.objects.filter(is_active=True)
+        .select_related("category", "brand")
+        .prefetch_related("size_inventory", "p_images")
+        .only(*PRODUCT_LIST_FIELDS)
+        .order_by("-created_at")[:8]
+    )
+    # The hero shows the three newest pieces; "The drop" continues with the next
+    # five so nothing on the page repeats itself. The five-module rhythm (one
+    # lead, four supporting) is what the homepage grid is built for.
+    hero_products = latest_products[:3]
+    drop_products = latest_products[3:8]
+    latest_drop_date = None
+    if latest_products and latest_products[0].created_at:
+        newest = latest_products[0].created_at
+        if newest >= timezone.now() - timedelta(days=30):
+            latest_drop_date = newest
+    live_product_count = Product.objects.filter(is_active=True).count()
     from store.context_preprocessors import top_selling_product_ids
 
     top_selling_ids = top_selling_product_ids()
@@ -550,7 +567,7 @@ def home(request):
         .prefetch_related("size_inventory", "p_images")
         .only(*PRODUCT_LIST_FIELDS)
     }
-    top_selling_products = [top_selling_lookup[product_id] for product_id in top_selling_ids if product_id in top_selling_lookup]
+    top_selling_products = [top_selling_lookup[product_id] for product_id in top_selling_ids if product_id in top_selling_lookup][:5]
     # Editorial bands: first featured collection/brand that has imagery.
     story_category = next((category for category in categories if category.category_image), None)
     spotlight_brand = next((brand for brand in brands if brand.brand_image), None)
@@ -560,6 +577,10 @@ def home(request):
         "products": products,
         "brands": brands,
         "latest_products": latest_products,
+        "hero_products": hero_products,
+        "drop_products": drop_products,
+        "latest_drop_date": latest_drop_date,
+        "live_product_count": live_product_count,
         "top_selling_products": top_selling_products,
         "story_category": story_category,
         "spotlight_brand": spotlight_brand,
