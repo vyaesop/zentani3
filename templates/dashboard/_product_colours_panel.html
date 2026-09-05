@@ -1,0 +1,107 @@
+{% load image_optim %}
+{# Colours panel on the product editor. Rendered OUTSIDE the main editor form #}
+{# because it carries its own small forms (link / unlink / copy details).    #}
+<div class="zd-panel" id="colours">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Colours</p>
+      <p class="zd-panel-head-sub">
+        {% if color_family|length > 1 %}
+        {{ color_family|length }} colours of this garment. Each is its own page and its own Telegram post; shoppers switch with swatches.
+        {% else %}
+        Sell this garment in another colour without retyping anything. Each colour gets its own page and its own Telegram post.
+        {% endif %}
+      </p>
+    </div>
+    <div class="zd-panel-head-right zd-head-actions">
+      {% if color_family|length > 1 %}
+      <a href="{% url 'store:dashboard-products' %}?group={{ product.color_group_id }}" class="zd-btn zd-btn--ghost zd-btn--sm">All colours in list</a>
+      {% endif %}
+      <a href="{% url 'store:dashboard-product-add-color' product.id %}" class="zd-btn zd-btn--primary zd-btn--sm">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+        Add a colour
+      </a>
+    </div>
+  </div>
+  <div class="zd-panel-body">
+    <ul class="zd-colour-strip" aria-label="Colours of this garment">
+      {% for member in color_family %}
+      <li class="zd-colour-swatch{% if member.is_current %} is-current{% endif %}">
+        {% if member.is_current %}
+        <span class="zd-colour-swatch-img">
+          {% if member.product.product_image %}<img src="{{ member.product.product_image.url|cdn_optimize }}" alt="">{% endif %}
+        </span>
+        {% else %}
+        <a href="{% url 'store:dashboard-product-edit' member.product.id %}" class="zd-colour-swatch-img" title="Edit {{ member.label }}">
+          {% if member.product.product_image %}<img src="{{ member.product.product_image.url|cdn_optimize }}" alt="">{% endif %}
+        </a>
+        {% endif %}
+        <span class="zd-colour-swatch-label">{{ member.label }}</span>
+        <span class="zd-colour-swatch-state">
+          {% if member.is_current %}Editing now{% elif member.product.is_sold_out %}Sold out{% elif member.product.is_active %}Live{% else %}Hidden{% endif %}
+        </span>
+        {% if not member.is_current %}
+        <span class="zd-colour-swatch-actions">
+          <a href="{% url 'store:dashboard-product-edit' member.product.id %}">Edit</a>
+          <form method="post" action="{% url 'store:dashboard-product-colors' product.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="unlink">
+            <input type="hidden" name="other_product_id" value="{{ member.product.id }}">
+            <button type="submit" class="zd-linkbtn" onclick="return confirm('Remove {{ member.label|escapejs }} from this colour family? The product stays live on its own; it just stops appearing as a swatch.')">Unlink</button>
+          </form>
+        </span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if not product.color %}
+    <p class="zd-inline-note">
+      This product has no colour name yet. Set one in Merchandising → Colour so its swatch has a label.
+    </p>
+    {% endif %}
+
+    <details class="zd-collapse zd-collapse--flat">
+      <summary>
+        <span>More colour tools</span>
+        <small>Link a product you already posted, or copy this colour's details to the others</small>
+      </summary>
+      <div class="zd-collapse-body zd-colour-tools">
+
+        <form method="post" action="{% url 'store:dashboard-product-colors' product.id %}" class="zd-colour-tool">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="link">
+          <div class="zd-field">
+            <span class="zd-field-label">Already posted this garment in another colour?</span>
+            <select name="other_product_id" class="zd-select spring-dashboard-control" required>
+              <option value="">Choose the product to link…</option>
+              {% for candidate in link_candidates %}
+              <option value="{{ candidate.id }}">{{ candidate.title }}{% if candidate.color %} · {{ candidate.color }}{% endif %} · {{ candidate.sku }}{% if not candidate.is_active %} (hidden){% endif %}</option>
+              {% endfor %}
+            </select>
+            <span class="zd-field-hint">Shows products in the same collection. Linking only adds the swatches; nothing is re-posted.</span>
+          </div>
+          <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm" {% if not link_candidates %}disabled{% endif %}>Link as a colour</button>
+        </form>
+
+        {% if color_family|length > 1 %}
+        <form method="post" action="{% url 'store:dashboard-product-colors' product.id %}" class="zd-colour-tool">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="sync_details">
+          <div class="zd-field">
+            <span class="zd-field-label">Copy this colour's shared details to the other {{ color_family|length|add:"-1" }}</span>
+            <span class="zd-field-hint">Copies: {% for label in shared_detail_labels %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}. Never touches titles, photos, SKUs, colour names, stock or visibility. Save your edits first.</span>
+            <label class="zd-toggle zd-toggle--inline">
+              <span>Also copy the price and compare-at price</span>
+              <input type="checkbox" name="include_price" value="1" class="spring-dashboard-check">
+            </label>
+          </div>
+          <button type="submit" class="zd-btn zd-btn--ghost zd-btn--sm"
+            onclick="return confirm('Overwrite the shared details on the other colours with what this colour has saved right now?')">Copy details to other colours</button>
+        </form>
+        {% endif %}
+
+      </div>
+    </details>
+  </div>
+</div>

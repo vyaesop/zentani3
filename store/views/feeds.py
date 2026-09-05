@@ -58,7 +58,9 @@ def google_merchant_feed(request):
             "regular_price": f"{product.compare_at_price:.2f} ETB" if product.is_on_sale else "",
             "color": product.color,
             "material": product.material,
-            "group_id": product.sku,
+            # Colours of one garment share a group so Google shows them as
+            # variants of each other; a lone product groups its own sizes.
+            "group_id": f"colour-group-{product.color_group_id}" if product.color_group_id else product.sku,
         }
         sizes = list(product.size_inventory.all())
         if sizes:

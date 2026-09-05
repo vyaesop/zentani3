@@ -42,6 +42,7 @@ PRODUCT_LIST_FIELDS = (
     "created_at",
     "product_image",
     "is_sold_out",
+    "color_group",
     "category__title",
     "category__slug",
     "brand__title",
@@ -148,9 +149,13 @@ def _size_guide_lines(text):
 
 
 def _build_product_detail_context(request, product):
+    from store.services import color_variants
     from store.telegram_notify import product_order_deep_link
 
     related_products = _related_products_for(product)
+    recently_viewed = _recently_viewed_products(request, exclude_id=product.id)
+    # Shoppers only see live colours; the current product is always included.
+    color_family = color_variants.color_family(product)
     p_image = product.p_images.only("id", "image").all()
     size_options = _product_size_options(product)
     available_sizes_list = [option["size"] for option in size_options]
@@ -210,7 +215,9 @@ def _build_product_detail_context(request, product):
         "existing_restock_request": existing_restock_request,
         "saved_product_ids": saved_product_ids,
         "is_saved_product": product.id in saved_product_ids,
-        "recently_viewed_products": _recently_viewed_products(request, exclude_id=product.id),
+        "recently_viewed_products": recently_viewed,
+        "color_family": color_family,
+        "color_counts": color_variants.color_count_map([*related_products, *recently_viewed]),
         "product_stock_message": _product_stock_message(product, size_value=default_selected_size or None),
         "product_delivery_note": product.delivery_note or settings.STORE_DELIVERY_NOTE,
         "product_return_note": product.return_note or settings.STORE_RETURN_NOTE,
@@ -572,6 +579,9 @@ def home(request):
     story_category = next((category for category in categories if category.category_image), None)
     spotlight_brand = next((brand for brand in brands if brand.brand_image), None)
 
+    from store.services import color_variants
+
+    recently_viewed = _recently_viewed_products(request, limit=4)
     context = {
         "categories": categories,
         "products": products,
@@ -584,7 +594,10 @@ def home(request):
         "top_selling_products": top_selling_products,
         "story_category": story_category,
         "spotlight_brand": spotlight_brand,
-        "recently_viewed_products": _recently_viewed_products(request, limit=4),
+        "recently_viewed_products": recently_viewed,
+        "color_counts": color_variants.color_count_map(
+            [*products, *latest_products, *hero_products, *drop_products, *top_selling_products, *recently_viewed]
+        ),
         "saved_product_ids": _saved_product_ids_for_user(request.user),
         "organization_schema_json": json.dumps(_organization_schema(request)),
     }

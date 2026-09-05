@@ -1,0 +1,200 @@
+{% extends "dashboard/base.html" %}
+{% load image_optim %}
+
+{% block dashboard_content %}
+
+<!-- Where this colour fits: the family so far -->
+<div class="zd-panel">
+  <div class="zd-panel-head">
+    <div class="zd-panel-head-left">
+      <p class="zd-panel-head-title">Colours of {{ source.title }}</p>
+      <p class="zd-panel-head-sub">Each colour is its own product page and its own Telegram post. Shoppers switch between them with swatches.</p>
+    </div>
+    <div class="zd-panel-head-right zd-head-actions">
+      <a href="{% url 'store:dashboard-product-edit' source.id %}" class="zd-btn zd-btn--ghost zd-btn--sm">← Back to {{ source.color_label }}</a>
+    </div>
+  </div>
+  <div class="zd-panel-body">
+    <ul class="zd-colour-strip" aria-label="Existing colours">
+      {% for member in color_family %}
+      <li class="zd-colour-swatch{% if member.is_current %} is-source{% endif %}">
+        <span class="zd-colour-swatch-img">
+          {% if member.product.product_image %}<img src="{{ member.product.product_image.url|cdn_optimize }}" alt="">{% endif %}
+        </span>
+        <span class="zd-colour-swatch-label">{{ member.label }}</span>
+        <span class="zd-colour-swatch-state">{% if member.product.is_sold_out %}Sold out{% elif member.product.is_active %}Live{% else %}Hidden{% endif %}{% if member.is_current %} · copying from{% endif %}</span>
+      </li>
+      {% endfor %}
+      <li class="zd-colour-swatch zd-colour-swatch--new" aria-current="step">
+        <span class="zd-colour-swatch-img zd-colour-swatch-img--empty" data-colour-preview>
+          <span aria-hidden="true">+</span>
+        </span>
+        <span class="zd-colour-swatch-label" data-colour-preview-label>New colour</span>
+        <span class="zd-colour-swatch-state">Being added</span>
+      </li>
+    </ul>
+  </div>
+</div>
+
+{% if form.non_field_errors %}
+<div class="zd-panel zd-panel--danger">
+  <div class="zd-panel-body">
+    {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="zd-editor" novalidate
+      data-colour-form data-sku-base="{{ sku_base }}" data-source-title="{{ source.title }}" data-source-colour="{{ source.color }}">
+  {% csrf_token %}
+
+  <div class="zd-editor-layout">
+    <div class="zd-editor-main">
+
+      <!-- Step 1: the colour -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title"><span class="zd-step-n">1</span> Name the colour</p>
+            <p class="zd-panel-head-sub">Exactly as a shopper would say it. It becomes the swatch label on every colour's page.</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-field">
+            <span class="zd-field-label">Colour name</span>
+            {{ form.color }}
+            <datalist id="zd-colour-suggestions">
+              {% for name in colour_suggestions %}<option value="{{ name }}"></option>{% endfor %}
+            </datalist>
+            {% for e in form.color.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            {% if colour_suggestions %}
+            <span class="zd-field-hint">Used before: {% for name in colour_suggestions|slice:":8" %}{{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: the photos -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title"><span class="zd-step-n">2</span> Add the photos of this colour</p>
+            <p class="zd-panel-head-sub">Photos are the one thing that is never copied. The cover shows in the swatch, the grid and the Telegram post.</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-field">
+            <span class="zd-field-label">Cover photo (required)</span>
+            {{ form.product_image }}
+            {% for e in form.product_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+          </div>
+          <div class="zd-field zd-field-wide zd-field--separated">
+            <span class="zd-field-label">More photos (optional)</span>
+            <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file" data-bulk-gallery>
+            <span class="zd-field-hint">Select several at once. They become the gallery and the Telegram album.</span>
+            <div class="zd-bulk-gallery-preview" data-bulk-gallery-preview></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: confirm what was pre-filled -->
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title"><span class="zd-step-n">3</span> Check the pre-filled details</p>
+            <p class="zd-panel-head-sub">Taken from {{ source.color_label }}. Usually nothing to change unless this colour has a different price or size run.</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-form-grid zd-form-grid-col2">
+            <div class="zd-field zd-field-wide">
+              <span class="zd-field-label">Title</span>
+              {{ form.title }}
+              {% for e in form.title.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+              <span class="zd-field-hint">If the title mentions “{{ source.color_label }}” it is swapped for the new colour automatically when you leave this as is.</span>
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">SKU</span>
+              {{ form.sku }}
+              {% for e in form.sku.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+              <span class="zd-field-hint">Suggested from the original SKU plus the colour. Must be unique.</span>
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Sizes</span>
+              {{ form.available_sizes }}
+              <datalist id="zd-size-presets">
+                {% for preset in size_presets %}<option value="{{ preset }}"></option>{% endfor %}
+              </datalist>
+              {% for e in form.available_sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+              <span class="zd-field-hint">Each size starts at {{ stock_per_size }} units. Adjust stock in the editor afterwards.</span>
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Price (ETB)</span>
+              {{ form.price }}
+              {% for e in form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+            <div class="zd-field">
+              <span class="zd-field-label">Compare-at price (ETB) — optional</span>
+              {{ form.compare_at_price }}
+              {% for e in form.compare_at_price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="zd-editor-aside">
+
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Create the colour</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-stack">
+            <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary"
+              onclick="return confirm('Post this colour to the Telegram channel now? It also goes live on the storefront as its own product.')">
+              Create, go live &amp; post to Telegram
+            </button>
+            <button type="submit" class="zd-btn zd-btn--ghost">Create as hidden draft</button>
+          </div>
+          <p class="zd-field-hint zd-field--separated">A hidden draft opens in the editor so you can review it first. Nothing reaches shoppers or Telegram until you post it.</p>
+        </div>
+      </div>
+
+      <div class="zd-panel">
+        <div class="zd-panel-head">
+          <div class="zd-panel-head-left">
+            <p class="zd-panel-head-title">Copied from {{ source.color_label }}</p>
+            <p class="zd-panel-head-sub">You can edit any of these on the new colour afterwards</p>
+          </div>
+        </div>
+        <div class="zd-panel-body">
+          <div class="zd-token-list">
+            {% for label in copied_field_labels %}<span class="zd-token">{{ label }}</span>{% endfor %}
+          </div>
+          <p class="zd-empty-hint zd-field--separated">Not copied: photos, SKU, colour name, stock counts, reviews and the Telegram post history. Search-engine title and image alt text are generated for the new colour.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="zd-editor-mobilebar">
+    <button type="submit" class="zd-btn zd-btn--ghost">Hidden draft</button>
+    <button type="submit" name="save_and_publish" value="1" class="zd-btn zd-btn--primary"
+      onclick="return confirm('Post this colour to the Telegram channel now? It also goes live on the storefront as its own product.')">
+      Create &amp; post
+    </button>
+  </div>
+</form>
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% load static %}
+<script src="{% static 'asset/js/zd-product-form.js' %}" defer></script>
+<script src="{% static 'asset/js/zd-colour-form.js' %}" defer></script>
+{% endblock %}
