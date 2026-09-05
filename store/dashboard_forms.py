@@ -186,3 +186,97 @@ def decorate_dashboard_formset(formset):
         _decorate_dashboard_fields(form.fields)
     _decorate_dashboard_fields(formset.empty_form.fields)
     return formset
+
+
+class ColorVariantForm(forms.Form):
+    """The 'Add a colour' intake: only what differs between colours.
+
+    Everything descriptive is copied from the source product by
+    store.services.color_variants.create_color_variant; this form asks for
+    the colour, the photos, and lets staff confirm the pre-filled SKU, title,
+    price and sizes.
+    """
+
+    color = forms.CharField(
+        max_length=80,
+        label="Colour name",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "e.g. Navy Blue",
+                "list": "zd-colour-suggestions",
+                "autocomplete": "off",
+                "autofocus": "autofocus",
+            }
+        ),
+    )
+    product_image = forms.ImageField(label="Cover photo", widget=forms.ClearableFileInput())
+    title = forms.CharField(max_length=150, label="Title")
+    sku = forms.CharField(max_length=255, label="SKU")
+    price = forms.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=0,
+        widget=forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+    )
+    compare_at_price = forms.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(attrs={"min": 0, "step": "0.01", "placeholder": "Original price before markdown"}),
+    )
+    available_sizes = forms.CharField(
+        required=False,
+        label="Sizes",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. S, M, L, XL", "list": "zd-size-presets", "autocomplete": "off"}),
+    )
+
+    def __init__(self, *args, source=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source = source
+        _decorate_dashboard_fields(self.fields)
+
+    def clean_color(self):
+        color = " ".join((self.cleaned_data.get("color") or "").split())
+        if not color:
+            raise forms.ValidationError("Give the colour a name shoppers will recognise, e.g. Black or Olive Green.")
+        if self.source is not None:
+            taken = {(self.source.color or "").casefold()}
+            if self.source.color_group_id:
+                taken.update(
+                    (value or "").casefold()
+                    for value in Product.objects.filter(color_group_id=self.source.color_group_id).values_list("color", flat=True)
+                )
+            if color.casefold() in taken:
+                raise forms.ValidationError(f"{color} already exists in this colour family. Open that product instead.")
+        return color
+
+    def clean_sku(self):
+        sku = (self.cleaned_data.get("sku") or "").strip()
+        if Product.objects.filter(sku=sku).exists():
+            raise forms.ValidationError("That SKU is already used by another product. Change the ending, e.g. -BLUE.")
+        return sku
+
+    def clean_price(self):
+        price = self.cleaned_data.get("price")
+        if price is not None and price <= 0:
+            raise forms.ValidationError("Price must be greater than 0 ETB. A free product cannot be sold.")
+        return price
+
+    def clean_available_sizes(self):
+        from store.services.inventory import parse_size_list
+
+        return parse_size_list(self.cleaned_data.get("available_sizes") or "")
+
+    def clean(self):
+        cleaned = super().clean()
+        price = cleaned.get("price")
+        compare_at = cleaned.get("compare_at_price")
+        if compare_at is not None and price is not None and compare_at <= price:
+            self.add_error(
+                "compare_at_price",
+                "Compare-at price must be higher than the selling price (leave it blank when the colour is not on sale).",
+            )
+        if has_placeholder(cleaned.get("title")):
+            self.add_error("title", PLACEHOLDER_ERROR)
+        return cleaned

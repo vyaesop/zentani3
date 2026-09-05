@@ -136,6 +136,38 @@
               <p class="zh-pdp__lede">{{ product.short_description }}</p>
               {% endif %}
 
+              {% if color_family %}
+              <div class="zh-pdp__group zh-pdp__colours">
+                  <div class="zh-pdp__label-row">
+                      <span class="zh-label">{% trans "Colour" %}</span>
+                      <span class="zh-pdp__colour-name zh-num">{{ product.color_label }} · {% blocktrans count counter=color_family|length %}{{ counter }} option{% plural %}{{ counter }} options{% endblocktrans %}</span>
+                  </div>
+                  <ul class="zh-pdp__swatches" aria-label="{% trans 'Choose a colour' %}">
+                      {% for member in color_family %}
+                      <li>
+                          {% if member.is_current %}
+                          <span class="zh-swatch is-current" aria-current="page">
+                              <span class="zh-swatch__img">
+                                  {% if member.product.product_image %}{% cld_img member.product.product_image width=160 alt="" html_width=64 html_height=80 %}{% endif %}
+                              </span>
+                              <span class="zh-swatch__label">{{ member.label }}</span>
+                          </span>
+                          {% else %}
+                          <a class="zh-swatch{% if member.product.is_sold_out %} is-soldout{% endif %}"
+                             href="{% url 'store:product-detail' member.product.slug %}"
+                             title="{% blocktrans with colour=member.label title=member.product.title %}{{ title }} in {{ colour }}{% endblocktrans %}">
+                              <span class="zh-swatch__img">
+                                  {% if member.product.product_image %}{% cld_img member.product.product_image width=160 alt="" html_width=64 html_height=80 %}{% endif %}
+                              </span>
+                              <span class="zh-swatch__label">{{ member.label }}{% if member.product.is_sold_out %} · {% trans "Sold out" %}{% endif %}</span>
+                          </a>
+                          {% endif %}
+                      </li>
+                      {% endfor %}
+                  </ul>
+              </div>
+              {% endif %}
+
               <form id="product-add-to-cart-form" action="{% url 'store:add-to-cart' %}" method="POST" class="zh-pdp__form"
                     hx-post="{% url 'store:add-to-cart' %}" hx-target="#add-to-cart-feedback" hx-swap="innerHTML">
                   {% csrf_token %}

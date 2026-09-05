@@ -38,6 +38,9 @@
     <div class="zh-module__body">
         <h3 class="zh-module__title"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>
         {% if product.brand %}<p class="zh-module__meta">{{ product.brand }}</p>{% endif %}
+        {% if product.color_group_id and color_counts %}{% with colour_total=color_counts|lookup:product.color_group_id %}{% if colour_total %}
+        <p class="zh-module__meta zh-module__colours zh-num">{% blocktrans count counter=colour_total %}{{ counter }} colour{% plural %}{{ counter }} colours{% endblocktrans %}</p>
+        {% endif %}{% endwith %}{% endif %}
         {% if product.is_sold_out %}
         <p class="zh-module__price zh-module__price--soldout zh-num">{% trans "Sold out" %}<a href="{% url 'store:product-detail' product.slug %}#restock">{% trans "Notify me" %}</a></p>
         {% elif product.is_on_sale %}

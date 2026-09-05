@@ -495,6 +495,21 @@ a.zh-pdp__rating:hover { text-decoration: underline; text-decoration-thickness: 
 .zh-pdp__stock { margin: 0; font-size: 13px; color: var(--zh-ink-2); }
 .zh-pdp__lede { margin: 14px 0 0; font-size: 15px; line-height: 1.5; color: var(--zh-ink-2); max-width: 48ch; }
 
+/* ── Colours: one swatch per sibling product, each its own page ─────── */
+.zh-pdp__colours { margin-top: 22px; }
+.zh-pdp__colour-name { font-size: 13px; color: var(--zh-ink-2); }
+.zh-pdp__swatches { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 8px; }
+.zh-swatch { display: grid; gap: 5px; justify-items: center; width: 64px; color: var(--zh-ink); text-decoration: none; }
+.zh-swatch__img { display: block; width: 64px; aspect-ratio: 4 / 5; border: 2px solid var(--zh-ink); background: var(--zh-paper); overflow: hidden; }
+.zh-swatch__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zh-swatch__label { font-size: 11px; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+a.zh-swatch:hover .zh-swatch__img, a.zh-swatch:focus-visible .zh-swatch__img { outline: 3px solid var(--zh-indigo); outline-offset: 2px; }
+a.zh-swatch:focus-visible { outline: none; }
+.zh-swatch.is-current .zh-swatch__img { outline: 3px solid var(--zh-indigo); outline-offset: 2px; }
+.zh-swatch.is-current .zh-swatch__label { font-weight: 600; }
+.zh-swatch.is-soldout .zh-swatch__img { opacity: .5; }
+.zh-module__colours { font-variant-numeric: tabular-nums; }
+
 /* ── Form: the size ruler and the selvedge bar ─────────────────────── */
 .zh-pdp__form { display: grid; gap: 18px; margin-top: 22px; }
 .zh-pdp__group { display: grid; gap: 10px; }

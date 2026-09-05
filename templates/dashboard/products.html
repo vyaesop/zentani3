@@ -66,8 +66,13 @@
   <!-- Catalog list header -->
   <div class="zd-panel-head" style="border-top: 1px solid var(--z-border);">
     <div class="zd-panel-head-left">
+      {% if color_group %}
+      <p class="zd-panel-head-title">Colours of {{ color_group.name }}</p>
+      <p class="zd-panel-head-sub">Every colour is its own product and its own Telegram post. <a href="{% url 'store:dashboard-products' %}">Back to all products</a></p>
+      {% else %}
       <p class="zd-panel-head-title">Product catalog</p>
       <p class="zd-panel-head-sub">Click Edit to open the product editor</p>
+      {% endif %}
     </div>
     <div class="zd-panel-head-right">
       <a href="{% url 'store:dashboard-product-create' %}" class="zd-btn zd-btn--primary zd-btn--sm">
@@ -93,10 +98,14 @@
         <div class="zd-catalog-info-name">{{ product.title }}</div>
         <div class="zd-catalog-info-sub">
           {{ product.sku }}
+          {% if product.color %} · {{ product.color }}{% endif %}
           {% if product.category %} · {{ product.category.title }}{% endif %}
           {% if product.brand %} · {{ product.brand.title }}{% endif %}
         </div>
         <div class="zd-catalog-badges">
+          {% if product.colour_count > 1 %}
+          <a href="{% url 'store:dashboard-products' %}?group={{ product.color_group_id }}" class="zd-pill zd-pill--colours" title="See every colour of this garment">{{ product.colour_count }} colours</a>
+          {% endif %}
           {% if not product.is_active %}<span class="zd-pill zd-pill--draft">Hidden</span>{% endif %}
           {% if product.is_featured %}<span class="zd-pill zd-pill--active">Featured</span>{% endif %}
           {% if product.is_sold_out %}<span class="zd-pill zd-pill--cancelled">Sold out</span>{% endif %}
@@ -120,6 +129,7 @@
 
       <div class="zd-catalog-actions">
         <a href="{% url 'store:dashboard-product-edit' product.id %}" class="zd-btn zd-btn--primary zd-btn--sm">Edit</a>
+        <a href="{% url 'store:dashboard-product-add-color' product.id %}" class="zd-btn zd-btn--ghost zd-btn--sm" title="Post this garment in another colour">+ Colour</a>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="product_id" value="{{ product.id }}">

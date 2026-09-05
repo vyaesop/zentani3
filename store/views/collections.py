@@ -5,6 +5,7 @@ from django.db.models import Case, F, IntegerField, Max, Min, Q, Value, When
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils.functional import SimpleLazyObject
 
 from store.cache_utils import COLLECTION_META_TTL, collection_meta_key
 from store.constants import (
@@ -13,6 +14,7 @@ from store.constants import (
     DIRECTORY_PAGE_SIZE,
 )
 from store.models import Brand, Category, Product, ProductSizeStock, SearchLog
+from store.services import color_variants
 
 from .catalog import (
     PRODUCT_LIST_FIELDS,
@@ -225,6 +227,10 @@ def _build_collection_state(
     return {
         "products": paged_products,
         "page_obj": paged_products,
+        # Lazy: the grid is fragment-cached for anonymous visitors, so the
+        # colour lookup must not evaluate the product queryset unless the
+        # cards actually render (QueryCountGuardTests locks this at 1 query).
+        "color_counts": SimpleLazyObject(lambda: color_variants.color_count_map(paged_products.object_list)),
         "product_count": paginator.count,
         "page_numbers": page_numbers,
         "saved_product_ids": _saved_product_ids_for_user(request.user),

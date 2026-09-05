@@ -16,6 +16,7 @@ from .models import (
     Order,
     OrderGroup,
     Product,
+    ProductColorGroup,
     ProductImages,
     ProductReview,
     ProductSizeStock,
@@ -76,9 +77,10 @@ class ProductAdmin(admin.ModelAdmin):
     list_editable = ('slug', 'category','brand', 'stock_quantity', 'is_sold_out', 'is_active', 'is_featured')
     list_filter = ('category','brand', 'is_sold_out', 'is_active', 'is_featured')
     list_per_page = 10
-    search_fields = ('title', 'category__title', 'short_description', 'sku')
+    search_fields = ('title', 'category__title', 'short_description', 'sku', 'color')
     prepopulated_fields = {"slug": ("title", )}
     readonly_fields = ("affiliate_link_pattern",)
+    autocomplete_fields = ("color_group",)
     actions = ("post_selected_to_telegram",)
     fieldsets = (
         ("Core", {
@@ -100,6 +102,7 @@ class ProductAdmin(admin.ModelAdmin):
                 "stock_quantity",
                 "material",
                 "color",
+                "color_group",
                 "fit_notes",
                 "care_notes",
                 "measurements",
@@ -430,3 +433,32 @@ class TelegramLinkAdmin(admin.ModelAdmin):
 
 
 admin.site.register(TelegramLink, TelegramLinkAdmin)
+
+
+class ProductColorGroupMemberInline(admin.TabularInline):
+    """Read-mostly view of the colours in a group; edit each colour on its own page."""
+    model = Product
+    fields = ("title", "color", "sku", "price", "is_active", "is_sold_out")
+    readonly_fields = ("title", "sku", "price")
+    extra = 0
+    can_delete = False
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ProductColorGroup)
+class ProductColorGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "colour_count", "created_at")
+    search_fields = ("name", "products__title", "products__sku", "products__color")
+    inlines = [ProductColorGroupMemberInline]
+
+    def get_queryset(self, request):
+        from django.db.models import Count
+
+        return super().get_queryset(request).annotate(_colour_count=Count("products"))
+
+    @admin.display(description="Colours", ordering="_colour_count")
+    def colour_count(self, obj):
+        return obj._colour_count

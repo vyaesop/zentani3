@@ -20,6 +20,7 @@ from .ai_enrichment import (
     gemini_is_configured,
 )
 from .dashboard_forms import (
+    ColorVariantForm,
     DashboardProductForm,
     ProductAIDraftForm,
     ProductImageFormSet,
@@ -34,6 +35,7 @@ from .models import (
     Order,
     Product,
     ProductAIDraft,
+    ProductColorGroup,
     ProductEvent,
     ProductImages,
     ProductReview,
@@ -43,6 +45,7 @@ from .models import (
     TelegramBotOrder,
     TelegramLink,
 )
+from .services import color_variants
 from .services.checkout import cancel_order_line
 from .services.enrichment import mark_draft_manual_review
 from .services.inventory import default_stock_per_size, parse_size_list, set_product_sizes
@@ -625,8 +628,13 @@ def dashboard_products(request):
     query = (request.GET.get("q") or "").strip()
     category_slug = (request.GET.get("category") or "").strip()
     state = (request.GET.get("state") or "").strip()
+    group_param = (request.GET.get("group") or "").strip()
+    color_group = ProductColorGroup.objects.filter(pk=int(group_param)).first() if group_param.isdigit() else None
 
     products = Product.objects.select_related("category", "brand").prefetch_related("size_inventory").order_by("-updated_at", "-created_at")
+    if color_group is not None:
+        # "See all colours" from a row: the whole family, oldest colour first.
+        products = products.filter(color_group=color_group).order_by("created_at", "id")
     if category_slug:
         products = products.filter(category__slug=category_slug)
     if state == "active":
@@ -657,6 +665,9 @@ def dashboard_products(request):
         low_stock=Count("id", filter=Q(stock_quantity__lte=LOW_STOCK_THRESHOLD)),
     )
 
+    # Annotated after the summary aggregate so that stays a plain count.
+    products = products.annotate(colour_count=Count("color_group__products", distinct=True))
+
     paginator = Paginator(products, 16)
     page_obj = paginator.get_page(request.GET.get("page"))
 
@@ -670,7 +681,8 @@ def dashboard_products(request):
         page_numbers=paginator.get_elided_page_range(number=page_obj.number, on_each_side=1, on_ends=1),
         product_summary=summary,
         category_options=Category.objects.filter(is_active=True).order_by("title"),
-        filters={"q": query, "category": category_slug, "state": state},
+        filters={"q": query, "category": category_slug, "state": state, "group": group_param},
+        color_group=color_group,
         query_string_without_page=_query_string_without(request, "page"),
     )
     return render(request, "dashboard/products.html", context)
@@ -887,8 +899,159 @@ def dashboard_product_edit(request, product_id=None):
         gallery_images=list(product.p_images.all()) if product else [],
         size_tokens=size_tokens,
         stock_per_size=default_stock_per_size(),
+        **_color_panel_context(product),
     )
     return render(request, "dashboard/product_form.html", context)
+
+
+def _color_panel_context(product):
+    """Everything the editor's Colours panel needs; empty for a new product."""
+    if product is None or not product.pk:
+        return {"color_family": [], "link_candidates": [], "shared_detail_labels": []}
+    family = color_variants.color_family(product, include_hidden=True)
+    if not family:
+        family = [{"product": product, "is_current": True, "label": product.color_label}]
+    # Products that might be an already-posted colour of this garment: same
+    # collection, not yet in this family. Recent first so the likely match is on top.
+    candidates = Product.objects.filter(category_id=product.category_id).exclude(pk=product.pk)
+    if product.color_group_id:
+        candidates = candidates.exclude(color_group_id=product.color_group_id)
+    candidates = candidates.only("id", "title", "color", "sku", "is_active").order_by("-updated_at")[:150]
+    return {
+        "color_family": family,
+        "link_candidates": list(candidates),
+        "shared_detail_labels": [
+            color_variants.SHARED_DETAIL_LABELS[name] for name in color_variants.SHARED_DETAIL_FIELDS
+        ],
+    }
+
+
+@staff_required
+def dashboard_product_add_color(request, product_id):
+    """Streamlined 'Add a colour' flow: colour + photos, everything else pre-filled."""
+    source = get_object_or_404(
+        Product.objects.select_related("category", "brand").prefetch_related("size_inventory"),
+        pk=product_id,
+    )
+    family = color_variants.color_family(source, include_hidden=True) or [
+        {"product": source, "is_current": True, "label": source.color_label}
+    ]
+
+    if request.method == "POST":
+        form = ColorVariantForm(request.POST, request.FILES, source=source)
+        if form.is_valid():
+            publish = "save_and_publish" in request.POST
+            try:
+                variant = color_variants.create_color_variant(
+                    source,
+                    color=form.cleaned_data["color"],
+                    cover_image=form.cleaned_data["product_image"],
+                    gallery_images=request.FILES.getlist("gallery_images"),
+                    sku=form.cleaned_data["sku"],
+                    title=form.cleaned_data["title"],
+                    price=form.cleaned_data["price"],
+                    compare_at_price=form.cleaned_data.get("compare_at_price"),
+                    sizes=form.cleaned_data["available_sizes"],
+                    is_active=publish,
+                )
+            except ValueError as exc:
+                messages.error(request, str(exc))
+            else:
+                if publish:
+                    enqueue(BackgroundTask.TYPE_TELEGRAM_PRODUCT_POST, {"product_id": variant.id, "force": True})
+                    messages.success(
+                        request,
+                        f"{variant.title} ({variant.color}) is live and was posted to Telegram as its own product. "
+                        "Shoppers can switch between the colours from either page.",
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"{variant.title} ({variant.color}) was created as a hidden draft with the details copied from "
+                        f"{source.color_label}. Check the photos and copy, then use Save & post to Telegram.",
+                    )
+                return redirect("store:dashboard-product-edit", product_id=variant.id)
+        else:
+            messages.error(request, "Fix the highlighted fields to add this colour.")
+    else:
+        form = ColorVariantForm(
+            source=source,
+            initial={
+                "title": source.title,
+                "sku": color_variants.suggest_variant_sku(source, ""),
+                "price": source.price,
+                "compare_at_price": source.compare_at_price,
+                "available_sizes": ", ".join(parse_size_list(source.available_sizes)),
+            },
+        )
+
+    context = _dashboard_context(
+        request,
+        section="products",
+        title=f"Add a colour of {source.title}",
+        intro="Only the colour and the photos are new. Title, description, collection, brand, sizes and price come from the original. Change them here if this colour differs.",
+        source=source,
+        form=form,
+        color_family=family,
+        sku_base=color_variants.variant_sku_base(source),
+        colour_suggestions=color_variants.colour_name_suggestions(),
+        size_presets=_size_preset_options(),
+        stock_per_size=default_stock_per_size(),
+        copied_field_labels=[
+            "short description",
+            "detail description",
+            "material",
+            "fit and care notes",
+            "measurements",
+            "delivery and return notes",
+            "collection",
+            "brand",
+            "featured placement",
+        ],
+    )
+    return render(request, "dashboard/product_color_form.html", context)
+
+
+@staff_required
+@require_POST
+def dashboard_product_colors(request, product_id):
+    """Colours panel actions: link an existing product, unlink one, copy details."""
+    product = get_object_or_404(Product.objects.select_related("category", "brand"), pk=product_id)
+    action = (request.POST.get("action") or "").strip()
+    redirect_to = request.POST.get("next") or reverse("store:dashboard-product-edit", args=[product.id])
+
+    if action == "link":
+        other = Product.objects.filter(pk=request.POST.get("other_product_id") or None).first()
+        if other is None:
+            messages.error(request, "Pick a product to link as a colour.")
+        elif other.pk == product.pk:
+            messages.warning(request, "A product cannot be a colour of itself.")
+        else:
+            color_variants.link_products(product, other)
+            hint = "" if other.color else " Give it a colour name in its editor so the swatch has a label."
+            messages.success(request, f"{other.title} is now a colour of {product.title}.{hint}")
+    elif action == "unlink":
+        other = Product.objects.filter(pk=request.POST.get("other_product_id") or None).first()
+        if other is None or not product.color_group_id or other.color_group_id != product.color_group_id:
+            messages.error(request, "That product is not in this colour family.")
+        else:
+            color_variants.unlink_product(other)
+            messages.success(request, f"{other.title} was removed from the colour family. It stays live as its own product.")
+    elif action == "sync_details":
+        include_price = request.POST.get("include_price") == "1"
+        updated = color_variants.sync_shared_details(product, include_price=include_price)
+        if updated:
+            plural = "s" if updated != 1 else ""
+            messages.success(
+                request,
+                f"Copied the shared details{' and price' if include_price else ''} from {product.color_label} to "
+                f"{updated} other colour{plural}. Titles, photos, SKUs and stock were left alone.",
+            )
+        else:
+            messages.info(request, "This product has no other colours yet.")
+    else:
+        messages.error(request, "That colour action is not supported.")
+    return redirect(redirect_to)
 
 
 @staff_required

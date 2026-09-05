@@ -127,3 +127,12 @@ def star_icons(rating, max_rating=5):
         css = "spring-star is-filled" if i <= filled_count else "spring-star"
         parts.append(f'<span class="{css}" aria-hidden="true">★</span>')
     return mark_safe("".join(parts))
+
+
+@register.filter(name="lookup")
+def lookup(mapping, key):
+    """{{ mapping|lookup:key }} — dict access with a falsy fallback for templates."""
+    try:
+        return mapping.get(key)
+    except AttributeError:
+        return None

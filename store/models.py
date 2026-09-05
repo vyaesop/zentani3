@@ -96,6 +96,30 @@ class Brand(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProductColorGroup(models.Model):
+    """One garment sold in several colours.
+
+    Each colour is still its own Product — own page, SKU, photos, price and
+    stock — so shoppers land on a dedicated page and Telegram gets a separate
+    post per colour. The group only records "these belong together" so the
+    pages can link to each other with colour swatches (the Shein pattern).
+    Groups are created and dissolved automatically by
+    store.services.color_variants; staff never manage them by hand.
+    """
+
+    name = models.CharField(max_length=150, verbose_name="Style name")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Colour group"
+        verbose_name_plural = "Colour groups"
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     DEFAULT_STOCK_PER_SIZE = getattr(settings, "INVENTORY_DEFAULT_STOCK_PER_SIZE", 10)
 
@@ -109,6 +133,15 @@ class Product(models.Model):
     detail_description = models.TextField(blank=True, null=True, verbose_name="Detail Description")
     material = models.CharField(max_length=120, blank=True, verbose_name="Material")
     color = models.CharField(max_length=80, blank=True, verbose_name="Color")
+    color_group = models.ForeignKey(
+        ProductColorGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+        verbose_name="Colour group",
+        help_text="Other colours of the same garment. Managed from the product editor's Colours panel.",
+    )
     fit_notes = models.TextField(blank=True, verbose_name="Fit Notes")
     care_notes = models.TextField(blank=True, verbose_name="Care Notes")
     measurements = models.TextField(
@@ -147,12 +180,31 @@ class Product(models.Model):
             models.Index(fields=['is_active', 'category']),
             models.Index(fields=['is_active', 'brand']),
             models.Index(fields=['is_active', 'sku']),
+            models.Index(fields=['color_group', 'is_active']),
         ]
 
     def __str__(self):
         return self.title
 
     NEW_BADGE_DAYS = 14
+
+    @property
+    def color_label(self):
+        """Colour name shown on swatches; falls back so a blank colour never renders empty."""
+        return (self.color or "").strip() or "Original"
+
+    def color_siblings(self, *, include_hidden=False):
+        """Other colours of this garment, oldest first (stable swatch order).
+
+        Returns an empty queryset (no DB hit) when the product is not in a
+        colour group, so list pages pay nothing for ungrouped products.
+        """
+        if not self.color_group_id:
+            return Product.objects.none()
+        queryset = Product.objects.filter(color_group_id=self.color_group_id).exclude(pk=self.pk)
+        if not include_hidden:
+            queryset = queryset.filter(is_active=True)
+        return queryset.select_related("category", "brand").order_by("created_at", "id")
 
     @property
     def is_on_sale(self):

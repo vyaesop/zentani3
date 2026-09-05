@@ -95,6 +95,11 @@
 </div>
 {% endif %}
 
+<!-- Colours: sibling products of the same garment (own forms, so kept outside the editor form) -->
+{% if product %}
+{% include "dashboard/_product_colours_panel.html" %}
+{% endif %}
+
 <!-- Manual entry escape hatch (create page, editor starts hidden) -->
 {% if editor_collapsed and not product %}
 <div class="zd-manual-reveal">
@@ -120,7 +125,7 @@
           {% if product %}
           Status:
           {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Unpublished — "Save &amp; post" makes it live{% endif %}
-          · {{ product.stock_quantity }} units in stock
+          · {{ product.stock_quantity }} units in stock{% if product.color %} · {{ product.color }}{% endif %}{% if color_family|length > 1 %} · 1 of {{ color_family|length }} colours{% endif %}
           {% else %}
           Fill in the details below and save to publish
           {% endif %}

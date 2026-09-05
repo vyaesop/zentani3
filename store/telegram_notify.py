@@ -336,6 +336,7 @@ def _product_post_signature(product):
         [
             _safe_text(product.title, fallback=""),
             _safe_text(product.sku, fallback=""),
+            _safe_text(getattr(product, "color", "") or "", fallback=""),
             _safe_text(product.short_description, fallback=""),
             _safe_text(product.available_sizes, fallback=""),
             _safe_text(product.price, fallback=""),
@@ -351,10 +352,27 @@ def _product_post_signature(product):
     return hashlib.sha256(signature_payload.encode("utf-8")).hexdigest()
 
 
+def _other_colours_line(product):
+    """'Also in: <a>Black</a> · <a>White</a>' — every colour is its own post,
+    so each caption points readers at the sibling pages."""
+    if not getattr(product, "color_group_id", None):
+        return ""
+    parts = []
+    for sibling in product.color_siblings()[:6]:
+        label = html.escape(sibling.color_label)
+        url = product_site_url(sibling)
+        parts.append(f'<a href="{html.escape(url)}">{label}</a>' if url else label)
+    if not parts:
+        return ""
+    return f"🎨 <b>Also in</b>: {' · '.join(parts)}\n"
+
+
 def _product_caption(product):
     category = getattr(getattr(product, "category", None), "title", "N/A")
     brand = getattr(getattr(product, "brand", None), "title", "N/A")
     sizes = product.available_sizes or "Ask in bot"
+    color = (getattr(product, "color", "") or "").strip()
+    color_line = f"🎨 <b>Colour</b>: {html.escape(color)}\n" if color else ""
     if getattr(product, "is_on_sale", False):
         header = f"⚡ <b>SALE — {product.discount_percent}% OFF</b>\n"
         price_line = (
@@ -373,7 +391,9 @@ def _product_caption(product):
             f"{price_line}"
             f"🗂 <b>Category</b>: {html.escape(_safe_text(category))}\n"
             f"🏷 <b>Brand</b>: {html.escape(_safe_text(brand))}\n"
+            f"{color_line}"
             f"📏 <b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
+            f"{_other_colours_line(product)}"
             "\n"
             "👇 Tap <b>Choose Size</b> below to order in chat.\n"
             f"{_caption_site_line(product)}"
@@ -621,11 +641,13 @@ def post_product_to_channel(product, force=False):
             _mark_channel_post_success(product, current_signature)
             return True
 
+    fallback_color = (getattr(product, "color", "") or "").strip()
     fallback_text = (
         "🔥 NEW DROP JUST LANDED\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"{_safe_text(product.title)}\n"
-        f"💰 Price: {_format_money(product.price)} ETB\n"
+        + (f"🎨 Colour: {fallback_color}\n" if fallback_color else "")
+        + f"💰 Price: {_format_money(product.price)} ETB\n"
         f"📏 Sizes: {_safe_text(product.available_sizes, fallback='Ask in bot')}\n"
         f"👇 Order here: {deep_link}"
     )
