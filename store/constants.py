@@ -22,6 +22,18 @@ ACCOUNT_ORDERS_PAGE_SIZE = 12
 SIZE_DISPLAY_ORDER = ("XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL")
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_product_ids"
 
+# Brands
+# Unbranded stock is filed under a placeholder brand rather than a null FK,
+# because the scraper and the AI intake both need something to point at. That
+# is bookkeeping, not a label, so it never reaches shoppers: no brand line on
+# the product page or card, no brand row in a Telegram post, and no entry in
+# the brand directory, filters or sitemap.
+PLACEHOLDER_BRAND_TITLES = ("no brand", "nobrand", "no-brand")
+
+
+def is_placeholder_brand_title(title):
+    return str(title or "").strip().casefold() in PLACEHOLDER_BRAND_TITLES
+
 
 def size_sort_key(size_value):
     """Sort sizes garment-first (XS < S < M …), then alphabetically."""

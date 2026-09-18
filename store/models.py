@@ -8,6 +8,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 
 from store.bots import is_crawler
+from store.constants import PLACEHOLDER_BRAND_TITLES, is_placeholder_brand_title
 
 
 def _normalize_legacy_media_name(name):
@@ -66,6 +67,15 @@ class Category(models.Model):
             self.category_image.name = _normalize_legacy_media_name(self.category_image.name)
         super().save(*args, **kwargs)
     
+class BrandQuerySet(models.QuerySet):
+    def shopper_visible(self):
+        """Drop the placeholder brand used to file unbranded stock."""
+        queryset = self
+        for title in PLACEHOLDER_BRAND_TITLES:
+            queryset = queryset.exclude(title__iexact=title)
+        return queryset
+
+
 class Brand(models.Model):
     title = models.CharField(max_length=50, verbose_name="Brand Title")
     slug = models.SlugField(max_length=55, verbose_name="Brand Slug")
@@ -81,6 +91,13 @@ class Brand(models.Model):
     is_featured = models.BooleanField(verbose_name="Is Featured?")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created Date")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated Date")
+
+    objects = BrandQuerySet.as_manager()
+
+    @property
+    def is_placeholder(self):
+        """True for the bookkeeping brand that unbranded stock is filed under."""
+        return is_placeholder_brand_title(self.title)
 
     class Meta:
         verbose_name_plural = 'Brands'
@@ -207,6 +224,18 @@ class Product(models.Model):
         if not include_hidden:
             queryset = queryset.filter(is_active=True)
         return queryset.select_related("category", "brand").order_by("created_at", "id")
+
+    @property
+    def display_brand(self):
+        """The brand to show shoppers, or None when the piece is unbranded.
+
+        Use this everywhere a brand is rendered - product page, cards,
+        Telegram posts, feeds - so the placeholder brand never leaks out.
+        """
+        if not self.brand_id:
+            return None
+        brand = self.brand
+        return None if brand.is_placeholder else brand
 
     @property
     def is_on_sale(self):

@@ -252,8 +252,8 @@ def _ga_item(product, quantity=1, size=""):
     }
     if product.category_id:
         item["item_category"] = product.category.title
-    if product.brand_id:
-        item["item_brand"] = product.brand.title
+    if product.display_brand:
+        item["item_brand"] = product.display_brand.title
     if size:
         item["item_variant"] = size
     return item
@@ -350,7 +350,7 @@ def _product_schema(request, product, gallery_images, available_sizes, review_su
         "url": product_url,
         "brand": {
             "@type": "Brand",
-            "name": product.brand.title if product.brand_id else settings.STORE_NAME,
+            "name": product.display_brand.title if product.display_brand else settings.STORE_NAME,
         },
         "offers": {
             "@type": "Offer",
@@ -544,7 +544,8 @@ def home(request):
         .order_by("-created_at")[:8]
     )
     brands = list(
-        Brand.objects.filter(is_active=True, is_featured=True)
+        Brand.objects.shopper_visible()
+        .filter(is_active=True, is_featured=True)
         .annotate(live_count=_live_count_annotation())
         .filter(live_count__gt=0)
         .only("id", "title", "slug", "brand_image", "description")
