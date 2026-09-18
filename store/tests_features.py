@@ -16,7 +16,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from store import tasks as task_queue
@@ -37,7 +37,7 @@ from store.phone import normalize_et_phone, to_e164
 from store.seo import clean_seo_copy, has_placeholder
 from store.services.checkout import cancel_order_line, delivery_fee_for
 from store.services.inventory import set_product_sizes
-from store.tests import _make_catalog
+from store.tests import BROWSER_UA, _make_catalog
 
 
 def _stock_for(product, size):
@@ -685,6 +685,7 @@ class ChapaPaymentTests(TestCase):
 class AnalyticsAndSearchLogTests(TestCase):
     def setUp(self):
         cache.clear()
+        self.client = Client(HTTP_USER_AGENT=BROWSER_UA)
         self.category, self.brand, self.product = _make_catalog("Ga")
 
     def test_add_to_cart_emits_ga_trigger_header(self):

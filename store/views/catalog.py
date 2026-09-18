@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from store.bots import is_crawler
 from store.constants import (
     ADDIS_FREE_SHIPPING_THRESHOLD,
     ADDIS_SHIPPING_FEE,
@@ -55,6 +56,10 @@ def _recently_viewed_product_ids(request):
 
 
 def _push_recently_viewed_product(request, product):
+    # Writing the session creates a django_session row, which wakes the
+    # database for its whole autosuspend window; crawlers get no such row.
+    if is_crawler(request):
+        return
     existing_ids = [product_id for product_id in _recently_viewed_product_ids(request) if product_id != product.id]
     request.session[RECENTLY_VIEWED_SESSION_KEY] = [product.id, *existing_ids][:8]
     request.session.modified = True

@@ -8,9 +8,10 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 from django.contrib.auth.models import User
+from django.contrib.sessions.models import Session
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.test import TestCase
 from django.urls import reverse, reverse_lazy
 from PIL import Image
@@ -19,6 +20,7 @@ from . import ai_enrichment
 from . import tasks as task_queue
 from .models import (
     Address,
+    AffiliateClick,
     AffiliateCommission,
     AffiliateProfile,
     BackgroundTask,
@@ -34,6 +36,7 @@ from .models import (
     ProductReview,
     ProductSizeStock,
     RestockRequest,
+    SearchLog,
     TelegramLink,
     Wishlist,
 )
@@ -331,6 +334,7 @@ class StoreFlowTests(TestCase):
         response = self.client.get(
             reverse("store:affiliate-track", args=[affiliate_profile.code]),
             {"next": f"/product/{self.product.slug}/"},
+            HTTP_USER_AGENT=BROWSER_UA,
         )
 
         self.assertEqual(response.status_code, 302)
@@ -847,6 +851,12 @@ class StoreFlowTests(TestCase):
         self.assertEqual(response.json()["ok"], True)
 
 
+# Requests with no User-Agent are treated as crawlers (see store.bots), and the
+# Django test client sends none by default, so tests that assert on tracking
+# writes must present themselves as a browser.
+BROWSER_UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"
+
+
 def _make_catalog(prefix="Guard"):
     """Category/brand/product fixture shared by the focused test classes."""
     category = Category.objects.create(
@@ -932,6 +942,7 @@ class ReviewFitFeedbackTests(TestCase):
 
 class BehavioralEventsAndRecsTests(TestCase):
     def setUp(self):
+        self.client = Client(HTTP_USER_AGENT=BROWSER_UA)
         self.category, self.brand, self.product = _make_catalog("Events")
         self.other = Product.objects.create(
             title="Events Companion Scarf",
@@ -1019,6 +1030,89 @@ class BehavioralEventsAndRecsTests(TestCase):
         )
         self.assertEqual(task_queue._purge_stale_product_events(), 1)
         self.assertFalse(ProductEvent.objects.exists())
+
+
+class CrawlerFilteringTests(TestCase):
+    """Bot traffic must not write to the database.
+
+    Each write wakes the Neon compute for its full autosuspend window, so a
+    crawler walking sitemap.xml could hold the database awake continuously.
+    """
+
+    GOOGLEBOT_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+
+    def setUp(self):
+        self.category, self.brand, self.product = _make_catalog("Crawler")
+        self.detail_url = reverse("store:product-detail", args=[self.product.slug])
+
+    def test_user_agents_are_classified(self):
+        from django.test import RequestFactory
+
+        from store.bots import is_crawler
+
+        factory = RequestFactory()
+        crawlers = [
+            self.GOOGLEBOT_UA,
+            "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+            "TelegramBot (like TwitterBot)",
+            "python-requests/2.31.0",
+            "curl/8.4.0",
+            "Scrapy/2.11 (+https://scrapy.org)",
+            "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0",
+            "UptimeRobot/2.0; http://www.uptimerobot.com/",
+            "",
+        ]
+        for user_agent in crawlers:
+            request = factory.get("/", HTTP_USER_AGENT=user_agent)
+            self.assertTrue(is_crawler(request), f"{user_agent!r} should be a crawler")
+
+        humans = [
+            BROWSER_UA,
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Version/17.2 Mobile/15E148 Safari/604.1",
+            # Budget Android handsets whose model names embed "bot" must not be
+            # mistaken for robots.
+            "Mozilla/5.0 (Linux; Android 11; CUBOT_X30) AppleWebKit/537.36 Chrome/98.0 Mobile Safari/537.36",
+            "Mozilla/5.0 (Linux; Android 10; Elephone U5) AppleWebKit/537.36 Chrome/90.0 Mobile Safari/537.36",
+        ]
+        for user_agent in humans:
+            request = factory.get("/", HTTP_USER_AGENT=user_agent)
+            self.assertFalse(is_crawler(request), f"{user_agent!r} should be a visitor")
+
+    def test_crawler_detail_view_writes_nothing(self):
+        response = self.client.get(self.detail_url, HTTP_USER_AGENT=self.GOOGLEBOT_UA)
+
+        self.assertEqual(response.status_code, 200, "Crawlers must still get the page.")
+        self.assertFalse(ProductEvent.objects.exists(), "Crawler must not log a view event.")
+        self.assertFalse(Session.objects.exists(), "Crawler must not create a session row.")
+
+    def test_visitor_detail_view_still_tracks(self):
+        response = self.client.get(self.detail_url, HTTP_USER_AGENT=BROWSER_UA)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            ProductEvent.objects.filter(product=self.product, event_type=ProductEvent.EVENT_VIEW).exists()
+        )
+        self.assertTrue(Session.objects.exists(), "A real visitor still gets recently-viewed.")
+
+    def test_crawler_search_is_not_logged(self):
+        self.client.get(reverse("store:search"), {"q": "leather jacket"}, HTTP_USER_AGENT=self.GOOGLEBOT_UA)
+        self.assertFalse(SearchLog.objects.exists())
+
+        self.client.get(reverse("store:search"), {"q": "leather jacket"}, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertTrue(SearchLog.objects.exists())
+
+    def test_crawler_following_affiliate_link_is_not_a_click(self):
+        affiliate = User.objects.create_user(username="0912777000", password="test-pass-123")
+        profile = AffiliateProfile.objects.create(user=affiliate, code="CRAWLREF", is_active=True)
+        url = reverse("store:affiliate-track", args=[profile.code])
+
+        response = self.client.get(url, HTTP_USER_AGENT=self.GOOGLEBOT_UA)
+        self.assertEqual(response.status_code, 302, "Crawlers must still be redirected.")
+        self.assertFalse(AffiliateClick.objects.exists())
+
+        self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(AffiliateClick.objects.count(), 1)
 
 
 class StorefrontRefinementTests(TestCase):
@@ -1831,6 +1925,9 @@ class QueryCountGuardTests(TestCase):
     def setUp(self):
         from django.core.cache import cache
 
+        # Query counts are only meaningful for a real visitor: a crawler skips
+        # the session and view-event writes (see store.bots).
+        self.client = Client(HTTP_USER_AGENT=BROWSER_UA)
         cache.clear()
         self.category, self.brand, self.product = _make_catalog("Qc")
         for index in range(6):

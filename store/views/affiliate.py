@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from store.bots import is_crawler
 from store.constants import (
     AFFILIATE_CLICK_SESSION_KEY,
     AFFILIATE_SESSION_KEY,
@@ -71,18 +72,22 @@ def track_affiliate_link(request, code):
         messages.info(request, "You cannot use your own affiliate link.")
         return redirect("store:home")
 
-    request.session[AFFILIATE_SESSION_KEY] = affiliate_profile.id
-    request.session.set_expiry(AFFILIATE_SESSION_MAX_AGE_SECONDS)
-    session_key = _ensure_session_key(request)
+    # Crawlers and link-preview fetchers still get the redirect, but they are
+    # not clicks: attributing them would inflate affiliate stats, and the
+    # session and click writes would wake the database.
+    if not is_crawler(request):
+        request.session[AFFILIATE_SESSION_KEY] = affiliate_profile.id
+        request.session.set_expiry(AFFILIATE_SESSION_MAX_AGE_SECONDS)
+        session_key = _ensure_session_key(request)
 
-    click = AffiliateClick.objects.create(
-        affiliate=affiliate_profile,
-        session_key=session_key,
-        ip_address=request.META.get("REMOTE_ADDR"),
-        user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:300],
-        landing_path=(request.GET.get("next") or "")[:300],
-    )
-    request.session[AFFILIATE_CLICK_SESSION_KEY] = click.id
+        click = AffiliateClick.objects.create(
+            affiliate=affiliate_profile,
+            session_key=session_key,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=(request.META.get("HTTP_USER_AGENT") or "")[:300],
+            landing_path=(request.GET.get("next") or "")[:300],
+        )
+        request.session[AFFILIATE_CLICK_SESSION_KEY] = click.id
 
     destination = request.GET.get("next") or "/"
     if url_has_allowed_host_and_scheme(
