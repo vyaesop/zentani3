@@ -72,7 +72,7 @@ STORE_DELIVERY_NOTE = os.getenv(
 )
 STORE_RETURN_NOTE = os.getenv(
     'STORE_RETURN_NOTE',
-    'Check your item with the delivery driver present — returns are accepted only on the spot, before the driver leaves.',
+    'Check your item with the delivery driver present - returns are accepted only on the spot, before the driver leaves.',
 )
 
 # ── Store identity (footer, policy pages, schema.org Organization) ────────────
@@ -314,7 +314,7 @@ if DEBUG and importlib.util.find_spec('debug_toolbar'):
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
 
 # Background task queue (store.tasks). Eager mode executes handlers inline at
-# enqueue time — used in DEBUG/tests so local flows stay synchronous.
+# enqueue time - used in DEBUG/tests so local flows stay synchronous.
 TASKS_EAGER = os.getenv('TASKS_EAGER', str(DEBUG)).lower() == 'true'
 
 # Default primary key field type

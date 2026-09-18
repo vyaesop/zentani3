@@ -8,7 +8,7 @@ Shared by the create-page hero and the edit-page "Regenerate" disclosure.
     <div class="zd-field zd-field-wide">
       <span class="zd-field-label">Reference image</span>
       {{ ai_draft_form.reference_image }}
-      <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
+      <span class="zd-field-hint">Tells Gemini what the product is - never shown on the storefront.</span>
       {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
     </div>
     <div class="zd-field">
@@ -27,26 +27,26 @@ Shared by the create-page hero and the edit-page "Regenerate" disclosure.
       <datalist id="zd-size-presets">
         {% for preset in size_presets %}<option value="{{ preset }}"></option>{% endfor %}
       </datalist>
-      <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one — each size stocks at 10 automatically.</span>
+      <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one - each size stocks at 10 automatically.</span>
       {% for e in ai_draft_form.sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
     </div>
     <div class="zd-field">
       <span class="zd-field-label">Main product image (cover)</span>
       {{ ai_draft_form.cover_image }}
-      <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
+      <span class="zd-field-hint">Optional - the reference image is used if you skip this.</span>
       {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
     </div>
     <div class="zd-field">
       <span class="zd-field-label">Gallery images</span>
       <input type="file" name="gallery_images" accept="image/*" multiple class="spring-dashboard-file">
-      <span class="zd-field-hint">Select several photos at once — attached automatically.</span>
+      <span class="zd-field-hint">Select several photos at once - attached automatically.</span>
     </div>
     <details class="zd-field zd-field-wide zd-advanced">
       <summary>Advanced</summary>
       <div class="zd-field" style="margin-top:10px">
         <span class="zd-field-label">Vendor hint</span>
         {{ ai_draft_form.vendor_hint }}
-        <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
+        <span class="zd-field-hint">Usually inferred from the SKU - only fill this in when that guess is wrong.</span>
         {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
       </div>
     </details>

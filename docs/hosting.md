@@ -8,7 +8,7 @@ process, and gives Redis a home. Railway is recommended because:
 - The project already used Railway Postgres before (familiar console/billing).
 - One-click Postgres + Redis add-ons; `Procfile` in this repo already defines
   `web`, `worker`, and `release` (migrations) processes.
-- Fly.io / Render / a small Hetzner VPS are equally fine — the requirement is
+- Fly.io / Render / a small Hetzner VPS are equally fine - the requirement is
   simply: **1 web process (gunicorn) + 1 worker process
   (`manage.py run_tasks --forever`) + managed Postgres + Redis.**
 

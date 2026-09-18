@@ -6,7 +6,7 @@ due rows. Run the drain via `manage.py run_tasks` (always-on hosting) or the
 
 Quick, latency-sensitive types (INLINE_TASK_TYPES) additionally execute in the
 web request that enqueued them, right after the surrounding transaction
-commits — the row is written first, so a failed inline send falls back to the
+commits - the row is written first, so a failed inline send falls back to the
 normal retry/backoff path and the cron drain picks it up. This keeps Telegram
 posts instant while letting the drain run sparsely: polling it every minute
 kept the Neon database compute awake around the clock, which exhausted the
@@ -215,7 +215,7 @@ def execute(task):
     try:
         handler = _registry()[task.task_type]
         handler(task.payload)
-    except Exception as exc:  # noqa: BLE001 — queue must survive any handler error.
+    except Exception as exc:  # noqa: BLE001 - queue must survive any handler error.
         duration = time.monotonic() - started
         task.last_error = f"{type(exc).__name__}: {exc}"[:2000]
         if task.attempts >= MAX_ATTEMPTS:
@@ -362,7 +362,7 @@ def run_pending(limit=10):
             .order_by("run_after", "id")[:limit]
         )
         if claimed:
-            # .update() bypasses auto_now, so stamp updated_at explicitly —
+            # .update() bypasses auto_now, so stamp updated_at explicitly -
             # the stale-RUNNING sweeper measures staleness from it, and a
             # claimed-but-not-yet-executed task (later in this batch) must not
             # look abandoned to a concurrent drain.

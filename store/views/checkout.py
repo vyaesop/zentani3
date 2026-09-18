@@ -327,7 +327,7 @@ def orders(request):
         "product__title",
         "product__slug",
     ).order_by("-ordered_date")
-    # Paginate the queryset first, then decorate only the current page's rows —
+    # Paginate the queryset first, then decorate only the current page's rows -
     # never materialize the full order history per request.
     paginator = Paginator(all_orders, ACCOUNT_ORDERS_PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get("page"))

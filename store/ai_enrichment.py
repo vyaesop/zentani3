@@ -73,13 +73,13 @@ def _prompt_for_product_enrichment(sku, price, vendor_hint, collection_options=(
     return f"""
 You are helping a local e-commerce merchandising team called Zentanee create a product draft from a single identifier image.
 
-Zentanee is primarily a clothing and modest-fashion store (dresses, abayas, sets, and everyday wear). It occasionally carries accessories, jewelry, or gift items — classify by what you actually see in the image, not by assumption in either direction.
+Zentanee is primarily a clothing and modest-fashion store (dresses, abayas, sets, and everyday wear). It occasionally carries accessories, jewelry, or gift items - classify by what you actually see in the image, not by assumption in either direction.
 
 The uploaded image is a private reference image used only to identify the item and guide future image generation briefs.
 Do not assume the image itself will be used as the storefront hero image.
 The vendor hint is manually provided by the merchandiser and may refer to a local Ethiopian supplier that is not visible on the public web.
 Treat sizes as manual business data owned by the merchandiser. Do not infer or fabricate sizes.
-Do not write delivery or return policy text — the store applies its own store-wide policy.
+Do not write delivery or return policy text - the store applies its own store-wide policy.
 
 Storefront image style references:
 - A modest-fashion dress and abaya product page with clear color fidelity, drape visibility, and full-length framing when the source image allows it.
@@ -115,7 +115,7 @@ Tasks:
 Classification rules (be conservative):
 - Collection: choose an existing collection slug whenever one reasonably represents the product, even if the wording is not a perfect match ("Dresses" is a valid match for an evening gown). Set "matched_slug" to that exact slug from the list above.
 - Only when NO existing collection reasonably fits, set "matched_slug" to null and put a short, broad merchandising name in "proposed_new_title" (like "Dresses" or "Handbags", never something hyper-specific like "Emerald Puff-Sleeve Evening Dresses"). Only propose with "confidence": "high" if a store would clearly need this collection.
-- Brand: only match or propose a brand you can actually verify from a visible label, the SKU, the vendor hint, or grounded search results. Never guess a well-known brand from visual similarity alone. When unsure, set both "matched_slug" and "proposed_new_title" to null — an empty brand is better than a wrong one.
+- Brand: only match or propose a brand you can actually verify from a visible label, the SKU, the vendor hint, or grounded search results. Never guess a well-known brand from visual similarity alone. When unsure, set both "matched_slug" and "proposed_new_title" to null - an empty brand is better than a wrong one.
 
 Return strict JSON only with this shape:
 {{
@@ -766,7 +766,7 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
                         continue
                 else:
                     # A 4xx means the request itself is wrong (key, quota
-                    # policy, prompt) — retrying or backing off won't help.
+                    # policy, prompt) - retrying or backing off won't help.
                     transient_only = False
                 break
             except (URLError, TimeoutError) as exc:
@@ -945,7 +945,7 @@ def draft_to_product_initial(draft, *, categories=(), brands=()):
         generated_slug = slugify(f"{generated_slug}-{draft.sku}")[:160]
 
     # Delivery/return notes are store-wide policy (settings.STORE_DELIVERY_NOTE /
-    # STORE_RETURN_NOTE) — Gemini never writes policy, so they stay blank here.
+    # STORE_RETURN_NOTE) - Gemini never writes policy, so they stay blank here.
     initial = {
         "title": title,
         "slug": generated_slug,

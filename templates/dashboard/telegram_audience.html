@@ -41,13 +41,13 @@
       <div class="zd-field zd-field-wide">
         <span class="zd-field-label">Message</span>
         <textarea name="message" rows="5" maxlength="{{ broadcast_max_length }}"
-                  placeholder="⚡ Flash sale this Friday — up to 30% off dresses. Free delivery in Addis over 3,500 ETB."></textarea>
+                  placeholder="⚡ Flash sale this Friday - up to 30% off dresses. Free delivery in Addis over 3,500 ETB."></textarea>
         <span class="zd-field-hint">Plain text, up to {{ broadcast_max_length }} characters. Emojis welcome.</span>
       </div>
       <div class="zd-field zd-field-wide">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px">
           <input type="checkbox" name="confirm" value="yes">
-          Yes, send this to {{ unique_chat_count }} subscriber{{ unique_chat_count|pluralize }} — this cannot be recalled.
+          Yes, send this to {{ unique_chat_count }} subscriber{{ unique_chat_count|pluralize }} - this cannot be recalled.
         </label>
       </div>
       <div class="zd-field zd-field-wide">
@@ -114,10 +114,10 @@
             Guest ({{ link.session_key|truncatechars:12 }})
             {% endif %}
           </td>
-          <td>{% if link.telegram_username %}@{{ link.telegram_username }}{% else %}—{% endif %}</td>
+          <td>{% if link.telegram_username %}@{{ link.telegram_username }}{% else %}-{% endif %}</td>
           <td>{% if link.user %}Account{% else %}Guest{% endif %}</td>
           <td>{{ link.linked_at|date:"M d, Y H:i" }}</td>
-          <td>{% if link.last_abandoned_nudge_at %}{{ link.last_abandoned_nudge_at|date:"M d, H:i" }}{% else %}—{% endif %}</td>
+          <td>{% if link.last_abandoned_nudge_at %}{{ link.last_abandoned_nudge_at|date:"M d, H:i" }}{% else %}-{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

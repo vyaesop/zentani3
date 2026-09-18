@@ -1,7 +1,7 @@
 """Customer messages outside Telegram: SMS and email.
 
 Telegram stays the rich channel (see services.telegram); these helpers cover
-the customers who never linked a chat — which, for a cash-on-delivery store,
+the customers who never linked a chat - which, for a cash-on-delivery store,
 is almost everyone. Every buyer leaves a phone number, so SMS is the default
 confirmation channel; email is used when the customer gave one.
 
@@ -218,7 +218,7 @@ def send_restock_emails(product, skip_user_ids=()):
             sent = send_mail(
                 f"{product.title} is back in stock",
                 (
-                    f"Good news — {product.title}{size_text} is available again at {store_name}.\n\n"
+                    f"Good news - {product.title}{size_text} is available again at {store_name}.\n\n"
                     f"{product_url}\n\n"
                     "It went fast last time; cash on delivery, inspect before you pay."
                 ),

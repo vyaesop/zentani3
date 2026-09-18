@@ -176,7 +176,7 @@ def _save_bulk_gallery_images(product, uploaded_files):
 
 
 def _size_preset_options(limit=12):
-    """Size sets the merchandiser has used before, newest first — offered as
+    """Size sets the merchandiser has used before, newest first - offered as
     datalist suggestions on the AI intake so common sets are one tap."""
     from store.constants import size_sort_key
 
@@ -473,7 +473,7 @@ def dashboard_orders(request):
         if status_changed or notes_changed:
             messages.success(request, f"Order {order.order_number} updated.")
         else:
-            messages.info(request, f"Order {order.order_number} — no changes detected.")
+            messages.info(request, f"Order {order.order_number} - no changes detected.")
         return redirect(next_url)
 
     query = (request.GET.get("q") or "").strip()
@@ -750,7 +750,7 @@ def dashboard_product_edit(request, product_id=None):
     ai_draft = _get_ai_draft_for_request(request, product=product)
 
     if product is None and ai_draft is not None and ai_draft.product_id:
-        # The draft already became a product — continue in that product's editor
+        # The draft already became a product - continue in that product's editor
         # instead of offering a stale "new product" form that would duplicate it.
         request.session.pop(AI_DRAFT_SESSION_KEY, None)
         if request.method == "GET":
@@ -793,7 +793,7 @@ def dashboard_product_edit(request, product_id=None):
                         for note in automation.get("notes") or []:
                             messages.info(request, note)
                     else:
-                        messages.info(request, "AI draft queued. Gemini is drafting the copy in the background — this page refreshes when it is ready.")
+                        messages.info(request, "AI draft queued. Gemini is drafting the copy in the background - this page refreshes when it is ready.")
                     return redirect(_ai_draft_redirect_url(product or draft.product, draft))
             else:
                 messages.error(request, "Add a reference image, SKU, and price to generate an AI draft.")
@@ -808,7 +808,7 @@ def dashboard_product_edit(request, product_id=None):
             if form.is_valid() and image_formset.is_valid():
                 size_list = parse_size_list(form.cleaned_data.get("available_sizes", ""))
                 # Sale-transition detection must read the DB, not the form
-                # instance — is_valid() already stamped the new values on it.
+                # instance - is_valid() already stamped the new values on it.
                 was_on_sale = False
                 if product is not None and product.pk:
                     previous = Product.objects.filter(pk=product.pk).values("price", "compare_at_price").first()
@@ -840,7 +840,7 @@ def dashboard_product_edit(request, product_id=None):
 
                 should_publish = "save_and_publish" in request.POST
                 if should_publish and not saved_product.is_active:
-                    # "Save & post" is an explicit publish intent — activate in the
+                    # "Save & post" is an explicit publish intent - activate in the
                     # same step instead of bouncing the user to a hidden toggle.
                     saved_product.is_active = True
                     Product.objects.filter(pk=saved_product.pk).update(is_active=True)
@@ -856,14 +856,14 @@ def dashboard_product_edit(request, product_id=None):
                 elif should_publish:
                     messages.warning(
                         request,
-                        f"{saved_product.title} was saved, but it is marked sold out — restock it before Telegram publishing.",
+                        f"{saved_product.title} was saved, but it is marked sold out - restock it before Telegram publishing.",
                     )
                 else:
                     size_count = len(size_list)
                     if size_count:
                         messages.success(
                             request,
-                            f"{saved_product.title} was saved. {size_count} size option(s); new sizes start at {default_stock_per_size()} unit(s) — adjust the counts in the Stock panel if that is not right.",
+                            f"{saved_product.title} was saved. {size_count} size option(s); new sizes start at {default_stock_per_size()} unit(s) - adjust the counts in the Stock panel if that is not right.",
                         )
                     else:
                         messages.success(request, f"{saved_product.title} was saved.")
@@ -1122,12 +1122,12 @@ def dashboard_ai_draft_publish(request, draft_id):
     product = draft.product
     if product is None:
         return JsonResponse(
-            {"ok": False, "error": "This draft has no product yet — open it in the editor first."},
+            {"ok": False, "error": "This draft has no product yet - open it in the editor first."},
             status=400,
         )
     if product.is_sold_out:
         return JsonResponse(
-            {"ok": False, "error": f"{product.title} is marked sold out — restock it before publishing."},
+            {"ok": False, "error": f"{product.title} is marked sold out - restock it before publishing."},
             status=400,
         )
 
@@ -1209,7 +1209,7 @@ def dashboard_task_retry(request, task_id):
     next_url = request.POST.get("next") or reverse("store:dashboard-tasks")
 
     if task.status != BackgroundTask.STATUS_FAILED:
-        messages.info(request, f"Task #{task.id} is {task.status} — only failed tasks can be retried.")
+        messages.info(request, f"Task #{task.id} is {task.status} - only failed tasks can be retried.")
         return redirect(next_url)
 
     retry_task(task)
@@ -1236,7 +1236,7 @@ def dashboard_telegram_audience(request):
         elif request.POST.get("confirm") != "yes":
             messages.error(request, "Tick the confirmation box to send the broadcast.")
         elif not linked_links:
-            messages.warning(request, "No customers have linked Telegram yet — nothing to send.")
+            messages.warning(request, "No customers have linked Telegram yet - nothing to send.")
         else:
             # One task per chat: retries stay per-recipient and a partial
             # failure never re-sends to people who already got it.

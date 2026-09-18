@@ -5,7 +5,7 @@
 {% load image_optim %}
 
 {% block title %}{{ store.name }} | {% trans "Shop clothes & fashion in Addis Ababa" %}{% endblock %}
-{% block meta_description %}{% blocktrans with name=store.name threshold=store.free_threshold %}{{ name }} — curated clothing, shoes and accessories with cash on delivery in Addis Ababa. Free delivery over {{ threshold }} ETB. Inspect your order before you pay.{% endblocktrans %}{% endblock %}
+{% block meta_description %}{% blocktrans with name=store.name threshold=store.free_threshold %}{{ name }} - curated clothing, shoes and accessories with cash on delivery in Addis Ababa. Free delivery over {{ threshold }} ETB. Inspect your order before you pay.{% endblocktrans %}{% endblock %}
 {% block body_class %} zent-home-page{% endblock %}
 
 {% block seo_head %}
@@ -55,12 +55,12 @@
           {% endif %}
 
           <div class="zh-hero__body">
-              <p class="zh-truth">{% trans "Order it. We call. The driver waits while you look it over —" %} <mark>{% trans "then you pay." %}</mark></p>
+              <p class="zh-truth">{% trans "Order it. We call. The driver waits while you look it over -" %} <mark>{% trans "then you pay." %}</mark></p>
 
               <ul class="zh-ruler zh-num" aria-label="{% trans 'Delivery fees and times' %}">
                   <li><span>{% trans "Addis Ababa" %}</span><strong>{{ store.addis_fee }} ETB</strong></li>
                   <li><span>{% trans "Free in Addis over" %}</span><strong>{{ store.free_threshold }} ETB</strong></li>
-                  <li><span>{% trans "Outside Addis" %}</span><strong>{{ store.outside_fee }} ETB</strong></li>
+                  <li><span>{% trans "Outside Addis" %}</span><strong>{% trans "Not available" %}</strong></li>
                   <li><span>{% trans "Delivered in" %}</span><strong>1–3 {% trans "days" %}</strong></li>
               </ul>
 

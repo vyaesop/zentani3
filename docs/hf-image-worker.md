@@ -6,7 +6,7 @@ automatically.
 
 > **Canonical source:** the worker's code lives in the deployed Hugging Face Space repo
 > (`vyaesop/zentanee`), which has its own git history. The duplicated `hf_image_worker/`
-> copy was removed from this repo — clone the Space to change the worker.
+> copy was removed from this repo - clone the Space to change the worker.
 
 ## Setup (Hugging Face Spaces)
 Your Space already exists: `vyaesop/zentanee`. It runs a Docker-based FastAPI worker
@@ -17,7 +17,7 @@ exposing a clean `POST /generate` endpoint.
 git clone https://huggingface.co/spaces/vyaesop/zentanee
 ```
 When prompted for a password, use your Hugging Face access token with write permissions.
-Edit `app.py` / `requirements.txt` / `Dockerfile` there, commit, and push — the Space
+Edit `app.py` / `requirements.txt` / `Dockerfile` there, commit, and push - the Space
 redeploys automatically.
 
 ### 4) Set Space environment variables

@@ -6,10 +6,12 @@ AFFILIATE_CLICK_SESSION_KEY = "affiliate_click_id"
 AFFILIATE_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 AFFILIATE_RATE_PERCENT = Decimal("5.00")
 
-# Shipping (ETB)
+# Delivery (ETB). Addis Ababa is the only area we deliver to.
+DELIVERY_CITY = "Addis Ababa"
+DELIVERY_CITY_CHOICES = ((DELIVERY_CITY, DELIVERY_CITY),)
+OUTSIDE_DELIVERY_AREA_MESSAGE = "We deliver inside Addis Ababa only."
 ADDIS_FREE_SHIPPING_THRESHOLD = Decimal("3500.00")
-ADDIS_SHIPPING_FEE = Decimal("80.00")
-OUTSIDE_ADDIS_SHIPPING_FEE = Decimal("180.00")
+ADDIS_SHIPPING_FEE = Decimal("200.00")
 
 # Pagination
 COLLECTION_PAGE_SIZE = 24

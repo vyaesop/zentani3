@@ -13,7 +13,7 @@ from store.constants import (
     ADDIS_FREE_SHIPPING_THRESHOLD,
     ADDIS_SHIPPING_FEE,
     AFFILIATE_RATE_PERCENT,
-    OUTSIDE_ADDIS_SHIPPING_FEE,
+    OUTSIDE_DELIVERY_AREA_MESSAGE,
 )
 from store.models import (
     AffiliateClick,
@@ -78,29 +78,29 @@ def is_addis(city):
 
 
 def delivery_fee_for(city, subtotal):
-    """Flat fees: Addis (free above the threshold) or outside Addis.
+    """Flat Addis fee, free above the threshold.
 
     An unknown city yields 0 so the cart can show 'calculated at checkout'
-    instead of guessing; the checkout itself always has a city.
+    instead of guessing; the checkout itself always has a city. A city outside
+    Addis also yields 0 because there is no fee to quote: `place_order` refuses
+    the order outright.
     """
-    if not normalized_city(city):
+    if not is_addis(city):
         return Decimal("0.00")
-    if is_addis(city):
-        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
-            return Decimal("0.00")
-        return ADDIS_SHIPPING_FEE
-    return OUTSIDE_ADDIS_SHIPPING_FEE
+    if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
+        return Decimal("0.00")
+    return ADDIS_SHIPPING_FEE
 
 
 def delivery_note_for(city, subtotal):
     if not normalized_city(city):
-        return f"Shipping is calculated once the delivery city is known. Addis starts at {ADDIS_SHIPPING_FEE:.0f} ETB."
-    if is_addis(city):
-        if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
-            return "Addis delivery is free for this order total."
-        shortfall = (ADDIS_FREE_SHIPPING_THRESHOLD - subtotal).quantize(Decimal("0.01"))
-        return f"Addis delivery is {ADDIS_SHIPPING_FEE:.0f} ETB. Add {shortfall:,.0f} ETB more for free delivery."
-    return f"Outside Addis delivery is {OUTSIDE_ADDIS_SHIPPING_FEE:.0f} ETB."
+        return f"Delivery is {ADDIS_SHIPPING_FEE:.0f} ETB inside Addis Ababa, free over {ADDIS_FREE_SHIPPING_THRESHOLD:,.0f} ETB. We deliver inside Addis Ababa only."
+    if not is_addis(city):
+        return OUTSIDE_DELIVERY_AREA_MESSAGE
+    if subtotal >= ADDIS_FREE_SHIPPING_THRESHOLD:
+        return "Addis delivery is free for this order total."
+    shortfall = (ADDIS_FREE_SHIPPING_THRESHOLD - subtotal).quantize(Decimal("0.01"))
+    return f"Addis delivery is {ADDIS_SHIPPING_FEE:.0f} ETB. Add {shortfall:,.0f} ETB more for free delivery."
 
 
 # ── Placement ────────────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ def place_order(
 ):
     """Atomically convert cart rows into an order group + lines with stock decrement.
 
-    `user` is None for guest checkout — the contact snapshot then comes from
+    `user` is None for guest checkout - the contact snapshot then comes from
     `guest_contact` (full_name/phone/city/address[/email]); for signed-in
     customers it is taken from `address` (their chosen delivery address).
 
@@ -164,6 +164,10 @@ def place_order(
     placement = OrderPlacement()
     contact = _contact_snapshot(user, guest_contact, address, contact_email=contact_email)
     delivery_city = contact.get("city", "")
+    # Addis is the only delivery area. Guard here as well as in the forms so a
+    # stale saved address cannot place an order we cannot deliver.
+    if not is_addis(delivery_city):
+        raise OrderPlacementError(OUTSIDE_DELIVERY_AREA_MESSAGE)
 
     with transaction.atomic():
         group = OrderGroup.objects.create(
@@ -180,7 +184,7 @@ def place_order(
 
         commissions_to_create = []
         coupon_codes = []
-        # Stock decrements are not merchandising changes — don't let the
+        # Stock decrements are not merchandising changes - don't let the
         # product post_save signal enqueue Telegram channel posts.
         with suspend_telegram_autopublish():
             for cart_item in cart_items:

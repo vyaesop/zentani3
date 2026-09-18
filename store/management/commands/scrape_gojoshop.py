@@ -117,7 +117,7 @@ class Command(BaseCommand):
             if not gemini_is_configured():
                 self.stderr.write(
                     self.style.WARNING(
-                        "GEMINI_API_KEY is not configured — drafts will queue but enrichment will fail."
+                        "GEMINI_API_KEY is not configured - drafts will queue but enrichment will fail."
                     )
                 )
 
@@ -183,7 +183,7 @@ class Command(BaseCommand):
         except Exception as exc:
             self.stderr.write(self.style.WARNING(f"sitemap fetch failed: {exc}"))
 
-        # 2. Paginated "latest" feed — walks the whole catalog even if the
+        # 2. Paginated "latest" feed - walks the whole catalog even if the
         #    sitemap is capped. Stops when a page yields no new product links.
         page = 1
         empty_streak = 0
@@ -454,7 +454,7 @@ class Command(BaseCommand):
                 pi.image.save(name, content, save=True)
         else:
             # No image downloaded; product_image is required, so only save if it
-            # already has one (updates) — new rows without an image are skipped.
+            # already has one (updates) - new rows without an image are skipped.
             if not getattr(product.product_image, "name", ""):
                 if created:
                     product.delete()

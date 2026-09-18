@@ -4,8 +4,8 @@ Accepted inputs (spaces, dashes and dots are ignored):
     0911234567   911234567   +251911234567   251911234567   00251911234567
     0711234567 (Safaricom Ethiopia) in the same shapes.
 
-Canonical local form is ``09XXXXXXXX`` / ``07XXXXXXXX`` — the format existing
-customers already log in with — and ``+2519XXXXXXXX`` for E.164 (SMS gateways).
+Canonical local form is ``09XXXXXXXX`` / ``07XXXXXXXX`` - the format existing
+customers already log in with - and ``+2519XXXXXXXX`` for E.164 (SMS gateways).
 """
 import re
 

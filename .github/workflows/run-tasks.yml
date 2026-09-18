@@ -11,7 +11,7 @@
 # workflow polled every 60 seconds around the clock, which kept the database
 # awake 24/7 and burned the entire 100 CU-hour monthly allowance by mid-month
 # (Aug 2026). Hence the shape below: run sparsely, drain until the queue is
-# empty, then exit immediately — never idle-poll.
+# empty, then exit immediately - never idle-poll.
 #
 # Requires the RUN_TASKS_SECRET repository secret to match the RUN_TASKS_SECRET
 # (or CRON_SECRET) environment variable configured on Vercel. A mismatch shows
@@ -44,7 +44,7 @@ jobs:
         env:
           RUN_TASKS_SECRET: ${{ secrets.RUN_TASKS_SECRET }}
           # 50 is the endpoint's own per-call ceiling; BATCH_LIMIT must match
-          # the limit in DRAIN_URL — a full batch means more work may remain.
+          # the limit in DRAIN_URL - a full batch means more work may remain.
           BATCH_LIMIT: "50"
           DRAIN_URL: https://zentanee.vercel.app/internal/run-tasks/?limit=50
         # Redirects are not followed on purpose: a redirect means the domain
@@ -97,12 +97,12 @@ jobs:
                 fi
                 ;;
               403)
-                echo "::error::HTTP 403 — the RUN_TASKS_SECRET repository secret does not match RUN_TASKS_SECRET/CRON_SECRET on Vercel, or Vercel has neither set."
+                echo "::error::HTTP 403 - the RUN_TASKS_SECRET repository secret does not match RUN_TASKS_SECRET/CRON_SECRET on Vercel, or Vercel has neither set."
                 head -c 300 response.txt
                 exit 1
                 ;;
               3??)
-                echo "::error::HTTP $status redirect — the deployment domain moved. Update DRAIN_URL in this workflow."
+                echo "::error::HTTP $status redirect - the deployment domain moved. Update DRAIN_URL in this workflow."
                 exit 1
                 ;;
               *)

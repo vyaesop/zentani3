@@ -23,13 +23,13 @@
           <p>{% trans "An order is a request to buy. It becomes a contract when we confirm it by phone or message. We may decline an order when an item is unavailable, when we cannot reach you to confirm, or when a previous cash-on-delivery order was refused without reason." %}</p>
 
           <h2>{% trans "Delivery" %}</h2>
-          <p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB. Delivery in Addis usually takes 1-3 days after confirmation; times outside Addis depend on the courier.{% endblocktrans %} {% trans "If nobody is available at the agreed time we will call to rearrange; a second failed attempt may incur the delivery fee again." %}</p>
+          <p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. We deliver inside Addis Ababa only. Delivery usually takes 1-3 days after confirmation.{% endblocktrans %} {% trans "If nobody is available at the agreed time we will call to rearrange; a second failed attempt may incur the delivery fee again." %}</p>
 
           <h2>{% trans "Payment" %}</h2>
           <p>{% trans "Cash on delivery: you pay the driver after inspecting the item." %}{% if online_payments_enabled %} {% trans "Online payment through Chapa (Telebirr, CBE Birr, cards) is optional; prepaid orders are dispatched first and are refunded in full if we cannot fulfil them." %}{% endif %}</p>
 
           <h2>{% trans "Inspection and returns" %}</h2>
-          <p>{{ return_note }} {% trans "Because you inspect before paying, we do not accept returns or exchanges after the driver has left, except where an item is defective in a way that could not reasonably be seen at delivery — in that case call us within 24 hours." %}</p>
+          <p>{{ return_note }} {% trans "Because you inspect before paying, we do not accept returns or exchanges after the driver has left, except where an item is defective in a way that could not reasonably be seen at delivery - in that case call us within 24 hours." %}</p>
 
           <h2>{% trans "Cancellation" %}</h2>
           <p>{% trans "You can cancel free of charge while an order is Pending or Accepted, from your account or by calling us. Once it is Packed or On The Way, simply decline it at the door." %}</p>

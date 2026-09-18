@@ -92,7 +92,7 @@ def format_etb(value):
     try:
         amount = float(value)
     except (TypeError, ValueError):
-        return "—"
+        return "-"
     if amount == int(amount):
         return f"{int(amount):,} ETB"
     return f"{amount:,.2f} ETB"
@@ -131,7 +131,7 @@ def star_icons(rating, max_rating=5):
 
 @register.filter(name="lookup")
 def lookup(mapping, key):
-    """{{ mapping|lookup:key }} — dict access with a falsy fallback for templates."""
+    """{{ mapping|lookup:key }} - dict access with a falsy fallback for templates."""
     try:
         return mapping.get(key)
     except AttributeError:

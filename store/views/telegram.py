@@ -7,7 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from store.constants import TELEGRAM_ORDER_STATE_TTL_SECONDS
+from store.constants import DELIVERY_CITY, TELEGRAM_ORDER_STATE_TTL_SECONDS
 from store.models import Product, TelegramBotOrder, TelegramConversationState
 from store.telegram_notify import (
     notify_bot_order_lead,
@@ -148,18 +148,15 @@ def _handle_telegram_order_reply(chat_id, message_text):
 
     if step == "phone":
         data["phone"] = message_text.strip()
-        state["step"] = "city"
-        state["data"] = data
-        _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "🏙 Which city should we deliver to?")
-        return True
-
-    if step == "city":
-        data["city"] = message_text.strip()
+        # Addis is the only delivery area, so there is no city to ask for.
+        data["city"] = DELIVERY_CITY
         state["step"] = "address"
         state["data"] = data
         _set_telegram_order_state(chat_id, state)
-        _send_customer_bot_text(chat_id, "📍 Please enter your delivery address.")
+        _send_customer_bot_text(
+            chat_id,
+            "📍 We deliver inside Addis Ababa only. Please enter your delivery address in Addis.",
+        )
         return True
 
     if step == "address":
@@ -214,7 +211,7 @@ def _handle_telegram_order_reply(chat_id, message_text):
                     "✅ Thank you! Your order request was sent.\n"
                     f"🧾 Reference: TG-{bot_order.id}\n"
                     "📞 We will contact you shortly to confirm delivery.\n"
-                    "💵 Pay cash when it arrives — check the item with the driver first."
+                    "💵 Pay cash when it arrives - check the item with the driver first."
                     f"{_channel_and_site_footer()}"
                 ),
             )
@@ -250,7 +247,7 @@ def _validate_telegram_webhook_secret(request, *env_var_names):
         return bool(_settings.DEBUG)
 
     incoming_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "").strip()
-    # Always require the header when secrets are configured — Telegram will
+    # Always require the header when secrets are configured - Telegram will
     # send it if you set secret_token when calling setWebhook.
     if not incoming_secret:
         return False
@@ -310,7 +307,7 @@ def _handle_customer_bot_start(chat_id, start_payload, username):
         token = start_payload.replace("notify_", "", 1).strip()
         link = TelegramLink.objects.filter(token=token).first()
         if link is None:
-            _send_customer_bot_text(chat_id, "⚠️ This notification link is no longer valid — open the store and tap the Telegram button again.")
+            _send_customer_bot_text(chat_id, "⚠️ This notification link is no longer valid - open the store and tap the Telegram button again.")
             return
         link.chat_id = str(chat_id)
         link.telegram_username = username or ""

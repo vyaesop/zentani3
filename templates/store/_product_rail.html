@@ -4,6 +4,6 @@
     {% for product in rail_products %}
     {% include 'store/_product_card_content.html' with product=product %}
     {% empty %}
-    <p class="zh-meta zh-rail__empty">{{ rail_empty_message|default:_("New pieces are on the way — follow the Telegram channel to see them first.") }}</p>
+    <p class="zh-meta zh-rail__empty">{{ rail_empty_message|default:_("New pieces are on the way - follow the Telegram channel to see them first.") }}</p>
     {% endfor %}
 </div>

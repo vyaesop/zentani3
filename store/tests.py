@@ -383,7 +383,7 @@ class StoreFlowTests(TestCase):
 
     @override_settings(MEDIA_ROOT=tempfile.gettempdir())
     def test_uploaded_product_image_keeps_original_format(self):
-        # Cloudinary transforms at delivery time now — no server-side conversion.
+        # Cloudinary transforms at delivery time now - no server-side conversion.
         uploaded = self._make_uploaded_image(name="test-upload.jpg", color="red")
 
         product = Product.objects.create(
@@ -1825,7 +1825,7 @@ class QueryCountGuardTests(TestCase):
     """Lock in the P3 query-count wins so regressions fail loudly.
 
     If one of these numbers changes, check `CaptureQueriesContext` output
-    before bumping it — an accidental N+1 in the card grid shows up here.
+    before bumping it - an accidental N+1 in the card grid shows up here.
     """
 
     def setUp(self):

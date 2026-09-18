@@ -8,7 +8,7 @@
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
       <p class="zd-panel-head-title">Gemini product queue</p>
-      <p class="zd-panel-head-sub">Reference image, SKU and price per product — each ready draft becomes an unpublished product you can publish in one click</p>
+      <p class="zd-panel-head-sub">Reference image, SKU and price per product - each ready draft becomes an unpublished product you can publish in one click</p>
     </div>
     <div class="zd-panel-head-right">
       {% if gemini_is_configured %}
@@ -41,7 +41,7 @@
   <!-- Intake form -->
   <div class="zd-panel-body" style="border-top:1px solid var(--z-border)">
     <p style="font-size:13px;color:var(--z-text-2);margin:0 0 16px">
-      Gemini identifies the product from the reference image, drafts the copy and SEO, and assigns the collection and brand conservatively — reusing existing ones whenever they fit.
+      Gemini identifies the product from the reference image, drafts the copy and SEO, and assigns the collection and brand conservatively - reusing existing ones whenever they fit.
     </p>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
@@ -62,19 +62,19 @@
           <datalist id="zd-size-presets">
             {% for preset in size_presets %}<option value="{{ preset }}"></option>{% endfor %}
           </datalist>
-          <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one — each size stocks at 10 automatically.</span>
+          <span class="zd-field-hint">Tap to pick a set you've used before, or type a new one - each size stocks at 10 automatically.</span>
           {% for e in ai_draft_form.sizes.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field zd-field-wide">
           <span class="zd-field-label">Reference image</span>
           {{ ai_draft_form.reference_image }}
-          <span class="zd-field-hint">Tells Gemini what the product is — never shown on the storefront.</span>
+          <span class="zd-field-hint">Tells Gemini what the product is - never shown on the storefront.</span>
           {% for e in ai_draft_form.reference_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field">
           <span class="zd-field-label">Main product image (cover)</span>
           {{ ai_draft_form.cover_image }}
-          <span class="zd-field-hint">Optional — the reference image is used if you skip this.</span>
+          <span class="zd-field-hint">Optional - the reference image is used if you skip this.</span>
           {% for e in ai_draft_form.cover_image.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
         </div>
         <div class="zd-field">
@@ -88,7 +88,7 @@
             <div class="zd-field">
               <span class="zd-field-label">Vendor hint</span>
               {{ ai_draft_form.vendor_hint }}
-              <span class="zd-field-hint">Usually inferred from the SKU — only fill this in when that guess is wrong.</span>
+              <span class="zd-field-hint">Usually inferred from the SKU - only fill this in when that guess is wrong.</span>
               {% for e in ai_draft_form.vendor_hint.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
             </div>
             <div class="zd-field">
@@ -112,7 +112,7 @@
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
       <p class="zd-panel-head-title">Queue monitor</p>
-      <p class="zd-panel-head-sub">Drafts process automatically — page refreshes every 12 s</p>
+      <p class="zd-panel-head-sub">Drafts process automatically - page refreshes every 12 s</p>
     </div>
   </div>
 
@@ -151,7 +151,7 @@
         </div>
         <div class="zd-queue-card-meta-cell">
           <span>Price</span>
-          <strong>{{ draft.price|default:"—" }}</strong>
+          <strong>{{ draft.price|default:"-" }}</strong>
         </div>
         <div class="zd-queue-card-meta-cell">
           <span>Status</span>
@@ -161,9 +161,9 @@
 
       <div class="zd-queue-card-message" data-ai-queue-message>
         {% if draft.error_message %}{{ draft.error_message }}
-        {% elif draft.pipeline_state == "ready" and draft.product and draft.product.is_active %}Published — live on the storefront.
-        {% elif draft.pipeline_state == "ready" and draft.product %}Product ready — publish in one click or open to adjust.
-        {% elif draft.pipeline_state == "ready" %}Draft ready — open it to finish.
+        {% elif draft.pipeline_state == "ready" and draft.product and draft.product.is_active %}Published - live on the storefront.
+        {% elif draft.pipeline_state == "ready" and draft.product %}Product ready - publish in one click or open to adjust.
+        {% elif draft.pipeline_state == "ready" %}Draft ready - open it to finish.
           {% for note in draft.response_payload.automation.notes %} {{ note }}{% endfor %}
         {% elif draft.pipeline_state == "manual_review" %}Needs manual review before publishing.
         {% elif draft.pipeline_state == "analyzing" %}Gemini is generating copy now…
@@ -280,10 +280,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const body = await parseJson(res);
     if (!res.ok || body.ok === false) {
       const message = card.querySelector('[data-ai-queue-message]');
-      if (message) message.textContent = body.error || 'Publishing failed — open the draft to check.';
+      if (message) message.textContent = body.error || 'Publishing failed - open the draft to check.';
       return;
     }
-    if (body.draft) updateCard(card, body.draft, 'Published — Telegram post queued.');
+    if (body.draft) updateCard(card, body.draft, 'Published - Telegram post queued.');
   }
 
   async function toManualReview(card, msg) {
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
       );
       for (const card of active) {
         try { await processCard(card); }
-        catch (e) { /* transient network error — retry on the next tick */ }
+        catch (e) { /* transient network error - retry on the next tick */ }
       }
     } finally { running = false; }
   }

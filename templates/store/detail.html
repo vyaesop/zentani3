@@ -202,7 +202,7 @@
 
                   <div class="zh-pdp__actions">
                       <button type="submit" class="zh-btn zh-btn--primary zh-btn--block" id="add-to-cart-btn" {% if product.is_sold_out or preview_hidden %}disabled{% endif %}>
-                          {% if product.is_sold_out %}{% trans "Sold Out" %}{% elif preview_hidden %}{% trans "Hidden — publish to sell" %}{% else %}{% trans "Add to cart" %}{% endif %}<span class="zent-spinner" aria-hidden="true"></span>
+                          {% if product.is_sold_out %}{% trans "Sold Out" %}{% elif preview_hidden %}{% trans "Hidden - publish to sell" %}{% else %}{% trans "Add to cart" %}{% endif %}<span class="zent-spinner" aria-hidden="true"></span>
                       </button>
                       {% if telegram_order_url and not product.is_sold_out and not preview_hidden %}
                       <a href="{{ telegram_order_url }}" class="zh-btn zh-btn--ghost zh-btn--block" target="_blank" rel="noopener">
@@ -267,7 +267,7 @@
                       </ul>
                       {% if product.fit_notes %}<p><strong>{% trans "Fit" %}:</strong> {{ product.fit_notes }}</p>{% endif %}
                       {% if fit_summary %}<p class="zh-num">{% blocktrans with percent=fit_summary.true_to_size_percent total=fit_summary.total %}{{ percent }}% of {{ total }} shoppers say this fits true to size.{% endblocktrans %}</p>{% endif %}
-                      <p>{% trans "Between sizes? Order both — you only pay for what you keep when the driver arrives." %}</p>
+                      <p>{% trans "Between sizes? Order both - you only pay for what you keep when the driver arrives." %}</p>
                   </details>
               </div>
               {% endif %}
@@ -275,7 +275,7 @@
               <ul class="zh-ruler zh-ruler--stack zh-num zh-pdp__fees" aria-label="{% trans 'Delivery fees and times' %}">
                   <li><span>{% trans "Addis Ababa" %}</span><strong>{{ store.addis_fee }} ETB</strong></li>
                   <li><span>{% trans "Free in Addis over" %}</span><strong>{{ store.free_threshold }} ETB</strong></li>
-                  <li><span>{% trans "Outside Addis" %}</span><strong>{{ store.outside_fee }} ETB</strong></li>
+                  <li><span>{% trans "Outside Addis" %}</span><strong>{% trans "Not available" %}</strong></li>
                   <li><span>{% trans "Delivered in" %}</span><strong>1–3 {% trans "days" %}</strong></li>
               </ul>
 
@@ -303,7 +303,7 @@
                       <span class="zh-step__n zh-num" aria-hidden="true">3</span>
                       <div>
                           <h3>{% trans "Check it, then pay" %}</h3>
-                          <p>{% trans "The driver waits while you look it over. If it isn't right, hand it back —" %} <mark>{% trans "you pay nothing." %}</mark></p>
+                          <p>{% trans "The driver waits while you look it over. If it isn't right, hand it back -" %} <mark>{% trans "you pay nothing." %}</mark></p>
                           <span class="zh-step__time zh-num">{% trans "Cash at the door" %} · <strong>{{ store.phone }}</strong></span>
                       </div>
                   </li>
@@ -316,7 +316,7 @@
                       <a href="{{ store.telegram_bot_url }}" class="zh-link" target="_blank" rel="noopener"><i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Ask on Telegram" %}</a>
                       <a href="{% url 'store:faq' %}" class="zh-link"><i class="fas fa-question-circle" aria-hidden="true"></i> {% trans "FAQ" %}</a>
                   </div>
-                  <p class="zh-meta">{% trans "After checkout you get an order number and a tracking link — no account needed." %}</p>
+                  <p class="zh-meta">{% trans "After checkout you get an order number and a tracking link - no account needed." %}</p>
               </div>
           </section>
       </div>
@@ -453,7 +453,7 @@
                       </div>
                   </form>
                   {% else %}
-                  <p>{% trans "Bought this? After delivery we send you a one-tap review link — no account needed. You can also log in to review now." %}</p>
+                  <p>{% trans "Bought this? After delivery we send you a one-tap review link - no account needed. You can also log in to review now." %}</p>
                   <a href="{% url 'store:login' %}?next={{ request.get_full_path|urlencode }}" class="zh-btn zh-btn--ghost">{% trans "Log in to review" %}</a>
                   {% endif %}
               </div>
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const stickySize = document.getElementById('sticky-cta-size');
 
     // Thumbnail switcher. The main image carries a srcset, and browsers
-    // prefer srcset over src — swapping src alone changes nothing visibly,
+    // prefer srcset over src - swapping src alone changes nothing visibly,
     // so srcset must be swapped (or dropped) together with it.
     thumbButtons.forEach(function (button) {
         button.addEventListener('click', function () {

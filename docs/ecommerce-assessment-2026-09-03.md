@@ -65,7 +65,7 @@ These four items each independently block or damage a purchase and should be tre
 |---|---|
 | Homepage "Latest Drops" | "New arrivals will appear here as soon as products go live." |
 | Homepage "Featured Products" | "Featured products will appear here once they are marked in admin." |
-| /products/ | "All Products — 0 items — No products match this view yet" |
+| /products/ | "All Products - 0 items - No products match this view yet" |
 | /sale/ | 0 items |
 | /search/?q=nike | 0 items (there are two Nike products in the DB) |
 | Production DB | 23 products, `is_active = False` on all 23 |

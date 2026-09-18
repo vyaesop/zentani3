@@ -45,7 +45,7 @@ def send_product_post(product_id, force=False):
         .first()
     )
     if product is None:
-        return  # Product deleted since enqueue — nothing to do.
+        return  # Product deleted since enqueue - nothing to do.
     if not force and (not product.is_active or product.is_sold_out):
         return
     sent = post_product_to_channel(product, force=force)
@@ -153,8 +153,8 @@ def send_customer_order_status(payload):
 
 
 def send_customer_restock_notifications(payload):
-    """Alert every customer waiting on this product — Telegram when linked,
-    email otherwise — then clear their restock requests so each restock
+    """Alert every customer waiting on this product - Telegram when linked,
+    email otherwise - then clear their restock requests so each restock
     notifies once."""
     from store.services.notifications import send_restock_emails
 

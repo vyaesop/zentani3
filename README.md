@@ -2,7 +2,7 @@
   <img src="zentanee/static/asset/images/logo-circle.png" alt="Zentanee logo" width="200">
 </p>
 
-# Zentanee — Clothing & Apparel E-commerce Store
+# Zentanee - Clothing & Apparel E-commerce Store
 
 [Live Demo](https://www.zentanee.com.et/)  
 
@@ -16,9 +16,9 @@ Users can browse products, add items to cart, and purchase clothing. The website
 
 ## 🧰 Tech Stack
 
-- **Backend**: Django (Python) — models, views, routing, authentication, business logic  
-- **Frontend**: HTML, CSS, JavaScript — responsive UI, dynamic interactions  
-- **Database**: PostgreSQL — storing product, user, order, cart and related data  
+- **Backend**: Django (Python) - models, views, routing, authentication, business logic  
+- **Frontend**: HTML, CSS, JavaScript - responsive UI, dynamic interactions  
+- **Database**: PostgreSQL - storing product, user, order, cart and related data  
 
 ## ✅ Key Features
 
@@ -71,7 +71,7 @@ Before deploying, ensure these environment variables are set with real values (n
 - `DATABASE_URL`
 - `DJANGO_SECRET_KEY`
 - `ALLOWED_HOSTS`
-- `SITE_URL` (public https origin — canonical tags, sitemap, feeds, SMS/Telegram links)
+- `SITE_URL` (public https origin - canonical tags, sitemap, feeds, SMS/Telegram links)
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 - `EMAIL_HOST` + credentials (password reset, receipts, restock alerts)
 - `SMS_BACKEND` + gateway token (order confirmation and dispatch SMS)

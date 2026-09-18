@@ -1,6 +1,6 @@
 """Cache-backed attempt counters for login and registration.
 
-Not a full WAF — the aim is to make credential stuffing against phone-number
+Not a full WAF - the aim is to make credential stuffing against phone-number
 usernames expensive. Counters live in the Django cache, so with Redis they
 are shared across processes; with LocMem they are per-process (still useful,
 just weaker). Keys are scoped by IP and by the submitted identifier.

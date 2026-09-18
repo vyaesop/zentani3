@@ -9,7 +9,7 @@
           <h2 id="zh-drop-title">{% trans "The drop" %}</h2>
           <a href="{% url 'store:all-products' %}?sort=newest">{% trans "Everything new" %}</a>
           {% if brands and brands|length < 3 %}
-          <p class="zh-section__meta">{% trans "Every branded piece" %} — {{ brands|join:", " }} — {% trans "is a genuine original." %}</p>
+          <p class="zh-section__meta">{% trans "Every branded piece" %} - {{ brands|join:", " }} - {% trans "is a genuine original." %}</p>
           {% endif %}
       </div>
       <div class="zh-rail zh-rail--weave">
@@ -21,7 +21,7 @@
   {% elif brands and brands|length < 3 %}
   <section class="zh-section zh-wrap" aria-label="{% trans 'Authenticity' %}">
       <div class="zh-band">{% include 'store/_tibeb_band.html' with band_variant="thin" band_id="tibeb-thin-drop" %}</div>
-      <p class="zh-section__meta zh-section__meta--standalone">{% trans "Every branded piece" %} — {{ brands|join:", " }} — {% trans "is a genuine original." %}</p>
+      <p class="zh-section__meta zh-section__meta--standalone">{% trans "Every branded piece" %} - {{ brands|join:", " }} - {% trans "is a genuine original." %}</p>
   </section>
   {% endif %}
 
@@ -76,7 +76,7 @@
               <span class="zh-step__n zh-num" aria-hidden="true">3</span>
               <div>
                   <h3>{% trans "Check it, then pay" %}</h3>
-                  <p>{% trans "The driver waits while you look it over. If it isn't right, hand it back —" %} <mark>{% trans "you pay nothing." %}</mark></p>
+                  <p>{% trans "The driver waits while you look it over. If it isn't right, hand it back -" %} <mark>{% trans "you pay nothing." %}</mark></p>
                   <span class="zh-step__time zh-num">{% trans "Cash at the door" %} · <strong>{{ store.phone }}</strong></span>
               </div>
           </li>

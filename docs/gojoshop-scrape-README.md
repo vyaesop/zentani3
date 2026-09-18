@@ -8,7 +8,7 @@ Command: `store/management/commands/scrape_gojoshop.py`
 ## Why you run it locally (not from Cowork)
 
 gojoshop.et blocks datacenter/proxy traffic, so the scrape has to run from a
-machine with normal internet access — your laptop or the production server. It
+machine with normal internet access - your laptop or the production server. It
 cannot be run from the sandboxed assistant environment.
 
 ## Install the two extra dependencies
@@ -19,7 +19,7 @@ pip install requests beautifulsoup4
 
 (They aren't in `requirements.txt`; add them there if you want this permanent.)
 
-## Recommended first run — inspect before importing
+## Recommended first run - inspect before importing
 
 Parse a sample, write it to JSON, download nothing, touch no database:
 
@@ -39,7 +39,7 @@ python manage.py scrape_gojoshop
 
 This crawls the sitemap **and** paginates the "latest" feed (so it catches
 products the sitemap omits), then for each product downloads the images and
-upserts the row. It is idempotent — keyed on `sku` (the trailing id in each
+upserts the row. It is idempotent - keyed on `sku` (the trailing id in each
 product URL, e.g. `QS64nR`), so re-running updates instead of duplicating.
 
 ## Flags
@@ -62,7 +62,7 @@ product URL, e.g. `QS64nR`), so re-running updates instead of duplicating.
 Direct import copies the source copy verbatim (often Amharic-only, sometimes
 uncategorized) and publishes immediately. With `--to-ai-queue` the scraper
 instead creates a `ProductAIDraft` per item (scraped image + sku + price +
-sizes) and enqueues it on the existing Gemini enrichment pipeline — the same
+sizes) and enqueues it on the existing Gemini enrichment pipeline - the same
 one the dashboard AI intake uses. Gemini writes the title, descriptions, SEO
 fields and picks/creates the collection and brand, then creates the product.
 
