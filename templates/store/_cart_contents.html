@@ -76,7 +76,10 @@ line count is refreshed out of band on those responses.
                 </div>
                 <div class="zh-field">
                     <label for="guest-city">{% trans "City" %}</label>
-                    <input type="text" id="guest-city" name="city" class="zh-input" required autocomplete="address-level2" value="Addis Ababa">
+                    <select id="guest-city" name="city" class="zh-input" required autocomplete="address-level2" aria-describedby="guest-city-help">
+                        <option value="Addis Ababa" selected>{% trans "Addis Ababa" %}</option>
+                    </select>
+                    <p class="zh-help" id="guest-city-help">{% trans "We deliver inside Addis Ababa only." %}</p>
                 </div>
                 <div class="zh-field">
                     <label for="guest-address">{% trans "Delivery address" %}</label>
@@ -123,7 +126,7 @@ line count is refreshed out of band on those responses.
 
             <dl class="zh-rows" id="cart-totals">
                 <div class="zh-row"><dt>{% trans "Subtotal" %}</dt><dd>{{ amount|etb }}</dd></div>
-                <div class="zh-row"><dt>{% trans "Delivery" %}</dt><dd>{% if guest_checkout %}<span class="zh-row__text">{% trans "Calculated from your city" %}</span>{% elif shipping_amount == 0 %}<span class="zh-row__text">{% trans "Free" %}</span>{% else %}{{ shipping_amount|etb }}{% endif %}</dd></div>
+                <div class="zh-row"><dt>{% trans "Delivery" %}</dt><dd>{% if guest_checkout %}<span class="zh-row__text">{% trans "Calculated at checkout" %}</span>{% elif shipping_amount == 0 %}<span class="zh-row__text">{% trans "Free" %}</span>{% else %}{{ shipping_amount|etb }}{% endif %}</dd></div>
                 {% if coupon %}
                 <div class="zh-row"><dt>{% trans "Coupon" %} <span class="zh-num">{{ coupon.code }}</span></dt><dd>−{{ coupon.discount }}%</dd></div>
                 {% endif %}

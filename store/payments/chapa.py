@@ -3,7 +3,7 @@
 Flow: `initialize_payment` creates a transaction and returns the hosted
 checkout URL; the shopper pays there and is sent to our return URL, and Chapa
 also POSTs a webhook. Both paths call `verify_payment` against the Chapa API
-before anything is marked paid — the redirect and the webhook body are hints,
+before anything is marked paid - the redirect and the webhook body are hints,
 never proof.
 
 Everything here uses urllib so no new dependency is needed; failures raise
@@ -119,7 +119,7 @@ def webhook_signature_valid(raw_body, headers):
 
     `Chapa-Signature` is HMAC-SHA256(secret, body) and `x-chapa-signature` is
     HMAC-SHA256(secret, secret). Without a configured secret every webhook is
-    rejected — the return-URL path still verifies payments in that case.
+    rejected - the return-URL path still verifies payments in that case.
     """
     secret = getattr(settings, "CHAPA_WEBHOOK_SECRET", "")
     if not secret:

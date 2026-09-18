@@ -1,7 +1,7 @@
 {
   "name": "Zentanee",
   "short_name": "Zentanee",
-  "description": "Clothes, shoes and accessories delivered in Addis Ababa. Cash on delivery — inspect before you pay.",
+  "description": "Clothes, shoes and accessories delivered in Addis Ababa. Cash on delivery - inspect before you pay.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

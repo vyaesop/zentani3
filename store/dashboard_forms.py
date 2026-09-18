@@ -88,7 +88,7 @@ class DashboardProductForm(forms.ModelForm):
             "measurements": forms.Textarea(
                 attrs={
                     "rows": 4,
-                    "placeholder": "One size per line, e.g.\nM — length 70 cm, chest 104 cm\nL — length 72 cm, chest 110 cm",
+                    "placeholder": "One size per line, e.g.\nM - length 70 cm, chest 104 cm\nL - length 72 cm, chest 110 cm",
                 }
             ),
             "delivery_note": forms.TextInput(attrs={"placeholder": "Delivery promise shown on PDP"}),
@@ -113,7 +113,7 @@ class DashboardProductForm(forms.ModelForm):
     def clean_price(self):
         price = self.cleaned_data.get("price")
         if price is not None and price <= 0:
-            raise forms.ValidationError("Price must be greater than 0 ETB — a free product cannot be sold.")
+            raise forms.ValidationError("Price must be greater than 0 ETB - a free product cannot be sold.")
         return price
 
     def clean(self):
@@ -160,7 +160,7 @@ class ProductAIDraftForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["reference_image"].required = True
         # Price is one of the three merchandiser-owned inputs (image, SKU,
-        # price) — without it the ready draft can't become a product.
+        # price) - without it the ready draft can't become a product.
         self.fields["price"].required = True
         _decorate_dashboard_fields(self.fields)
 

@@ -97,14 +97,14 @@ msgstr "በአዲስ አበባ ከ%(threshold)s ብር በላይ ለሆኑ ት�
 msgid "%(name)s on Telegram"
 msgstr "%(name)s በቴሌግራም"
 
-msgid "New drops, sale alerts, and order updates — where Addis actually is."
-msgstr "አዳዲስ ምርቶች፣ የቅናሽ ማሳወቂያዎች እና የትዕዛዝ ዝመናዎች — አዲስ አበባ ባለችበት።"
+msgid "New drops, sale alerts, and order updates - where Addis actually is."
+msgstr "አዳዲስ ምርቶች፣ የቅናሽ ማሳወቂያዎች እና የትዕዛዝ ዝመናዎች - አዲስ አበባ ባለችበት።"
 
 msgid "Join the channel"
 msgstr "ቻናሉን ይቀላቀሉ"
 
-msgid "Clothes, shoes and accessories for Addis shoppers. Cash on delivery — inspect before you pay."
-msgstr "ለአዲስ አበባ ገዢዎች ልብስ፣ ጫማ እና መለዋወጫዎች። ሲደርስ ይክፈሉ — ከመክፈልዎ በፊት ይመልከቱ።"
+msgid "Clothes, shoes and accessories for Addis shoppers. Cash on delivery - inspect before you pay."
+msgstr "ለአዲስ አበባ ገዢዎች ልብስ፣ ጫማ እና መለዋወጫዎች። ሲደርስ ይክፈሉ - ከመክፈልዎ በፊት ይመልከቱ።"
 
 msgid "Trade licence"
 msgstr "የንግድ ፈቃድ"
@@ -162,8 +162,8 @@ msgstr "በአዲስ ከ%(threshold)s ብር በላይ ነጻ አቅርቦት ·
 msgid "Fashion you love, delivered to your door."
 msgstr "የሚወዱት ፋሽን፣ እስከ ቤትዎ ደጃፍ።"
 
-msgid "Curated drops from local and international brands. No online payment required — check the item with the driver, then pay."
-msgstr "ከአገር ውስጥ እና ከውጭ ብራንዶች የተመረጡ ምርቶች። የመስመር ላይ ክፍያ አያስፈልግም — እቃውን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ ይክፈሉ።"
+msgid "Curated drops from local and international brands. No online payment required - check the item with the driver, then pay."
+msgstr "ከአገር ውስጥ እና ከውጭ ብራንዶች የተመረጡ ምርቶች። የመስመር ላይ ክፍያ አያስፈልግም - እቃውን ከአሽከርካሪው ጋር ይመልከቱ፣ ከዛ ይክፈሉ።"
 
 msgid "Shop all products"
 msgstr "ሁሉንም ምርቶች ይግዙ"
@@ -196,8 +196,8 @@ msgstr "የመስመር ላይ ክፍያ አያስፈልግም። ትዕዛዙ�
 msgid "Order on Telegram"
 msgstr "በቴሌግራም ይዘዙ"
 
-msgid "Every drop is posted to our channel — order in chat or here on the site."
-msgstr "እያንዳንዱ አዲስ ምርት በቻናላችን ይለጠፋል — በቻት ወይም እዚህ በድር ጣቢያው ይዘዙ።"
+msgid "Every drop is posted to our channel - order in chat or here on the site."
+msgstr "እያንዳንዱ አዲስ ምርት በቻናላችን ይለጠፋል - በቻት ወይም እዚህ በድር ጣቢያው ይዘዙ።"
 
 msgid "Real people, real phone"
 msgstr "እውነተኛ ሰዎች፣ እውነተኛ ስልክ"
@@ -396,8 +396,8 @@ msgstr "የመጠን መመሪያ እና መለኪያዎች"
 msgid "Fit"
 msgstr "አቀማመጥ"
 
-msgid "Between sizes? Order both — you only pay for what you keep when the driver arrives."
-msgstr "በመጠኖች መካከል ነዎት? ሁለቱንም ይዘዙ — አሽከርካሪው ሲደርስ ለሚያስቀሩት ብቻ ይከፍላሉ።"
+msgid "Between sizes? Order both - you only pay for what you keep when the driver arrives."
+msgstr "በመጠኖች መካከል ነዎት? ሁለቱንም ይዘዙ - አሽከርካሪው ሲደርስ ለሚያስቀሩት ብቻ ይከፍላሉ።"
 
 msgid "Collection"
 msgstr "ስብስብ"
@@ -429,8 +429,8 @@ msgstr "በቴሌግራም ይጠይቁ"
 msgid "FAQ"
 msgstr "ተደጋጋሚ ጥያቄዎች"
 
-msgid "After checkout you get an order number and a tracking link — no account needed."
-msgstr "ከክፍያ በኋላ የትዕዛዝ ቁጥር እና የክትትል አገናኝ ያገኛሉ — መለያ አያስፈልግም።"
+msgid "After checkout you get an order number and a tracking link - no account needed."
+msgstr "ከክፍያ በኋላ የትዕዛዝ ቁጥር እና የክትትል አገናኝ ያገኛሉ - መለያ አያስፈልግም።"
 
 msgid "Product Details"
 msgstr "የምርት ዝርዝሮች"
@@ -620,10 +620,10 @@ msgstr[0] "%(counter)s እቃ ቀርቧል"
 msgstr[1] "%(counter)s እቃዎች ቀርበዋል"
 
 msgid "Real drops, <em>checked</em> at your door."
-msgstr "እውነተኛ ምርቶች — <em>ተመልክተው</em> በበርዎ ላይ።"
+msgstr "እውነተኛ ምርቶች - <em>ተመልክተው</em> በበርዎ ላይ።"
 
-msgid "Order it. We call. The driver waits while you look it over —"
-msgstr "ይዘዙ። እንደውላለን። እየተመለከቱ አሽከርካሪው ይጠብቃል —"
+msgid "Order it. We call. The driver waits while you look it over -"
+msgstr "ይዘዙ። እንደውላለን። እየተመለከቱ አሽከርካሪው ይጠብቃል -"
 
 msgid "then you pay."
 msgstr "ከዛ ይክፈሉ።"
@@ -664,8 +664,8 @@ msgstr "አዲስ የገቡት"
 msgid "Everything new"
 msgstr "ሁሉም አዲስ"
 
-msgid "New pieces land here first — follow the Telegram channel to catch the next drop."
-msgstr "አዳዲስ እቃዎች መጀመሪያ እዚህ ይደርሳሉ — ቀጣዩን ላለማምለጥ የቴሌግራም ቻናሉን ይከተሉ።"
+msgid "New pieces land here first - follow the Telegram channel to catch the next drop."
+msgstr "አዳዲስ እቃዎች መጀመሪያ እዚህ ይደርሳሉ - ቀጣዩን ላለማምለጥ የቴሌግራም ቻናሉን ይከተሉ።"
 
 msgid "All collections"
 msgstr "ሁሉም ስብስቦች"
@@ -697,8 +697,8 @@ msgstr "ምንም ከመላኩ በፊት እውነተኛ ሰው መጠኑን እ
 msgid "Check it, then pay"
 msgstr "ይመልከቱ፣ ከዛ ይክፈሉ"
 
-msgid "The driver waits while you look it over. If it isn't right, hand it back —"
-msgstr "እየተመለከቱ አሽከርካሪው ይጠብቃል። ትክክል ካልሆነ ይመልሱት —"
+msgid "The driver waits while you look it over. If it isn't right, hand it back -"
+msgstr "እየተመለከቱ አሽከርካሪው ይጠብቃል። ትክክል ካልሆነ ይመልሱት -"
 
 msgid "you pay nothing."
 msgstr "ምንም አይከፍሉም።"

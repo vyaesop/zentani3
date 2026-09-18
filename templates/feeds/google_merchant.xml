@@ -30,11 +30,6 @@
         <g:service>Standard</g:service>
         <g:price>{{ addis_fee }} ETB</g:price>
       </g:shipping>
-      <g:shipping>
-        <g:country>ET</g:country>
-        <g:service>Courier</g:service>
-        <g:price>{{ outside_fee }} ETB</g:price>
-      </g:shipping>
     </item>
     {% endfor %}
   </channel>

@@ -12,11 +12,35 @@ from django.contrib.auth.forms import (
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 
+from store.constants import DELIVERY_CITY, DELIVERY_CITY_CHOICES
 from store.models import Address, OrderGroup, ProductReview, RestockRequest
 from store.phone import normalize_et_phone
 
 PHONE_HELP = _("Ethiopian mobile number, e.g. 0911 234 567 or +251 911 234 567.")
 PHONE_ERROR = _("Enter a valid Ethiopian mobile number (09… or 07…, 10 digits).")
+CITY_HELP = _("We deliver inside Addis Ababa only.")
+CITY_ERROR = _("We deliver inside Addis Ababa only.")
+
+
+def city_field(**kwargs):
+    """The delivery city as a single-option select: Addis Ababa or nothing."""
+    kwargs.setdefault("label", _("City"))
+    kwargs.setdefault("help_text", CITY_HELP)
+    return forms.ChoiceField(
+        choices=DELIVERY_CITY_CHOICES,
+        initial=DELIVERY_CITY,
+        error_messages={"invalid_choice": CITY_ERROR},
+        widget=forms.Select(attrs={"class": "form-control"}),
+        **kwargs,
+    )
+
+
+def clean_city_value(value):
+    """Accept only Addis; the select makes anything else a tampered POST."""
+    normalized = (value or "").strip()
+    if "addis" not in normalized.lower():
+        raise forms.ValidationError(CITY_ERROR)
+    return DELIVERY_CITY
 
 
 def clean_phone_value(value, *, required=True):
@@ -43,11 +67,7 @@ class RegistrationForm(UserCreationForm):
         label=_('Address'),
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Nearest Location')})
     )
-    city = forms.CharField(
-        required=True,
-        label=_('City'),
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('City')})
-    )
+    city = city_field(required=True)
     password1 = forms.CharField(label=_('Password'), widget=forms.PasswordInput(attrs={'class':'form-control', 'placeholder':_('Password'), 'autocomplete': 'new-password'}))
     password2 = forms.CharField(label=_("Confirm Password"), widget=forms.PasswordInput(attrs={'class':'form-control', 'placeholder':_('Confirm Password'), 'autocomplete': 'new-password'}))
     email = forms.CharField(required=True, widget=forms.EmailInput(attrs={'class':'form-control', 'placeholder':_('Email Address'), 'autocomplete': 'email'}))
@@ -74,7 +94,7 @@ class RegistrationForm(UserCreationForm):
         return self.cleaned_data['address'].strip()
 
     def clean_city(self):
-        return self.cleaned_data['city'].strip()
+        return clean_city_value(self.cleaned_data['city'])
 
     def clean_email(self):
         return self.cleaned_data['email'].strip().lower()
@@ -101,15 +121,19 @@ class LoginForm(AuthenticationForm):
 
 
 class AddressForm(forms.ModelForm):
+    city = city_field(required=True)
+
     class Meta:
         model = Address
         fields = ['address', 'city', 'phone']
         widgets = {
             'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Popular place like a restaurant, church, mosque, or landmark')}),
-            'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('City')}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Phone Number'), 'autocomplete': 'tel', 'inputmode': 'tel'}),
         }
         help_texts = {'phone': PHONE_HELP}
+
+    def clean_city(self):
+        return clean_city_value(self.cleaned_data.get("city"))
 
     def clean_phone(self):
         return clean_phone_value(self.cleaned_data.get("phone"))
@@ -189,11 +213,7 @@ class GuestCheckoutForm(forms.Form):
         label=_("Email (optional, for your receipt)"),
         widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": _("Email address"), "autocomplete": "email"}),
     )
-    city = forms.CharField(
-        max_length=150,
-        label=_("City"),
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": _("City"), "autocomplete": "address-level2"}),
-    )
+    city = city_field()
     address = forms.CharField(
         max_length=255,
         label=_("Delivery address"),
@@ -213,7 +233,7 @@ class GuestCheckoutForm(forms.Form):
         return (self.cleaned_data.get("email") or "").strip().lower()
 
     def clean_city(self):
-        return self.cleaned_data["city"].strip()
+        return clean_city_value(self.cleaned_data["city"])
 
     def clean_address(self):
         value = self.cleaned_data["address"].strip()

@@ -294,15 +294,21 @@ class OrderGroupCheckoutTests(TestCase):
         self.assertEqual(group.contact["phone"], "0911000111", "phone is normalised at checkout")
         self.assertEqual(group.contact["email"], "guest@example.com")
         self.assertEqual(group.subtotal, Decimal("1000.00"))
-        self.assertEqual(group.delivery_fee, Decimal("80.00"))
-        self.assertEqual(group.total, Decimal("1080.00"))
+        self.assertEqual(group.delivery_fee, Decimal("200.00"))
+        self.assertEqual(group.total, Decimal("1200.00"))
         self.assertEqual(group.lines.count(), 1)
         self.assertEqual(response.url, reverse("store:order-confirmation", kwargs={"token": group.claim_token}))
 
-    def test_free_delivery_over_threshold_and_outside_addis_fee(self):
+    def test_addis_delivery_fee_and_free_threshold(self):
         self.assertEqual(delivery_fee_for("Addis Ababa", Decimal("3500")), Decimal("0.00"))
-        self.assertEqual(delivery_fee_for("addis abeba", Decimal("100")), Decimal("80.00"))
-        self.assertEqual(delivery_fee_for("Hawassa", Decimal("9000")), Decimal("180.00"))
+        self.assertEqual(delivery_fee_for("addis abeba", Decimal("100")), Decimal("200.00"))
+        self.assertEqual(delivery_fee_for("", Decimal("100")), Decimal("0.00"))
+
+    def test_checkout_refuses_a_city_outside_addis(self):
+        response = self._guest_checkout(city="Hawassa")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("store:cart"))
+        self.assertFalse(OrderGroup.objects.exists(), "no order may be placed outside Addis")
 
     def test_confirmation_page_shows_receipt_and_tracks_purchase_once(self):
         self._guest_checkout()
@@ -312,7 +318,7 @@ class OrderGroupCheckoutTests(TestCase):
         first = self.client.get(url)
         self.assertEqual(first.status_code, 200)
         self.assertContains(first, group.number)
-        self.assertContains(first, "1,080 ETB")
+        self.assertContains(first, "1,200 ETB")
         self.assertContains(first, "Cash on delivery")
         self.assertContains(first, 'id="ga-purchase-data"')
         self.assertContains(first, 'name="robots" content="noindex, nofollow"')
@@ -343,8 +349,8 @@ class OrderGroupCheckoutTests(TestCase):
         self._guest_checkout()
         task = BackgroundTask.objects.get(task_type=BackgroundTask.TYPE_TELEGRAM_ORDER_NOTIFY)
         self.assertEqual(task.payload["order_number"], OrderGroup.objects.get().number)
-        self.assertEqual(task.payload["delivery_fee"], "80.00")
-        self.assertEqual(task.payload["grand_total"], "1080.00")
+        self.assertEqual(task.payload["delivery_fee"], "200.00")
+        self.assertEqual(task.payload["grand_total"], "1200.00")
 
     def test_invalid_phone_is_rejected_at_checkout(self):
         response = self._guest_checkout(phone="12345")
@@ -643,7 +649,7 @@ class ChapaPaymentTests(TestCase):
             self._checkout()
         group = OrderGroup.objects.get()
         tx_ref = f"{group.number}-{group.id}"
-        verified = {"status": "success", "amount": "2080.00", "currency": "ETB", "reference": "CHP-1"}
+        verified = {"status": "success", "amount": "2200.00", "currency": "ETB", "reference": "CHP-1"}
         with patch("store.payments.chapa.verify_payment", return_value=verified):
             response = self.client.get(reverse("store:chapa-return"), {"tx_ref": tx_ref})
         self.assertEqual(response.status_code, 302)
@@ -669,7 +675,7 @@ class ChapaPaymentTests(TestCase):
         self.assertEqual(rejected.status_code, 403)
 
         signature = hmac.new(b"hook-secret", body, hashlib.sha256).hexdigest()
-        with patch("store.payments.chapa.verify_payment", return_value={"status": "success", "amount": "2080.00", "currency": "ETB"}):
+        with patch("store.payments.chapa.verify_payment", return_value={"status": "success", "amount": "2200.00", "currency": "ETB"}):
             accepted = self.client.post(reverse("store:chapa-webhook"), body, content_type="application/json", HTTP_CHAPA_SIGNATURE=signature)
         self.assertEqual(accepted.status_code, 200)
         group.refresh_from_db()

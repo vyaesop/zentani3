@@ -54,7 +54,7 @@ def chapa_return(request):
         return redirect("store:home")
 
     if _settle(group, tx_ref):
-        messages.success(request, f"Payment received — order {group.number} is confirmed and will be dispatched first.")
+        messages.success(request, f"Payment received - order {group.number} is confirmed and will be dispatched first.")
     else:
         messages.warning(
             request,

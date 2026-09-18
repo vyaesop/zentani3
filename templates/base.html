@@ -18,7 +18,7 @@
     <meta name="theme-color" content="#111111">
 
     <title>{% block title %}{{ store.name }}{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}{% if page_meta_description %}{{ page_meta_description }}{% else %}{{ store.name }} — clothes, shoes and accessories delivered in Addis Ababa. Cash on delivery: inspect your order before you pay.{% endif %}{% endblock %}">
+    <meta name="description" content="{% block meta_description %}{% if page_meta_description %}{{ page_meta_description }}{% else %}{{ store.name }} - clothes, shoes and accessories delivered in Addis Ababa. Cash on delivery: inspect your order before you pay.{% endif %}{% endblock %}">
     {% if robots_meta %}<meta name="robots" content="{{ robots_meta }}">{% endif %}
     {% block seo_head %}
     <link rel="canonical" href="{{ canonical_url }}">
@@ -137,7 +137,7 @@
             <div class="zh-footer__channel">
                 <div>
                     <h3>{% blocktrans with name=store.name %}{{ name }} on Telegram{% endblocktrans %}</h3>
-                    <p>{% trans "New drops, sale alerts, and order updates — where Addis actually is." %}</p>
+                    <p>{% trans "New drops, sale alerts, and order updates - where Addis actually is." %}</p>
                 </div>
                 <a href="{{ store.telegram_channel_url }}" target="_blank" rel="noopener" class="zh-btn zh-btn--primary">
                     <i class="fab fa-telegram-plane" aria-hidden="true"></i> {% trans "Join the channel" %}
@@ -150,7 +150,7 @@
                         <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="zh-logo__mark" width="28" height="28">
                         <span class="zh-logo__word">{{ store.name }}</span>
                     </a>
-                    <p>{% trans "Clothes, shoes and accessories for Addis shoppers. Cash on delivery — inspect before you pay." %}</p>
+                    <p>{% trans "Clothes, shoes and accessories for Addis shoppers. Cash on delivery - inspect before you pay." %}</p>
                     <address class="zh-footer__identity">
                         {% if store.legal_name %}<strong>{{ store.legal_name }}</strong><br>{% endif %}
                         {{ store.address }}<br>

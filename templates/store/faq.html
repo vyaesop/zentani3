@@ -25,19 +25,19 @@
       <section class="zh-faq-group" aria-labelledby="zh-faq-delivery">
           <h2 class="zh-h2" id="zh-faq-delivery">{% trans "Delivery" %}</h2>
           <div class="zh-faq">
-              <details><summary>{% trans "How much is delivery?" %}</summary><p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold outside=outside_fee %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. Outside Addis Ababa: {{ outside }} ETB flat.{% endblocktrans %}</p></details>
+              <details><summary>{% trans "How much is delivery?" %}</summary><p class="zh-num">{% blocktrans with fee=addis_fee threshold=free_threshold %}Addis Ababa: {{ fee }} ETB, free on orders over {{ threshold }} ETB. We deliver inside Addis Ababa only.{% endblocktrans %}</p></details>
               <details><summary>{% trans "How long does it take?" %}</summary><p>{{ delivery_note }}</p></details>
               <details><summary>{% trans "What if I'm not home?" %}</summary><p>{% trans "The driver calls before arriving. If you cannot be reached we will rearrange; give us a landmark and a second phone number if you can." %}</p></details>
-              <details><summary>{% trans "Do you deliver outside Addis Ababa?" %}</summary><p class="zh-num">{% blocktrans with outside=outside_fee %}Yes, via courier for a flat {{ outside }} ETB. Timing depends on the destination; we confirm it on the call.{% endblocktrans %}</p></details>
+              <details><summary>{% trans "Do you deliver outside Addis Ababa?" %}</summary><p class="zh-num">{% trans "Not yet. We deliver inside Addis Ababa only, so checkout accepts Addis Ababa addresses only." %}</p></details>
           </div>
       </section>
 
       <section class="zh-faq-group" aria-labelledby="zh-faq-sizing">
           <h2 class="zh-h2" id="zh-faq-sizing">{% trans "Sizing & returns" %}</h2>
           <div class="zh-faq">
-              <details><summary>{% trans "How do I pick the right size?" %}</summary><p>{% trans "Product pages show measurements or a size guide for the collection, plus fit feedback from other buyers. Between sizes? Order both — you only pay for the one you keep when the driver arrives." %}</p></details>
+              <details><summary>{% trans "How do I pick the right size?" %}</summary><p>{% trans "Product pages show measurements or a size guide for the collection, plus fit feedback from other buyers. Between sizes? Order both - you only pay for the one you keep when the driver arrives." %}</p></details>
               <details><summary>{% trans "Can I return or exchange?" %}</summary><p>{{ return_note }} {% trans "After the driver leaves, sales are final except for hidden defects reported within 24 hours." %}</p></details>
-              <details><summary>{% trans "Are branded items genuine?" %}</summary><p>{% trans "Each listing states what the item is. Where a product is not an original branded product the description says so — if you are unsure, ask us before ordering." %}</p></details>
+              <details><summary>{% trans "Are branded items genuine?" %}</summary><p>{% trans "Each listing states what the item is. Where a product is not an original branded product the description says so - if you are unsure, ask us before ordering." %}</p></details>
           </div>
       </section>
 
@@ -46,7 +46,7 @@
           <div class="zh-faq">
               <details><summary>{% trans "How do I track my order?" %}</summary><p>{% trans "Use the link on your confirmation page or in the SMS we sent. Account holders also see every order under My account." %}</p></details>
               <details><summary>{% trans "How do I cancel?" %}</summary><p>{% trans "While the order is Pending or Accepted, cancel from your orders page or call us. Later, just decline at the door." %}</p></details>
-              <details><summary>{% trans "I forgot my password." %}</summary><p><a href="{% url 'store:password-reset' %}">{% trans "Reset it here" %}</a> {% trans "— we email you a link. Your login is your phone number." %}</p></details>
+              <details><summary>{% trans "I forgot my password." %}</summary><p><a href="{% url 'store:password-reset' %}">{% trans "Reset it here" %}</a> {% trans "- we email you a link. Your login is your phone number." %}</p></details>
           </div>
       </section>
   </div>

@@ -12,7 +12,7 @@ Design (the "sibling link" model):
 
 Everything that mutates products here runs under
 ``suspend_telegram_autopublish`` so creating or syncing colours never posts
-to the channel by accident — publishing stays an explicit "Save & post".
+to the channel by accident - publishing stays an explicit "Save & post".
 """
 import re
 
@@ -111,7 +111,7 @@ def variant_sku_base(source):
 
 
 def suggest_variant_sku(source, color):
-    """``<source SKU>-<COLOUR>``, made unique — staff can still overwrite it."""
+    """``<source SKU>-<COLOUR>``, made unique - staff can still overwrite it."""
     color_token = slugify(color or "").upper().replace("-", "")[:24] or "ALT"
     base_sku = variant_sku_base(source)
     return unique_product_sku(f"{base_sku}-{color_token}" if base_sku else color_token)
@@ -332,7 +332,7 @@ def color_count_map(products):
 
 
 def colour_name_suggestions(limit=24):
-    """Colours already used in the catalogue, most recent first — datalist fodder."""
+    """Colours already used in the catalogue, most recent first - datalist fodder."""
     names = []
     seen = set()
     for value in Product.objects.exclude(color="").order_by("-updated_at").values_list("color", flat=True)[:200]:

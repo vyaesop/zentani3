@@ -2,12 +2,12 @@
 
 Thank you for your order {{ group.number }} at {{ store_name }}.
 {% for line in lines %}
-- {{ line.product.title }}{% if line.size %} (size {{ line.size }}){% endif %} x {{ line.quantity }} — {{ line.line_total|etb }}{% endfor %}
+- {{ line.product.title }}{% if line.size %} (size {{ line.size }}){% endif %} x {{ line.quantity }} - {{ line.line_total|etb }}{% endfor %}
 
 Subtotal: {{ group.subtotal|etb }}
 Delivery: {% if group.delivery_fee == 0 %}Free{% else %}{{ group.delivery_fee|etb }}{% endif %}
 Total: {{ group.total|etb }}
-Payment: {% if group.is_paid_online %}Paid online{% else %}Cash on delivery — inspect the item with the driver, then pay{% endif %}
+Payment: {% if group.is_paid_online %}Paid online{% else %}Cash on delivery - inspect the item with the driver, then pay{% endif %}
 
 Delivering to:
 {{ group.customer_name }}

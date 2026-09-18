@@ -88,7 +88,7 @@ def _build_cart_flow_status(request, cart_products, latest_address):
 def _cart_owner_kwargs(request):
     """Cart ownership scope: the user when authenticated, else the session.
 
-    Guests never get placeholder rows in auth_user — their cart rows carry
+    Guests never get placeholder rows in auth_user - their cart rows carry
     the session key instead.
     """
     if request.user.is_authenticated:
@@ -253,7 +253,7 @@ def _cart_page_context(request):
 
     shipping_city = latest_address.city if latest_address else ""
     shipping_amount = delivery_fee_for(shipping_city, amount) if request.user.is_authenticated else decimal.Decimal(0)
-    shipping_note = delivery_note_for(shipping_city, amount) if request.user.is_authenticated else "Delivery is calculated after you enter your city: free in Addis over the threshold, otherwise a flat fee."
+    shipping_note = delivery_note_for(shipping_city if request.user.is_authenticated else "", amount)
 
     coupon_for_display = None
     first_item_with_coupon = next((item for item in cart_products if item.coupon_id), None)
@@ -320,7 +320,7 @@ class AddCoupon(View):
         if _is_htmx(request):
             return _render_cart_contents(
                 request,
-                alert=f"Coupon '{coupon.code}' applied — {coupon.discount}% off.",
+                alert=f"Coupon '{coupon.code}' applied - {coupon.discount}% off.",
                 tone="success",
             )
         messages.success(request, "Coupon applied successfully.")

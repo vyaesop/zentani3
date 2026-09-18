@@ -20,7 +20,7 @@
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
       <p class="zd-panel-head-title">Post a product</p>
-      <p class="zd-panel-head-sub">Add the photos, SKU and price — Gemini writes everything else and picks the collection and brand</p>
+      <p class="zd-panel-head-sub">Add the photos, SKU and price - Gemini writes everything else and picks the collection and brand</p>
     </div>
     <span class="zd-pill zd-pill--gemini-ready">Gemini ready</span>
   </div>
@@ -49,7 +49,7 @@
   <div class="zd-panel-head">
     <div class="zd-panel-head-left">
       <p class="zd-panel-head-title">Gemini is drafting the copy…</p>
-      <p class="zd-panel-head-sub">This page refreshes automatically when the draft is ready — you can keep editing meanwhile.</p>
+      <p class="zd-panel-head-sub">This page refreshes automatically when the draft is ready - you can keep editing meanwhile.</p>
     </div>
     <span class="zd-pill zd-pill--{{ ai_draft.pipeline_state|slugify }}" data-ai-draft-progress-badge>{{ ai_draft.queue_label }}</span>
   </div>
@@ -60,28 +60,28 @@
 {% if ai_draft and ai_draft.status == "succeeded" %}
 <div class="zd-ai-summary">
   <div class="zd-ai-summary-field zd-ai-summary-field--wide">
-    <span>{% if ai_draft.response_payload.automation.product_created %}Product created from AI draft — review below, then publish{% else %}AI draft ready{% endif %}</span>
+    <span>{% if ai_draft.response_payload.automation.product_created %}Product created from AI draft - review below, then publish{% else %}AI draft ready{% endif %}</span>
     <strong>{{ ai_draft.extracted_fields.title|default:ai_draft.sku }}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Collection</span>
-    <strong>{% if ai_draft.product %}{{ ai_draft.product.category.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"—" }}{% endif %}</strong>
+    <strong>{% if ai_draft.product %}{{ ai_draft.product.category.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_category|default:"-" }}{% endif %}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Brand</span>
-    <strong>{% if ai_draft.product.brand %}{{ ai_draft.product.brand.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"—" }}{% endif %}</strong>
+    <strong>{% if ai_draft.product.brand %}{{ ai_draft.product.brand.title }}{% else %}{{ ai_draft.response_payload.catalog_fields.suggested_brand|default:"-" }}{% endif %}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Material</span>
-    <strong>{{ ai_draft.response_payload.catalog_fields.material|default:"—" }}</strong>
+    <strong>{{ ai_draft.response_payload.catalog_fields.material|default:"-" }}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Color</span>
-    <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"—" }}</strong>
+    <strong>{{ ai_draft.response_payload.catalog_fields.color|default:"-" }}</strong>
   </div>
   <div class="zd-ai-summary-field">
     <span>Confidence</span>
-    <strong>{{ ai_draft.response_payload.confidence.overall|default:"—"|title }}</strong>
+    <strong>{{ ai_draft.response_payload.confidence.overall|default:"-"|title }}</strong>
   </div>
   {% if ai_draft.response_payload.automation.notes or ai_draft.response_payload.confidence.needs_manual_review %}
   <div class="zd-ai-summary-field zd-ai-summary-field--wide">
@@ -124,7 +124,7 @@
         <p class="zd-panel-head-sub">
           {% if product %}
           Status:
-          {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Unpublished — "Save &amp; post" makes it live{% endif %}
+          {% if product.is_sold_out %}Sold out{% elif product.is_active %}Live{% else %}Unpublished - "Save &amp; post" makes it live{% endif %}
           · {{ product.stock_quantity }} units in stock{% if product.color %} · {{ product.color }}{% endif %}{% if color_family|length > 1 %} · 1 of {{ color_family|length }} colours{% endif %}
           {% else %}
           Fill in the details below and save to publish
@@ -151,7 +151,7 @@
     <!-- Main column -->
     <div class="zd-editor-main">
 
-      <!-- Images — cover + gallery kept together, FIRST -->
+      <!-- Images - cover + gallery kept together, FIRST -->
       <div class="zd-panel" id="image-formset">
         <div class="zd-panel-head">
           <div class="zd-panel-head-left">
@@ -179,7 +179,7 @@
             <input type="file" name="bulk_gallery_images" accept="image/*" multiple
                    class="spring-dashboard-file" data-bulk-gallery>
             <span class="zd-field-hint">
-              Select several photos at once (Ctrl/Cmd-click or drag-select) — no need to add them one by one.
+              Select several photos at once (Ctrl/Cmd-click or drag-select) - no need to add them one by one.
             </span>
             <div class="zd-bulk-gallery-preview" data-bulk-gallery-preview></div>
           </div>
@@ -332,7 +332,7 @@
               {% for e in form.price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}
             </div>
             <div class="zd-field">
-              <span class="zd-field-label">Compare-at price (ETB) — optional</span>
+              <span class="zd-field-label">Compare-at price (ETB) - optional</span>
               {{ form.compare_at_price }}
               <span class="zd-field-hint">Set higher than the price to show a struck-through “was” price and a sale badge.</span>
               {% for e in form.compare_at_price.errors %}<span class="zd-field-error">{{ e }}</span>{% endfor %}

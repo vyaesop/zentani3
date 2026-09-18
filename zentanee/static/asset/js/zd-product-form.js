@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* Drive the draft while Gemini works: the process endpoint is idempotent
      and (on serverless) runs the enrichment inside the request, so watching
-     this page is enough to make it finish — no waiting for the cron sweeper. */
+     this page is enough to make it finish - no waiting for the cron sweeper. */
   const progressPanel = document.querySelector('[data-ai-draft-progress]');
   if (progressPanel) {
     const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const badge = progressPanel.querySelector('[data-ai-draft-progress-badge]');
           if (badge && body.queue_label) badge.textContent = body.queue_label;
         }
-      } catch (e) { /* transient — try again next tick */ }
+      } catch (e) { /* transient - try again next tick */ }
       finally { inFlight = false; }
     }, 4000);
   }

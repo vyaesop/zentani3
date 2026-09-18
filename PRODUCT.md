@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Confirmed: mixed men and women in Addis Ababa, streetwear-leaning — sneakers, tracksuits, caps and watches alongside dresses and sets. They discover products on Telegram and Instagram, shop on a phone, and pay cash to the driver after inspecting the item.
+Confirmed: mixed men and women in Addis Ababa, streetwear-leaning - sneakers, tracksuits, caps and watches alongside dresses and sets. They discover products on Telegram and Instagram, shop on a phone, and pay cash to the driver after inspecting the item.
 
 Inferred (from catalog, orders and channel data; confirm when convenient): roughly 18–35, comfortable with Telegram bots, wary of online prepayment, sensitive to delivery cost and to whether a branded item is real.
 
@@ -43,14 +43,14 @@ The mechanism a neighbouring shop cannot truthfully copy: inspect-before-you-pay
 - Binding: the pop-art halftone black-and-white circular logo (`asset/images/logo-circle.png`, `logo-mark-80/160.png`) is the identity anchor.
 - Binding (confirmed 2026-09-04): no red and no yellow anywhere on the storefront; the palette is cotton-white, ink, indigo and green, chosen to sit under the black-and-white logo.
 - Open: palette, typography, layout, imagery treatment. Telegram does not have to lead the page.
-- Name: Zentanee. Voice (inferred from existing copy; confirm): direct, plain, warm, no hype — "inspect before you pay".
+- Name: Zentanee. Voice (inferred from existing copy; confirm): direct, plain, warm, no hype - "inspect before you pay".
 
 ## Evidence on Hand
 
 - Real product catalog with Cloudinary photos, sizes and prices.
 - Real policy numbers (fees, threshold, 1–3 day delivery, on-the-spot returns) and a real support phone number.
 - Real Telegram channel and order bot.
-- Small real order history (11 orders lifetime across web and bot). No testimonials, press, or customer photos exist yet — none may be invented.
+- Small real order history (11 orders lifetime across web and bot). No testimonials, press, or customer photos exist yet - none may be invented.
 - Logo assets and an OG image (`asset/images/og-zentanee.jpg`).
 
 ## Product Principles
@@ -59,7 +59,7 @@ The mechanism a neighbouring shop cannot truthfully copy: inspect-before-you-pay
 2. Inspect-before-you-pay is the product; the design dramatizes it rather than burying it in a trust bar.
 3. The channel and the site are one store: each surface points at the other.
 4. Thumb first: the phone composition is the design; desktop inherits.
-5. A small catalog is presented with confidence — fewer, larger, better-described pieces beat a padded grid.
+5. A small catalog is presented with confidence - fewer, larger, better-described pieces beat a padded grid.
 
 ## Accessibility & Inclusion
 

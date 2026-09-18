@@ -132,7 +132,7 @@ def _build_collection_state(
         query_scoped_queryset = query_scoped_queryset.filter(_browse_text_query(current_query))
 
     # Price bounds and the size-option scan only depend on the scope (path +
-    # text query), not on filters/sort/page — cache them per catalog version.
+    # text query), not on filters/sort/page - cache them per catalog version.
     meta_cache_key = collection_meta_key(form_action or request.path, current_query)
     collection_meta = cache.get(meta_cache_key)
     if collection_meta is None:

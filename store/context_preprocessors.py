@@ -4,7 +4,7 @@ from django.db.models import Count, Q, Sum
 from django.urls import reverse
 
 from .cache_utils import HOME_TOP_SELLING_TTL, MENU_BRAND_CACHE_KEY, MENU_CATEGORY_CACHE_KEY, catalog_version
-from .constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE, OUTSIDE_ADDIS_SHIPPING_FEE
+from .constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE, DELIVERY_CITY
 from .models import Brand, Cart, Category, Order, Wishlist
 
 
@@ -145,7 +145,7 @@ def store_settings(request):
             "telegram_channel_url": _telegram_channel_url(),
             "telegram_bot_url": _telegram_bot_url(),
             "addis_fee": f"{ADDIS_SHIPPING_FEE:.0f}",
-            "outside_fee": f"{OUTSIDE_ADDIS_SHIPPING_FEE:.0f}",
+            "delivery_city": DELIVERY_CITY,
             "free_threshold": free_threshold,
             "delivery_promise": f"Free delivery in Addis Ababa on orders over {free_threshold} ETB · Pay on delivery",
             "online_payments_enabled": getattr(settings, "ONLINE_PAYMENTS_ENABLED", False),

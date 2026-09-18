@@ -96,7 +96,7 @@ def _resolve_taxonomy_for_draft(draft, kind):
 
     proposal = taxonomy_creation_proposal(payload, kind)
     if not proposal:
-        return None, f"No confident {label} match — pick one manually."
+        return None, f"No confident {label} match - pick one manually."
     if not allow_create:
         return None, f'Gemini proposed a new {label} "{proposal}", but automatic creation is disabled.'
 
@@ -129,7 +129,7 @@ def _copy_field_file(field_file):
 def create_product_from_draft(draft):
     """Turn a ready AI draft into an unpublished Product with images attached.
 
-    Returns (product, created, notes). Never raises for business-rule misses —
+    Returns (product, created, notes). Never raises for business-rule misses -
     the notes explain why creation was skipped so the dashboard can surface it.
     """
     notes = []
@@ -145,7 +145,7 @@ def create_product_from_draft(draft):
     if not (draft.cover_image or draft.reference_image):
         return None, False, ["Add a cover image (or reference image) before the product can be created."]
     if Product.objects.filter(sku=draft.sku).exists():
-        return None, False, [f'A product with SKU "{draft.sku}" already exists — open it instead.']
+        return None, False, [f'A product with SKU "{draft.sku}" already exists - open it instead.']
 
     category, category_note = _resolve_taxonomy_for_draft(draft, "collection")
     if category_note:
@@ -261,7 +261,7 @@ def run_draft_enrichment(draft):
         result = generate_product_ai_payload_for_draft(draft)
     except ProductAIError as exc:
         return mark_draft_manual_review(draft, error_message=exc, stage="content")
-    except Exception as exc:  # noqa: BLE001 — includes ProductAITransientError.
+    except Exception as exc:  # noqa: BLE001 - includes ProductAITransientError.
         # Transient (or unexpected) failure: put the draft back in "queued" so
         # the queue card tells the truth during the task queue's backoff, then
         # re-raise so the task retries. If the queue eventually gives up, its
@@ -286,14 +286,14 @@ def run_draft_enrichment(draft):
     for kind in ("collection", "brand"):
         try:
             _, taxonomy_note = _resolve_taxonomy_for_draft(draft, kind)
-        except Exception as exc:  # noqa: BLE001 — enrichment result must survive.
+        except Exception as exc:  # noqa: BLE001 - enrichment result must survive.
             taxonomy_note = f"Could not resolve the {kind}: {exc}"
         if taxonomy_note:
             taxonomy_notes.append(taxonomy_note)
 
     try:
         product, created, notes = create_product_from_draft(draft)
-    except Exception as exc:  # noqa: BLE001 — copy succeeded; creation failure must not lose it.
+    except Exception as exc:  # noqa: BLE001 - copy succeeded; creation failure must not lose it.
         product, created, notes = None, False, [f"Automatic product creation failed: {exc}"]
     merged_notes = taxonomy_notes + [note for note in notes if note not in taxonomy_notes]
     _record_draft_automation(draft, product=product, created=created, notes=merged_notes)

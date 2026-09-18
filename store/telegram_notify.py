@@ -353,7 +353,7 @@ def _product_post_signature(product):
 
 
 def _other_colours_line(product):
-    """'Also in: <a>Black</a> · <a>White</a>' — every colour is its own post,
+    """'Also in: <a>Black</a> · <a>White</a>' - every colour is its own post,
     so each caption points readers at the sibling pages."""
     if not getattr(product, "color_group_id", None):
         return ""
@@ -374,7 +374,7 @@ def _product_caption(product):
     color = (getattr(product, "color", "") or "").strip()
     color_line = f"🎨 <b>Colour</b>: {html.escape(color)}\n" if color else ""
     if getattr(product, "is_on_sale", False):
-        header = f"⚡ <b>SALE — {product.discount_percent}% OFF</b>\n"
+        header = f"⚡ <b>SALE - {product.discount_percent}% OFF</b>\n"
         price_line = (
             f"💰 <b>Price</b>: {_format_money(product.price)} ETB "
             f"(was <s>{_format_money(product.compare_at_price)} ETB</s>)\n"
@@ -591,7 +591,7 @@ def post_product_to_channel(product, force=False):
     site_link = product_site_url(product)
     if site_link:
         # Channel readers can also finish on the website (cart, reviews, size
-        # guide) — every post links back so the two surfaces feed each other.
+        # guide) - every post links back so the two surfaces feed each other.
         buttons.append({"text": "View on site", "url": site_link})
     reply_markup = {
         "inline_keyboard": [buttons],
@@ -861,7 +861,7 @@ def product_site_url(product):
 
 
 def product_order_deep_link(product):
-    """`https://t.me/<bot>?start=order_<id>` — the PDP's "Order on Telegram" button."""
+    """`https://t.me/<bot>?start=order_<id>` - the PDP's "Order on Telegram" button."""
     _, _, bot_username = _customer_bot_settings()
     if not bot_username or not product or not getattr(product, "id", None):
         return ""
@@ -888,7 +888,7 @@ def notify_customer_order_confirmation(
         size = html.escape(_safe_text(line.get("size")))
         quantity = _safe_text(line.get("quantity"), fallback="1")
         line_total = _safe_text(line.get("line_total"))
-        line_chunks.append(f"• {title} — size {size} × {quantity} ({line_total} ETB)")
+        line_chunks.append(f"• {title} - size {size} × {quantity} ({line_total} ETB)")
     items_text = "\n".join(line_chunks) if line_chunks else "• (details in your account)"
     if order_number:
         order_ref = f"order <b>{html.escape(order_number)}</b>"
@@ -909,7 +909,7 @@ def notify_customer_order_confirmation(
         "\n"
         f"{items_text}\n"
         f"Delivery: {delivery_text}\n"
-        f"<b>Total</b>: {_format_money(grand_total)} ETB — {payment_text}.\n"
+        f"<b>Total</b>: {_format_money(grand_total)} ETB - {payment_text}.\n"
         "\n"
         "We'll message you here when it's on the way. "
         f"Remember: inspect the item with the driver present.{link_line}"
@@ -938,7 +938,7 @@ def notify_customer_restock(chat_id, *, product, size=""):
     link_line = f"\n{product_url}" if product_url else ""
     message = (
         f"🔔 <b>Back in stock</b>\n"
-        f"{title}{size_text} is available again — it went fast last time.{link_line}"
+        f"{title}{size_text} is available again - it went fast last time.{link_line}"
     )
     return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
 
@@ -958,7 +958,7 @@ def notify_customer_abandoned_cart(chat_id, *, cart_lines, cart_total):
     message = (
         f"🛍 <b>Your cart is waiting</b>\n"
         f"{items_text}\n"
-        f"<b>Total</b>: {_format_money(cart_total)} ETB — cash on delivery, no online payment.{link_line}"
+        f"<b>Total</b>: {_format_money(cart_total)} ETB - cash on delivery, no online payment.{link_line}"
     )
     return send_customer_bot_message(_trim_message(message), chat_id, parse_mode="HTML")
 
@@ -972,7 +972,7 @@ def notify_customer_wishlist_sale(chat_id, *, product):
     link_line = f"\n{product_url}" if product_url else ""
     message = (
         f"⚡ <b>Price drop on something you saved</b>\n"
-        f"{title} is now <b>-{product.discount_percent}%</b> — "
+        f"{title} is now <b>-{product.discount_percent}%</b> - "
         f"{_format_money(product.price)} ETB (was <s>{_format_money(product.compare_at_price)} ETB</s>).\n"
         "🏃 Sale prices last while stock does.{}".format(link_line)
     )

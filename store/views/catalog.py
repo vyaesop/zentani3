@@ -13,7 +13,7 @@ from django.utils import timezone
 from store.constants import (
     ADDIS_FREE_SHIPPING_THRESHOLD,
     ADDIS_SHIPPING_FEE,
-    OUTSIDE_ADDIS_SHIPPING_FEE,
+    DELIVERY_CITY,
     RECENTLY_VIEWED_SESSION_KEY,
     size_sort_key as _size_sort_key,
 )
@@ -311,7 +311,7 @@ def _shipping_details_schema():
 
     addis = _rate(ADDIS_SHIPPING_FEE, region="Addis Ababa")
     addis["description"] = f"Free on orders over {ADDIS_FREE_SHIPPING_THRESHOLD:,.0f} ETB."
-    return [addis, _rate(OUTSIDE_ADDIS_SHIPPING_FEE)]
+    return [addis]
 
 
 def _return_policy_schema(product):
@@ -529,7 +529,7 @@ def _live_count_annotation():
 
 
 def home(request):
-    # Only feature collections/brands that have something live behind them — a
+    # Only feature collections/brands that have something live behind them - a
     # spotlight band that lands on an empty page is a dead end.
     categories = list(
         Category.objects.filter(is_active=True, is_featured=True)
@@ -751,7 +751,7 @@ def review_invite(request, token):
             if not review.reviewer_name:
                 review.reviewer_name = (order.customer_name or "Verified buyer").split()[0]
             review.save()
-            messages.success(request, "Thank you — your review is live and marked as a verified purchase.")
+            messages.success(request, "Thank you - your review is live and marked as a verified purchase.")
             return redirect(f"{reverse('store:product-detail', kwargs={'slug': product.slug})}#reviews")
         messages.error(request, "Please complete the review fields before submitting.")
     else:
@@ -821,7 +821,7 @@ def delivery_returns(request):
             "delivery_note": settings.STORE_DELIVERY_NOTE,
             "return_note": settings.STORE_RETURN_NOTE,
             "addis_fee": f"{ADDIS_SHIPPING_FEE:.0f}",
-            "outside_fee": f"{OUTSIDE_ADDIS_SHIPPING_FEE:.0f}",
+            "delivery_city": DELIVERY_CITY,
             "free_threshold": f"{ADDIS_FREE_SHIPPING_THRESHOLD:,.0f}",
         },
     )

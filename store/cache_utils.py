@@ -2,7 +2,7 @@
 
 Fragment and collection-metadata caches embed a site-wide "catalog version" in
 their keys. Bumping the version on any Product/Category/Brand change makes all
-stale entries unreachable at once — no per-key invalidation bookkeeping.
+stale entries unreachable at once - no per-key invalidation bookkeeping.
 """
 import hashlib
 

@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='category',
             name='size_guide',
-            field=models.TextField(blank=True, help_text="Shown on every product in this collection. One size per line, e.g. 'M — chest 96-100 cm, waist 80-84 cm'. Add a blank line and free text for fit advice.", verbose_name='Size Guide'),
+            field=models.TextField(blank=True, help_text="Shown on every product in this collection. One size per line, e.g. 'M - chest 96-100 cm, waist 80-84 cm'. Add a blank line and free text for fit advice.", verbose_name='Size Guide'),
         ),
         migrations.AddField(
             model_name='order',
@@ -89,7 +89,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='product',
             name='measurements',
-            field=models.TextField(blank=True, help_text="Garment measurements, one size per line (e.g. 'M — length 70 cm, chest 104 cm'). Overrides the collection size guide.", verbose_name='Measurements'),
+            field=models.TextField(blank=True, help_text="Garment measurements, one size per line (e.g. 'M - length 70 cm, chest 104 cm'). Overrides the collection size guide.", verbose_name='Measurements'),
         ),
         migrations.AddField(
             model_name='productreview',

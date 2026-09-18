@@ -1,5 +1,5 @@
 {% load cache %}
-{# Product grid + load-more. Cached per URL for anonymous visitors only — #}
+{# Product grid + load-more. Cached per URL for anonymous visitors only - #}
 {# authenticated markup varies (wishlist state), so it always renders live. #}
 <div id="collection-results" class="zh-collection__results">
     {% if cache_collection and not request.user.is_authenticated %}

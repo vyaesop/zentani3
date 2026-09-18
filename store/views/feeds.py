@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from store.constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE, OUTSIDE_ADDIS_SHIPPING_FEE
+from store.constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE
 from store.models import Product
 from store.seo import clean_seo_copy
 
@@ -90,7 +90,6 @@ def google_merchant_feed(request):
             "site_url": _absolute(request, "/"),
             "items": items,
             "addis_fee": f"{ADDIS_SHIPPING_FEE:.2f}",
-            "outside_fee": f"{OUTSIDE_ADDIS_SHIPPING_FEE:.2f}",
             "free_threshold": f"{ADDIS_FREE_SHIPPING_THRESHOLD:.2f}",
         },
         request=request,

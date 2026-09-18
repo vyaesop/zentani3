@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from store.constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE, OUTSIDE_ADDIS_SHIPPING_FEE
+from store.constants import ADDIS_FREE_SHIPPING_THRESHOLD, ADDIS_SHIPPING_FEE, DELIVERY_CITY
 
 
 def _policy_context():
@@ -13,7 +13,7 @@ def _policy_context():
         "delivery_note": settings.STORE_DELIVERY_NOTE,
         "return_note": settings.STORE_RETURN_NOTE,
         "addis_fee": f"{ADDIS_SHIPPING_FEE:.0f}",
-        "outside_fee": f"{OUTSIDE_ADDIS_SHIPPING_FEE:.0f}",
+        "delivery_city": DELIVERY_CITY,
         "free_threshold": f"{ADDIS_FREE_SHIPPING_THRESHOLD:,.0f}",
         "ga_enabled": bool(getattr(settings, "GA_MEASUREMENT_ID", "")),
         "online_payments_enabled": getattr(settings, "ONLINE_PAYMENTS_ENABLED", False),

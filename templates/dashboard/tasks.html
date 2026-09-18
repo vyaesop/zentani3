@@ -81,7 +81,7 @@
           <td>{{ task.attempts }}</td>
           <td>{{ task.run_after|date:"M d, H:i" }}</td>
           <td style="max-width:320px;overflow-wrap:anywhere">
-            {% if task.last_error %}{{ task.last_error|truncatechars:160 }}{% else %}—{% endif %}
+            {% if task.last_error %}{{ task.last_error|truncatechars:160 }}{% else %}-{% endif %}
           </td>
           <td>{{ task.created_at|date:"M d, H:i" }}</td>
           <td>

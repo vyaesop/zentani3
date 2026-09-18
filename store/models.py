@@ -40,7 +40,7 @@ class Category(models.Model):
         verbose_name="Size Guide",
         help_text=(
             "Shown on every product in this collection. One size per line, e.g. "
-            "'M — chest 96-100 cm, waist 80-84 cm'. Add a blank line and free text for fit advice."
+            "'M - chest 96-100 cm, waist 80-84 cm'. Add a blank line and free text for fit advice."
         ),
     )
     category_image = models.ImageField(upload_to='category', blank=True, null=True, verbose_name="Category Image")
@@ -99,8 +99,8 @@ class Brand(models.Model):
 class ProductColorGroup(models.Model):
     """One garment sold in several colours.
 
-    Each colour is still its own Product — own page, SKU, photos, price and
-    stock — so shoppers land on a dedicated page and Telegram gets a separate
+    Each colour is still its own Product - own page, SKU, photos, price and
+    stock - so shoppers land on a dedicated page and Telegram gets a separate
     post per colour. The group only records "these belong together" so the
     pages can link to each other with colour swatches (the Shein pattern).
     Groups are created and dissolved automatically by
@@ -147,7 +147,7 @@ class Product(models.Model):
     measurements = models.TextField(
         blank=True,
         verbose_name="Measurements",
-        help_text="Garment measurements, one size per line (e.g. 'M — length 70 cm, chest 104 cm'). Overrides the collection size guide.",
+        help_text="Garment measurements, one size per line (e.g. 'M - length 70 cm, chest 104 cm'). Overrides the collection size guide.",
     )
     delivery_note = models.CharField(max_length=180, blank=True, verbose_name="Delivery Note")
     return_note = models.CharField(max_length=180, blank=True, verbose_name="Return Note")
@@ -236,7 +236,7 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         # Inventory sync and sold-out reconciliation are explicit service
-        # calls (store.services.inventory) — save() has no side effects.
+        # calls (store.services.inventory) - save() has no side effects.
         if self.product_image and getattr(self.product_image, "name", ""):
             self.product_image.name = _normalize_legacy_media_name(self.product_image.name)
         super().save(*args, **kwargs)
@@ -563,7 +563,7 @@ class Coupon(models.Model):
         return self.max_uses is not None and self.used_count >= self.max_uses
     
 class Cart(models.Model):
-    # Owned by a user (authenticated) or a session key (guest) — guests no
+    # Owned by a user (authenticated) or a session key (guest) - guests no
     # longer get placeholder rows in auth_user.
     user = models.ForeignKey(User, verbose_name="User", on_delete=models.CASCADE, null=True, blank=True)
     session_key = models.CharField(max_length=64, null=True, blank=True, db_index=True, verbose_name="Guest Session Key")
