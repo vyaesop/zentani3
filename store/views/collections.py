@@ -278,7 +278,7 @@ def search_view(request):
     context.update(_search_discovery_context(request))
     # Zero-result terms are surfaced in the dashboard as merchandising demand.
     if context["query"] and request.GET.get("fragment") != "items" and not request.GET.get("page"):
-        SearchLog.log(context["query"], context["product_count"])
+        SearchLog.log(context["query"], context["product_count"], request=request)
     return _render_collection(request, "store/search.html", context)
 
 

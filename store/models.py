@@ -7,6 +7,8 @@ from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import timezone
 
+from store.bots import is_crawler
+
 
 def _normalize_legacy_media_name(name):
     value = str(name or "").replace("\\", "/").lstrip("/")
@@ -930,6 +932,9 @@ class ProductEvent(models.Model):
     @classmethod
     def log(cls, event_type, product, request=None, user=None, session_key=""):
         """Best-effort logging: analytics must never break a storefront request."""
+        if is_crawler(request):
+            # Crawlers are not shoppers, and the write would wake the database.
+            return
         try:
             if request is not None:
                 if request.user.is_authenticated:
@@ -1087,7 +1092,9 @@ class SearchLog(models.Model):
         return f"{self.term} ({self.result_count})"
 
     @classmethod
-    def log(cls, term, result_count):
+    def log(cls, term, result_count, request=None):
+        if is_crawler(request):
+            return None
         cleaned = " ".join(str(term or "").split())[:120]
         if len(cleaned) < 2:
             return None
