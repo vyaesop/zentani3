@@ -328,7 +328,9 @@ def _absolute_media_url(url, storage_name=""):
 
 def _product_post_signature(product):
     category_title = getattr(getattr(product, "category", None), "title", "")
-    brand_title = getattr(getattr(product, "brand", None), "title", "")
+    # display_brand, not brand: the signature must track what the caption
+    # actually renders, or a placeholder brand would force a pointless repost.
+    brand_title = getattr(getattr(product, "display_brand", None), "title", "")
     extra_image_names = list(
         product.p_images.order_by("id").values_list("image", flat=True)
     )
@@ -369,7 +371,9 @@ def _other_colours_line(product):
 
 def _product_caption(product):
     category = getattr(getattr(product, "category", None), "title", "N/A")
-    brand = getattr(getattr(product, "brand", None), "title", "N/A")
+    # Unbranded pieces drop the row entirely rather than advertising "No brand".
+    brand = getattr(getattr(product, "display_brand", None), "title", "")
+    brand_line = f"🏷 <b>Brand</b>: {html.escape(_safe_text(brand))}\n" if brand else ""
     sizes = product.available_sizes or "Ask in bot"
     color = (getattr(product, "color", "") or "").strip()
     color_line = f"🎨 <b>Colour</b>: {html.escape(color)}\n" if color else ""
@@ -390,7 +394,7 @@ def _product_caption(product):
             "\n"
             f"{price_line}"
             f"🗂 <b>Category</b>: {html.escape(_safe_text(category))}\n"
-            f"🏷 <b>Brand</b>: {html.escape(_safe_text(brand))}\n"
+            f"{brand_line}"
             f"{color_line}"
             f"📏 <b>Available Sizes</b>: {html.escape(_safe_text(sizes))}\n"
             f"{_other_colours_line(product)}"
@@ -643,8 +647,6 @@ def post_product_to_channel(product, force=False):
 
     fallback_color = (getattr(product, "color", "") or "").strip()
     fallback_text = (
-        "🔥 NEW DROP JUST LANDED\n"
-        "━━━━━━━━━━━━━━━━━━\n"
         f"{_safe_text(product.title)}\n"
         + (f"🎨 Colour: {fallback_color}\n" if fallback_color else "")
         + f"💰 Price: {_format_money(product.price)} ETB\n"

@@ -61,7 +61,8 @@ def brand_menu(request):
     brands = cache.get(MENU_BRAND_CACHE_KEY)
     if brands is None:
         brands = list(
-            Brand.objects.filter(is_active=True)
+            Brand.objects.shopper_visible()
+            .filter(is_active=True)
             .annotate(live_count=_active_product_count())
             .filter(live_count__gt=0)
             .only("id", "title", "slug")

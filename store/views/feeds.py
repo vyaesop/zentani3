@@ -51,7 +51,7 @@ def google_merchant_feed(request):
             "link": link,
             "image_link": _image_url(request, product.product_image),
             "additional_images": [_image_url(request, image.image) for image in product.p_images.all()[:10] if image.image],
-            "brand": product.brand.title if product.brand_id and product.brand.title.lower() != "no brand" else "",
+            "brand": product.display_brand.title if product.display_brand else "",
             "product_type": product.category.title if product.category_id else "",
             "price": f"{product.price:.2f} ETB",
             "sale_price": f"{product.price:.2f} ETB" if product.is_on_sale else "",

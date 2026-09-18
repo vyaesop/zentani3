@@ -37,7 +37,7 @@
 
     <div class="zh-module__body">
         <h3 class="zh-module__title"><a href="{% url 'store:product-detail' product.slug %}">{{ product.title }}</a></h3>
-        {% if product.brand %}<p class="zh-module__meta">{{ product.brand }}</p>{% endif %}
+        {% if product.display_brand %}<p class="zh-module__meta">{{ product.display_brand }}</p>{% endif %}
         {% if product.color_group_id and color_counts %}{% with colour_total=color_counts|lookup:product.color_group_id %}{% if colour_total %}
         <p class="zh-module__meta zh-module__colours zh-num">{% blocktrans count counter=colour_total %}{{ counter }} colour{% plural %}{{ counter }} colours{% endblocktrans %}</p>
         {% endif %}{% endwith %}{% endif %}

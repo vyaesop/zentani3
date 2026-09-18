@@ -34,7 +34,7 @@ from .common import (
 def _search_discovery_context(request):
     return {
         "search_help_categories": Category.objects.filter(is_active=True).only("id", "title", "slug").order_by("title")[:6],
-        "search_help_brands": Brand.objects.filter(is_active=True).only("id", "title", "slug").order_by("title")[:6],
+        "search_help_brands": Brand.objects.shopper_visible().filter(is_active=True).only("id", "title", "slug").order_by("title")[:6],
         "recently_viewed_products": _recently_viewed_products(request, limit=4),
     }
 
@@ -298,7 +298,7 @@ def search_suggestions(request):
         Category.objects.filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
     )
     brand_suggestions = list(
-        Brand.objects.filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
+        Brand.objects.shopper_visible().filter(is_active=True, title__icontains=query).values("title", "slug")[:4]
     )
     return render(
         request,
@@ -354,7 +354,7 @@ def all_categories(request):
 
 
 def all_brands(request):
-    brands = Brand.objects.filter(is_active=True).only("id", "title", "slug", "brand_image")
+    brands = Brand.objects.shopper_visible().filter(is_active=True).only("id", "title", "slug", "brand_image")
     paginator = Paginator(brands, DIRECTORY_PAGE_SIZE)
     page_obj = paginator.get_page(request.GET.get("page"))
     return render(

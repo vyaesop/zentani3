@@ -1115,6 +1115,98 @@ class CrawlerFilteringTests(TestCase):
         self.assertEqual(AffiliateClick.objects.count(), 1)
 
 
+class PlaceholderBrandTests(TestCase):
+    """Unbranded stock is filed under a "No brand" Brand row so the scraper and
+    AI intake have something to point at. Shoppers must never see it."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.client = Client(HTTP_USER_AGENT=BROWSER_UA)
+        self.category, self.real_brand, self.branded = _make_catalog("Labelled")
+        self.placeholder = Brand.objects.create(
+            title="No brand", slug="no-brand", is_active=True, is_featured=True
+        )
+        self.unbranded = Product.objects.create(
+            title="Plain Cotton Tee",
+            slug="plain-cotton-tee",
+            sku="SKU-NOBRAND-1",
+            short_description="A plain tee.",
+            product_image="product/test.jpg",
+            price=Decimal("400.00"),
+            category=self.category,
+            brand=self.placeholder,
+            is_active=True,
+            is_featured=True,
+            is_sold_out=False,
+        )
+
+    def test_title_variants_are_recognised(self):
+        from store.constants import is_placeholder_brand_title
+
+        for title in ("No brand", "no brand", "  NO BRAND  ", "NoBrand", "no-brand"):
+            self.assertTrue(is_placeholder_brand_title(title), title)
+        for title in ("Nike", "Brandix", "No Name", "", None):
+            self.assertFalse(is_placeholder_brand_title(title), title)
+
+    def test_display_brand_hides_only_the_placeholder(self):
+        self.assertTrue(self.placeholder.is_placeholder)
+        self.assertFalse(self.real_brand.is_placeholder)
+        self.assertIsNone(self.unbranded.display_brand)
+        self.assertEqual(self.branded.display_brand, self.real_brand)
+
+    def test_product_page_omits_the_brand_line(self):
+        response = self.client.get(reverse("store:product-detail", args=[self.unbranded.slug]))
+        self.assertNotContains(response, "zh-pdp__brand")
+
+        response = self.client.get(reverse("store:product-detail", args=[self.branded.slug]))
+        self.assertContains(response, "zh-pdp__brand")
+
+    def test_structured_data_falls_back_to_the_store_name(self):
+        from django.conf import settings
+
+        response = self.client.get(reverse("store:product-detail", args=[self.unbranded.slug]))
+        schema = json.loads(response.context["product_schema_json"])
+        self.assertEqual(schema["brand"]["name"], settings.STORE_NAME)
+        self.assertNotIn("item_brand", json.loads(response.context["ga_item_json"]))
+
+    def test_telegram_caption_drops_the_brand_row(self):
+        from store.telegram_notify import _product_caption
+
+        self.assertNotIn("<b>Brand</b>", _product_caption(self.unbranded))
+        self.assertIn("<b>Brand</b>", _product_caption(self.branded))
+
+    def test_telegram_post_signature_ignores_the_placeholder(self):
+        from store.telegram_notify import _product_post_signature
+
+        before = _product_post_signature(self.unbranded)
+        self.unbranded.brand = Brand.objects.create(
+            title="NoBrand", slug="nobrand-2", is_active=True, is_featured=False
+        )
+        self.unbranded.save(update_fields=["brand"])
+        self.assertEqual(
+            before,
+            _product_post_signature(self.unbranded),
+            "Swapping one placeholder brand for another must not force a repost.",
+        )
+
+    def test_placeholder_is_excluded_from_shopper_listings(self):
+        visible = list(Brand.objects.shopper_visible())
+        self.assertIn(self.real_brand, visible)
+        self.assertNotIn(self.placeholder, visible)
+
+    def test_brand_directory_omits_the_placeholder(self):
+        response = self.client.get(reverse("store:all-brands"))
+        self.assertNotContains(response, reverse("store:brand-products", args=[self.placeholder.slug]))
+        self.assertContains(response, reverse("store:brand-products", args=[self.real_brand.slug]))
+
+    def test_merchant_feed_leaves_brand_blank(self):
+        body = self.client.get(reverse("store:merchant-feed")).content.decode()
+        self.assertNotIn("No brand", body)
+        self.assertIn(self.real_brand.title, body)
+
+
 class StorefrontRefinementTests(TestCase):
     """Marine Serre-inspired UI: editorial bands, edit chips, quick-add,
     hover imagery, brand mini-storefronts, and the policy page."""

@@ -60,7 +60,8 @@ class BrandSitemap(_StoreSitemap):
 
     def items(self):
         return (
-            Brand.objects.filter(is_active=True)
+            Brand.objects.shopper_visible()
+            .filter(is_active=True)
             .annotate(live_count=Count("product", filter=Q(product__is_active=True)))
             .filter(live_count__gt=0)
             .only("slug", "updated_at")
