@@ -114,6 +114,23 @@ mark.zh-mark, .zh-home mark { background: transparent; color: var(--zh-ink); fon
   @keyframes zh-weave { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 }
 
+/* ── Motion layer (asset/js/zent-motion.js) ────────────────────────────
+   html.zh-motion is set by the inline head script only when motion is
+   allowed; zent-motion.js takes over the hero weave and adds
+   .zh-motion-ready once its opening states are in place. Without the
+   script the class is dropped after 2.5s and the page shows as authored. */
+html.zh-motion .zh-band--weave .zh-band__tile { animation: none; }
+html.zh-motion:not(.zh-motion-ready) .zh-hero__inner,
+html.zh-motion:not(.zh-motion-ready) .zh-band--weave .zh-band__tile,
+html.zh-motion:not(.zh-motion-ready) .zh-page__head h1 { visibility: hidden; }
+/* SplitText line masks: room below the baseline for descenders and the indigo underline. */
+.zh-sline-mask { padding-bottom: 0.2em; margin-bottom: -0.2em; }
+/* Lenis */
+html.lenis, html.lenis body { height: auto; }
+html.lenis { scroll-behavior: auto; }
+.lenis.lenis-stopped { overflow: clip; }
+.lenis [data-lenis-prevent], .lenis .zh-drawer, .lenis .zent-search-suggest__list { overscroll-behavior: contain; }
+
 /* ── Buttons ───────────────────────────────────────────────────────── */
 .zh-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;

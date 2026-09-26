@@ -16,6 +16,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111111">
+    {# Arms the entrance animations (zent-motion.js) before first paint, only on a fast link; dropped after 2.5s if the script never runs. #}
+    <script>(function(d){var c=navigator.connection||{};if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches||c.saveData||/(^|-)(2g|3g)$/.test(c.effectiveType||''))return;d.classList.add('zh-motion');setTimeout(function(){if(!window.__zhMotion)d.classList.remove('zh-motion');},2500);})(document.documentElement);</script>
 
     <title>{% block title %}{{ store.name }}{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}{% if page_meta_description %}{{ page_meta_description }}{% else %}{{ store.name }} - clothes, shoes and accessories delivered in Addis Ababa. Cash on delivery: inspect your order before you pay.{% endif %}{% endblock %}">
@@ -303,6 +305,11 @@
 
     <script src="{% static 'asset/vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'asset/js/zent.js' %}" defer></script>
+    <script src="{% static 'asset/vendor/gsap/gsap.min.js' %}" defer></script>
+    <script src="{% static 'asset/vendor/gsap/ScrollTrigger.min.js' %}" defer></script>
+    <script src="{% static 'asset/vendor/gsap/SplitText.min.js' %}" defer></script>
+    <script src="{% static 'asset/vendor/lenis/lenis.min.js' %}" defer></script>
+    <script src="{% static 'asset/js/zent-motion.js' %}" defer></script>
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {

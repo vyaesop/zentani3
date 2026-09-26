@@ -19,7 +19,33 @@
 /* ── Hero ──────────────────────────────────────────────────────────── */
 /* Phone: headline, then the three pieces, then the truth + actions + ruler,
    so a product photo and the primary action are on screen before anyone scrolls. */
-.zh-hero { padding: 0 0 36px; }
+.zh-hero { position: relative; isolation: isolate; padding: 0 0 36px; }
+
+/* The loom: loose indigo threads (Vanta NET, zent-motion.js) behind the
+   swatches on wide screens with a fine pointer. The canvas paints cotton
+   white, so the mask fades it into the page with no seam; the headline and
+   the ruler keep plain cotton behind them. */
+.zh-hero__loom { display: none; }
+@media (min-width: 992px) {
+  .zh-hero__loom {
+    display: block;
+    position: absolute;
+    top: var(--zh-band-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1800ms var(--zh-ease);
+    -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 74%), linear-gradient(180deg, transparent 6%, #000 40%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent 30%, #000 74%), linear-gradient(180deg, transparent 6%, #000 40%);
+    mask-composite: intersect;
+  }
+  .zh-hero__loom.is-live { opacity: 1; }
+}
 .zh-hero__inner {
   display: grid;
   grid-template-areas: "head" "swatches" "body";
@@ -62,11 +88,15 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 4px 0 0;
 }
-.zh-swatch {
+/* Scoped: the product page's colour chips share the .zh-swatch name
+   (zent-tibeb-pages.css sets a 64px grid there). */
+.zh-swatches .zh-swatch {
   position: relative;
   display: block;
+  width: auto;
   aspect-ratio: 4 / 5;
 }
+.zh-swatches .zh-swatch__label { text-align: left; line-height: 1.4; overflow-wrap: normal; }
 .zh-swatch::before {
   /* the under-layer is the thin band tile: cloth under cloth, colour stays in the weave */
   content: "";
