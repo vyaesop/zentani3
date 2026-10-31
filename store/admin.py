@@ -22,6 +22,10 @@ from .models import (
     ProductSizeStock,
     RestockRequest,
     SearchLog,
+    SupplierChannel,
+    SupplierItem,
+    SupplierPost,
+    TelegramBotAdmin,
     TelegramBotOrder,
     TelegramLink,
     Wishlist,
@@ -462,3 +466,55 @@ class ProductColorGroupAdmin(admin.ModelAdmin):
     @admin.display(description="Colours", ordering="_colour_count")
     def colour_count(self, obj):
         return obj._colour_count
+
+
+@admin.register(SupplierChannel)
+class SupplierChannelAdmin(admin.ModelAdmin):
+    list_display = ("username", "title", "sku_prefix", "is_active", "last_message_id", "last_scraped_at", "last_error")
+    list_editable = ("is_active",)
+    fieldsets = (
+        (None, {"fields": ("username", "title", "sku_prefix", "is_active", "scrape_since")}),
+        ("Pricing", {
+            "fields": ("delivery_cover", "markup_percent", "min_profit", "round_to"),
+            "description": "Price = supplier price + delivery cover + max(min profit, markup %), rounded up.",
+        }),
+        ("Scraper state", {"fields": ("last_message_id", "last_scraped_at", "last_error")}),
+    )
+    readonly_fields = ("last_scraped_at", "last_error")
+
+
+class SupplierItemInline(admin.TabularInline):
+    model = SupplierItem
+    fields = ("position", "title", "color", "price", "category", "status", "product")
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SupplierPost)
+class SupplierPostAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "posted_at", "status", "layout", "attempts", "sent_at", "error")
+    list_filter = ("status", "channel")
+    search_fields = ("caption", "message_id")
+    readonly_fields = ("message_ids", "caption_hash", "photo_urls", "analysis", "sent_at", "handled_by")
+    inlines = [SupplierItemInline]
+
+
+@admin.register(SupplierItem)
+class SupplierItemAdmin(admin.ModelAdmin):
+    list_display = ("title", "color", "price", "category", "status", "claimed_by", "published_by", "product")
+    list_filter = ("status",)
+    search_fields = ("title", "post__caption")
+    raw_id_fields = ("post", "product")
+
+
+@admin.register(TelegramBotAdmin)
+class TelegramBotAdminAdmin(admin.ModelAdmin):
+    list_display = ("display_name", "username", "telegram_user_id", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("full_name", "username", "telegram_user_id")
+    readonly_fields = ("pending_action", "pending_action_at")

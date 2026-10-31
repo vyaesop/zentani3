@@ -738,6 +738,38 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
         },
     }
 
+    api_response = gemini_generate_content(payload, api_key=api_key)
+    text = _extract_json_text(api_response)
+    parsed = _normalize_payload(_safe_json_loads(text))
+
+    sources = parsed["sources"]
+    grounded_links = _extract_grounded_links(api_response)
+    for link in grounded_links:
+        if not any(source.get("url") == link["url"] for source in sources):
+            sources.append(
+                {
+                    "title": link["title"],
+                    "url": link["url"],
+                    "match_type": "grounded",
+                    "notes": "Returned by Gemini grounding metadata.",
+                }
+            )
+
+    parsed["search_strategy"]["vendor_hint"] = parsed["search_strategy"].get("vendor_hint") or resolved_vendor_hint
+    return parsed
+
+
+def gemini_generate_content(payload, *, api_key=None):
+    """POST a generateContent payload, falling back across the configured models.
+
+    Returns the decoded API response. Raises ProductAITransientError when
+    every failure looked temporary (network, 429/5xx) and ProductAIError
+    otherwise, so callers can retry or route to a human accordingly.
+    """
+    api_key = (api_key or getattr(settings, "GEMINI_API_KEY", "")).strip()
+    if not api_key:
+        raise ProductAIError("GEMINI_API_KEY is not configured.")
+
     errors = []
     transient_only = True
     api_response = None
@@ -786,25 +818,7 @@ def generate_product_ai_draft(*, image_bytes, mime_type, sku, price=None, vendor
         if transient_only:
             raise ProductAITransientError(message)
         raise ProductAIError(message)
-
-    text = _extract_json_text(api_response)
-    parsed = _normalize_payload(_safe_json_loads(text))
-
-    sources = parsed["sources"]
-    grounded_links = _extract_grounded_links(api_response)
-    for link in grounded_links:
-        if not any(source.get("url") == link["url"] for source in sources):
-            sources.append(
-                {
-                    "title": link["title"],
-                    "url": link["url"],
-                    "match_type": "grounded",
-                    "notes": "Returned by Gemini grounding metadata.",
-                }
-            )
-
-    parsed["search_strategy"]["vendor_hint"] = parsed["search_strategy"].get("vendor_hint") or resolved_vendor_hint
-    return parsed
+    return api_response
 
 
 def generate_product_ai_payload_for_draft(draft):

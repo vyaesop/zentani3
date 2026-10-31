@@ -34,8 +34,12 @@ for _name in (
     "TELEGRAM_WEBHOOK_SECRET",
     "TELEGRAM_CUSTOMER_WEBHOOK_SECRET",
     "TELEGRAM_ADMIN_WEBHOOK_SECRET",
+    "TELEGRAM_OWNER_USER_ID",
 ):
     os.environ.pop(_name, None)
+
+# Album pictures publish without the real-time settle wait in tests.
+SUPPLIER_PICTURE_SETTLE_SECONDS = 0
 
 # The real .env carries the production SITE_URL; tests must build canonical,
 # sitemap and robots URLs from the request host unless a test overrides it.

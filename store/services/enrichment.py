@@ -80,15 +80,18 @@ def _find_existing_by_label(model, label):
 
 
 def _resolve_taxonomy_for_draft(draft, kind):
-    """Resolve a draft's collection/brand: match an existing row first; create a
-    new one only when Gemini found no fit AND is highly confident AND the
-    matching AI_AUTO_CREATE_* setting allows it. Returns (instance, note)."""
+    return resolve_taxonomy(draft.response_payload or {}, kind)
+
+
+def resolve_taxonomy(payload, kind):
+    """Resolve a Gemini payload's collection/brand: match an existing row first;
+    create a new one only when Gemini found no fit AND is highly confident AND
+    the matching AI_AUTO_CREATE_* setting allows it. Returns (instance, note)."""
     model = Category if kind == "collection" else Brand
     allow_create = (
         settings.AI_AUTO_CREATE_COLLECTIONS if kind == "collection" else settings.AI_AUTO_CREATE_BRANDS
     )
     label = "collection" if kind == "collection" else "brand"
-    payload = draft.response_payload or {}
 
     matched = match_taxonomy(payload, kind, model.objects.filter(is_active=True))
     if matched is not None:

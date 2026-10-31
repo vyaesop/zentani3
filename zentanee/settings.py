@@ -63,6 +63,18 @@ AI_IMAGE_GENERATOR_FALLBACK_TO_LOCAL = os.getenv('AI_IMAGE_GENERATOR_FALLBACK_TO
 AI_AUTO_CREATE_COLLECTIONS = os.getenv('AI_AUTO_CREATE_COLLECTIONS', 'True').lower() == 'true'
 AI_AUTO_CREATE_BRANDS = os.getenv('AI_AUTO_CREATE_BRANDS', 'True').lower() == 'true'
 
+# Supplier channel intake (store/services/supplier_intake.py, run daily by
+# .github/workflows/supplier-intake.yml). New posts reach the admin bot newest
+# first, at most SUPPLIER_REVIEW_DAILY_LIMIT a day; anything older than
+# SUPPLIER_POST_MAX_AGE_DAYS is assumed sold and never sent, and review cards
+# nobody acts on expire after SUPPLIER_REVIEW_EXPIRY_DAYS.
+SUPPLIER_REVIEW_DAILY_LIMIT = _env_int('SUPPLIER_REVIEW_DAILY_LIMIT', 10)
+SUPPLIER_POST_MAX_AGE_DAYS = _env_int('SUPPLIER_POST_MAX_AGE_DAYS', 30)
+SUPPLIER_REVIEW_EXPIRY_DAYS = _env_int('SUPPLIER_REVIEW_EXPIRY_DAYS', 10)
+# Telegram delivers an album as separate webhook calls; each waits this long
+# so the last picture to land publishes the product with the whole album.
+SUPPLIER_PICTURE_SETTLE_SECONDS = _env_int('SUPPLIER_PICTURE_SETTLE_SECONDS', 4)
+
 # Store-wide policy copy shown on product pages when a product has no override.
 # Returns are on-the-spot only: the customer inspects the item with the delivery
 # driver present and can only hand it back before the driver leaves.

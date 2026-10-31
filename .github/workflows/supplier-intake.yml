@@ -1,0 +1,54 @@
+# Daily supplier intake: scrape the supplier Telegram channels (public t.me/s
+# previews), expire review cards nobody acted on, and send the newest posts to
+# the admin bot for review. See store/services/supplier_intake.py.
+#
+# Runs Django directly instead of calling the site: Gemini reads each post's
+# photos, and ten of those back to back can outlast a Vercel function. One run
+# a day wakes the Neon database once for a few minutes, which costs next to
+# nothing next to the 100 CU-hour monthly allowance.
+#
+# Repository secrets used (same values as the Vercel environment):
+#   DATABASE_URL, DJANGO_SECRET_KEY, GEMINI_API_KEY, TELEGRAM_BOT_TOKEN,
+#   TELEGRAM_ALERT_CHAT_ID (the owner's own chat id; TELEGRAM_OWNER_USER_ID
+#   overrides it when set).
+name: Supplier intake
+
+on:
+  schedule:
+    # 04:00 UTC = 07:00 in Addis Ababa. GitHub may start it a little late.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: supplier-intake
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Scrape, expire and send reviews
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          TELEGRAM_OWNER_USER_ID: ${{ secrets.TELEGRAM_OWNER_USER_ID }}
+          SITE_URL: https://zentanee.vercel.app
+        run: |
+          for name in DATABASE_URL DJANGO_SECRET_KEY GEMINI_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_ALERT_CHAT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The $name repository secret is missing."
+              exit 1
+            fi
+          done
+          python manage.py supplier_intake

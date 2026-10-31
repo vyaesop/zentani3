@@ -102,6 +102,11 @@ def _telegram_api_request(method, payload, token):
 
 
 def _telegram_api_request_with_files(method, payload, token, files=None):
+    """POST a Bot API method; returns the decoded `result` (truthy) or False.
+
+    Callers mostly treat the return value as a boolean; the admin bot and the
+    channel-post tracker read message ids out of the result.
+    """
     if not token:
         return False
 
@@ -141,7 +146,15 @@ def _telegram_api_request_with_files(method, payload, token, files=None):
     try:
         with request.urlopen(req, timeout=6) as resp:
             status = getattr(resp, "status", 0)
-            return 200 <= int(status) < 300
+            if not 200 <= int(status) < 300:
+                return False
+            try:
+                result = json.loads(resp.read().decode("utf-8")).get("result")
+            except (ValueError, AttributeError, TypeError):
+                result = None
+            # Some methods return a bare `true`; a 2xx without a parseable
+            # body is still a success.
+            return result if result not in (None, False, [], {}) else True
     except error.HTTPError as exc:
         response_body = ""
         try:
@@ -156,6 +169,41 @@ def _telegram_api_request_with_files(method, payload, token, files=None):
     except (error.URLError, TimeoutError, ValueError, OSError) as exc:
         logger.warning("Telegram %s failed: %s", method, exc)
         return False
+
+
+def admin_bot_api(method, payload, files=None):
+    """Call any Bot API method as the admin bot; returns the result or False.
+
+    Dict/list/bool values are JSON-encoded the way the Bot API expects
+    (reply_markup, media, reply_parameters, flags); None values are dropped.
+    """
+    token, _ = _admin_bot_settings()
+    if not token:
+        return False
+    encoded = {
+        key: json.dumps(value) if isinstance(value, (dict, list, bool)) else value
+        for key, value in payload.items()
+        if value is not None
+    }
+    return _telegram_api_request_with_files(method, encoded, token, files=files)
+
+
+def admin_bot_download_file(file_id, max_bytes=20 * 1024 * 1024):
+    """Download a file an admin sent to the bot. Returns bytes or None."""
+    token, _ = _admin_bot_settings()
+    info = admin_bot_api("getFile", {"file_id": file_id}) if token else None
+    file_path = info.get("file_path") if isinstance(info, dict) else None
+    if not file_path:
+        return None
+    if (info.get("file_size") or 0) > max_bytes:
+        return None
+    try:
+        with request.urlopen(f"https://api.telegram.org/file/bot{token}/{file_path}", timeout=20) as resp:
+            content = resp.read(max_bytes + 1)
+            return content if len(content) <= max_bytes else None
+    except (error.URLError, TimeoutError, ValueError, OSError) as exc:
+        logger.warning("Telegram file download failed: %s", exc)
+        return None
 
 
 def send_admin_alert_message(text, chat_id=None, reply_markup=None, parse_mode=None):
@@ -214,11 +262,64 @@ def _send_telegram_media_group(chat_id, media_items, token, files=None):
     return _telegram_api_request_with_files("sendMediaGroup", payload, token, files=files)
 
 
-def _mark_channel_post_success(product, signature):
+# Enough to cover several reposts of a full 10-photo album; older ids are
+# dropped (Telegram only lets bots delete messages for a limited time anyway).
+CHANNEL_MESSAGE_IDS_KEPT = 60
+
+
+def _result_message_ids(result):
+    """Message ids from a Bot API result (one Message, a list of them, or True)."""
+    if isinstance(result, dict) and result.get("message_id"):
+        return [result["message_id"]]
+    if isinstance(result, list):
+        return [item["message_id"] for item in result if isinstance(item, dict) and item.get("message_id")]
+    return []
+
+
+def _mark_channel_post_success(product, signature, message_ids=()):
+    updates = {
+        "telegram_channel_last_post_signature": signature,
+        "telegram_channel_last_posted_at": timezone.now(),
+    }
+    if message_ids:
+        current = list(
+            product.__class__.objects.filter(pk=product.pk)
+            .values_list("telegram_channel_message_ids", flat=True)
+            .first()
+            or []
+        )
+        updates["telegram_channel_message_ids"] = (current + list(message_ids))[-CHANNEL_MESSAGE_IDS_KEPT:]
+    product.__class__.objects.filter(pk=product.pk).update(**updates)
+
+
+def delete_product_channel_posts(product):
+    """Delete every channel message recorded for this product.
+
+    Returns True when nothing is left to delete. Messages Telegram refuses to
+    delete (too old, already gone) are forgotten either way, so a failed
+    cleanup never blocks unpublishing.
+    """
+    token, channel_chat_id, _ = _customer_bot_settings()
+    message_ids = list(getattr(product, "telegram_channel_message_ids", None) or [])
+    if not message_ids:
+        return True
+    deleted = True
+    if token and channel_chat_id:
+        for start in range(0, len(message_ids), 100):
+            chunk = message_ids[start:start + 100]
+            if not _telegram_api_request(
+                "deleteMessages",
+                {"chat_id": channel_chat_id, "message_ids": json.dumps(chunk)},
+                token,
+            ):
+                deleted = False
     product.__class__.objects.filter(pk=product.pk).update(
-        telegram_channel_last_post_signature=signature,
-        telegram_channel_last_posted_at=timezone.now(),
+        telegram_channel_message_ids=[],
+        telegram_channel_last_post_signature="",
     )
+    product.telegram_channel_message_ids = []
+    product.telegram_channel_last_post_signature = ""
+    return deleted
 
 
 def _format_full_name(user):
@@ -501,7 +602,7 @@ def _chunked_media_groups(media_entries, intro_caption=None):
     return chunks
 
 
-def _send_all_media_groups(chat_id, media_entries, token, intro_caption=None):
+def _send_all_media_groups(chat_id, media_entries, token, intro_caption=None, sent_message_ids=None):
     if not media_entries:
         return False
 
@@ -515,6 +616,8 @@ def _send_all_media_groups(chat_id, media_entries, token, intro_caption=None):
         )
         if not group_sent:
             return False
+        if sent_message_ids is not None:
+            sent_message_ids.extend(_result_message_ids(group_sent))
         sent_any = True
     return sent_any
 
@@ -605,11 +708,13 @@ def post_product_to_channel(product, force=False):
     media_entries = _collect_product_media_entries(product)
 
     if len(media_entries) > 1:
+        album_message_ids = []
         album_sent = _send_all_media_groups(
             chat_id=channel_chat_id,
             media_entries=media_entries,
             token=token,
             intro_caption=caption,
+            sent_message_ids=album_message_ids,
         )
         if album_sent:
             cta_text = (
@@ -622,14 +727,14 @@ def post_product_to_channel(product, force=False):
                 reply_markup=reply_markup,
             )
             if sent:
-                _mark_channel_post_success(product, current_signature)
+                _mark_channel_post_success(product, current_signature, album_message_ids + _result_message_ids(sent))
                 return True
             sent = send_customer_bot_message(
                 text=f"{cta_text}\n\nOrder link: {deep_link}",
                 chat_id=channel_chat_id,
             )
             if sent:
-                _mark_channel_post_success(product, current_signature)
+                _mark_channel_post_success(product, current_signature, album_message_ids + _result_message_ids(sent))
             return sent
 
     if media_entries:
@@ -642,7 +747,7 @@ def post_product_to_channel(product, force=False):
             parse_mode="HTML",
         )
         if sent:
-            _mark_channel_post_success(product, current_signature)
+            _mark_channel_post_success(product, current_signature, _result_message_ids(sent))
             return True
 
     fallback_color = (getattr(product, "color", "") or "").strip()
@@ -664,7 +769,7 @@ def post_product_to_channel(product, force=False):
             chat_id=channel_chat_id,
         )
     if sent:
-        _mark_channel_post_success(product, current_signature)
+        _mark_channel_post_success(product, current_signature, _result_message_ids(sent))
     return sent
 
 

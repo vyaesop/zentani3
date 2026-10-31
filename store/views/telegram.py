@@ -1,5 +1,6 @@
 """Telegram bot webhooks and the chat order conversation flow."""
 import json
+import logging
 import os
 from datetime import timedelta
 
@@ -11,12 +12,13 @@ from store.constants import DELIVERY_CITY, TELEGRAM_ORDER_STATE_TTL_SECONDS
 from store.models import Product, TelegramBotOrder, TelegramConversationState
 from store.telegram_notify import (
     notify_bot_order_lead,
-    send_admin_alert_message,
     send_customer_bot_message,
     send_product_gallery_to_customer,
 )
 
 from .catalog import _parse_available_sizes
+
+logger = logging.getLogger(__name__)
 
 
 def _set_telegram_order_state(chat_id, state):
@@ -46,10 +48,6 @@ def _clear_telegram_order_state(chat_id):
 
 def _send_customer_bot_text(chat_id, text):
     return send_customer_bot_message(text=text, chat_id=str(chat_id))
-
-
-def _send_admin_bot_text(chat_id, text):
-    return send_admin_alert_message(text=text, chat_id=str(chat_id))
 
 
 def _start_order_flow(chat_id, product, telegram_username):
@@ -290,14 +288,6 @@ def _customer_bot_welcome_text():
     )
 
 
-def _admin_bot_welcome_text():
-    return (
-        "🛠 This is the Zentanee admin alert bot.\n\n"
-        "It is used for internal signup and order notifications, not customer shopping.\n"
-        "For product orders, use @zentanee_order_bot."
-    )
-
-
 def _handle_customer_bot_start(chat_id, start_payload, username):
     if start_payload.startswith("notify_"):
         from django.utils import timezone as _tz
@@ -398,18 +388,14 @@ def admin_telegram_webhook(request):
     except (ValueError, UnicodeDecodeError):
         return JsonResponse({"ok": False, "error": "invalid-json"}, status=400)
 
-    context = _telegram_message_context(payload)
-    text = context["text"]
-    chat_id = context["chat_id"]
+    from store.services import admin_bot
 
-    if not chat_id:
-        return JsonResponse({"ok": True})
-
-    if text.startswith("/start") or text.startswith("/help"):
-        _send_admin_bot_text(chat_id, _admin_bot_welcome_text())
-        return JsonResponse({"ok": True})
-
-    _send_admin_bot_text(chat_id, _admin_bot_welcome_text())
+    try:
+        admin_bot.handle_update(payload)
+    except Exception:  # noqa: BLE001
+        # Always 200: a non-2xx makes Telegram redeliver the same update
+        # again and again, repeating whatever half-finished.
+        logger.exception("Admin bot update failed.")
     return JsonResponse({"ok": True})
 
 

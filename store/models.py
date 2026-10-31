@@ -190,6 +190,8 @@ class Product(models.Model):
     is_sold_out = models.BooleanField(verbose_name="Is Sold Out?", default=False, null=True)
     telegram_channel_last_post_signature = models.CharField(max_length=64, blank=True, default="")
     telegram_channel_last_posted_at = models.DateTimeField(null=True, blank=True)
+    # Channel message ids of this product's posts, so unpublishing can delete them.
+    telegram_channel_message_ids = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name_plural = 'Products'
@@ -1154,3 +1156,273 @@ class TelegramConversationState(models.Model):
 
     def __str__(self):
         return f"State for chat {self.chat_id}"
+
+
+class TelegramBotAdmin(models.Model):
+    """Someone allowed to work the admin bot's supplier review flow.
+
+    The owner (TELEGRAM_OWNER_USER_ID, falling back to the private
+    TELEGRAM_ALERT_CHAT_ID) gets a row automatically and can never be
+    removed through the bot; everyone else asks with /start and waits for
+    the owner's approval.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_DENIED = "denied"
+    STATUS_REMOVED = "removed"
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Waiting for approval"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_DENIED, "Denied"),
+        (STATUS_REMOVED, "Removed"),
+    )
+
+    telegram_user_id = models.BigIntegerField(unique=True)
+    username = models.CharField(max_length=64, blank=True)
+    full_name = models.CharField(max_length=150, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    # What the admin's next message means (a new price, pictures for an
+    # item...). Expires so a forgotten prompt never swallows a later message.
+    pending_action = models.JSONField(default=dict, blank=True)
+    pending_action_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Telegram bot admin"
+        verbose_name_plural = "Telegram bot admins"
+        ordering = ("created_at",)
+
+    def __str__(self):
+        return self.display_name
+
+    @property
+    def display_name(self):
+        return self.full_name or (f"@{self.username}" if self.username else str(self.telegram_user_id))
+
+
+class SupplierChannel(models.Model):
+    """A supplier's public Telegram channel, scraped daily via t.me/s/<username>."""
+
+    username = models.CharField(max_length=64, unique=True, help_text="Public channel username, without the @.")
+    title = models.CharField(max_length=120, blank=True)
+    sku_prefix = models.CharField(
+        max_length=8,
+        help_text="Starts the SKU of every product imported from this channel (ADT gives ADT-3047).",
+    )
+    is_active = models.BooleanField(default=True)
+    scrape_since = models.DateField(help_text="Posts older than this are never imported.")
+    last_message_id = models.PositiveIntegerField(default=0, help_text="Newest post already scraped.")
+    last_scraped_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=250, blank=True)
+    # Pricing: supplier price + delivery cover + max(min profit, markup %),
+    # rounded up to the next multiple of round_to.
+    delivery_cover = models.PositiveIntegerField(default=500, help_text="ETB added to every price to cover delivery.")
+    markup_percent = models.PositiveSmallIntegerField(default=25, help_text="Profit as a % of the supplier price.")
+    min_profit = models.PositiveIntegerField(default=300, help_text="Profit floor in ETB.")
+    round_to = models.PositiveIntegerField(default=100, help_text="Round the final price up to a multiple of this.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("username",)
+
+    def __str__(self):
+        return self.title or self.username
+
+
+class SupplierPost(models.Model):
+    """One listing from a supplier channel (an album, or split posts merged)."""
+
+    STATUS_NEW = "new"
+    STATUS_SENT = "sent"
+    STATUS_LISTED = "listed"
+    STATUS_DONE = "done"
+    STATUS_MANUAL = "manual"
+    STATUS_SKIPPED = "skipped"
+    STATUS_EXPIRED = "expired"
+    STATUS_FAILED = "failed"
+    STATUS_ON_SITE = "on_site"
+    STATUS_CHOICES = (
+        (STATUS_NEW, "New - not sent yet"),
+        (STATUS_SENT, "Sent - waiting for a layout"),
+        (STATUS_LISTED, "Listed - waiting for pictures"),
+        (STATUS_DONE, "Done"),
+        (STATUS_MANUAL, "Moved to the dashboard"),
+        (STATUS_SKIPPED, "Skipped"),
+        (STATUS_EXPIRED, "Expired"),
+        (STATUS_FAILED, "Failed - retried next run"),
+        (STATUS_ON_SITE, "Already on the site (added by hand)"),
+    )
+    OPEN_STATUSES = (STATUS_NEW, STATUS_SENT, STATUS_LISTED, STATUS_FAILED)
+    # A repost of a post in one of these is ignored; after a skip or an
+    # expiry a repost counts as a restock and comes back for review.
+    REPOST_BLOCKING_STATUSES = OPEN_STATUSES + (STATUS_DONE, STATUS_MANUAL, STATUS_ON_SITE)
+
+    LAYOUT_SINGLE = "single"
+    LAYOUT_COLOURS = "colours"
+    LAYOUT_SEPARATE = "separate"
+    LAYOUT_CHOICES = (
+        (LAYOUT_SINGLE, "One product, several shots"),
+        (LAYOUT_COLOURS, "Colour variants"),
+        (LAYOUT_SEPARATE, "Separate products"),
+    )
+
+    channel = models.ForeignKey(SupplierChannel, on_delete=models.CASCADE, related_name="posts")
+    message_id = models.PositiveIntegerField()
+    message_ids = models.JSONField(default=list, blank=True)
+    posted_at = models.DateTimeField()
+    caption = models.TextField(blank=True)
+    caption_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    # Fingerprint of the first photo; reposts reuse the same photo.
+    photo_hash = models.CharField(max_length=32, blank=True)
+    photo_urls = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_NEW)
+    analysis = models.JSONField(default=dict, blank=True)
+    layout = models.CharField(max_length=10, choices=LAYOUT_CHOICES, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error = models.CharField(max_length=250, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    handled_by = models.ForeignKey(
+        TelegramBotAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="handled_posts"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-posted_at",)
+        constraints = [
+            models.UniqueConstraint(fields=["channel", "message_id"], name="unique_supplier_post_message"),
+        ]
+        indexes = [
+            models.Index(fields=["status", "posted_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.channel.username}/{self.message_id}"
+
+    @property
+    def source_url(self):
+        return f"https://t.me/{self.channel.username}/{self.message_id}"
+
+
+class SupplierPostPhoto(models.Model):
+    """A supplier photo. Kept on Telegram (file_id), never in our media storage."""
+
+    post = models.ForeignKey(SupplierPost, on_delete=models.CASCADE, related_name="photos")
+    position = models.PositiveSmallIntegerField()
+    source_url = models.URLField(max_length=1000)
+    telegram_file_id = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ("position",)
+        constraints = [
+            models.UniqueConstraint(fields=["post", "position"], name="unique_supplier_post_photo_position"),
+        ]
+
+
+class SupplierItem(models.Model):
+    """One product-to-be from a supplier post, waiting for an admin's pictures.
+
+    The Product row is only created when the pictures arrive, so nothing
+    half-finished ever sits in the catalog.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_PUBLISHED = "published"
+    STATUS_UNPUBLISHED = "unpublished"
+    STATUS_SKIPPED = "skipped"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Waiting for pictures"),
+        (STATUS_PUBLISHED, "Published"),
+        (STATUS_UNPUBLISHED, "Unpublished"),
+        (STATUS_SKIPPED, "Skipped"),
+        (STATUS_EXPIRED, "Expired"),
+    )
+    CLOSED_STATUSES = (STATUS_SKIPPED, STATUS_EXPIRED)
+
+    post = models.ForeignKey(SupplierPost, on_delete=models.CASCADE, related_name="items")
+    position = models.PositiveSmallIntegerField()
+    # Items sharing a non-empty key are linked as colours of one garment.
+    group_key = models.CharField(max_length=60, blank=True)
+    title = models.CharField(max_length=150)
+    color = models.CharField(max_length=80, blank=True)
+    sizes = models.CharField(max_length=200, blank=True, help_text="Comma-separated.")
+    supplier_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    # Shopper copy from Gemini: descriptions, material, fit/care notes, SEO
+    # title/description, alt text and product type.
+    copy = models.JSONField(default=dict, blank=True)
+    photo_positions = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    claimed_by = models.ForeignKey(
+        TelegramBotAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="claimed_items"
+    )
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    published_by = models.ForeignKey(
+        TelegramBotAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name="published_items"
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="supplier_items"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("post", "position")
+        constraints = [
+            models.UniqueConstraint(fields=["post", "position"], name="unique_supplier_item_position"),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.color})" if self.color else self.title
+
+
+class SupplierItemUpload(models.Model):
+    """A picture an admin sent for an item; the lowest message id is the cover."""
+
+    item = models.ForeignKey(SupplierItem, on_delete=models.CASCADE, related_name="uploads")
+    telegram_message_id = models.BigIntegerField()
+    # Telegram retries slow webhooks; the same file must never attach twice.
+    file_unique_id = models.CharField(max_length=128, unique=True)
+    image = models.ImageField(upload_to="product-images")
+    attached = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("telegram_message_id",)
+
+
+class TelegramBotMessage(models.Model):
+    """Where the admin bot sent each review message, per admin chat.
+
+    Lets replies find their item, and lets a claim or publish update every
+    admin's copy of the same card.
+    """
+
+    KIND_POST_PHOTO = "post_photo"
+    KIND_POST = "post"
+    KIND_ITEM = "item"
+    KIND_PROMPT = "prompt"
+    KIND_CHOICES = (
+        (KIND_POST_PHOTO, "Supplier photo"),
+        (KIND_POST, "Post summary"),
+        (KIND_ITEM, "Item card"),
+        (KIND_PROMPT, "Reply prompt"),
+    )
+
+    chat_id = models.BigIntegerField()
+    message_id = models.BigIntegerField()
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES)
+    post = models.ForeignKey(SupplierPost, on_delete=models.CASCADE, null=True, blank=True, related_name="bot_messages")
+    item = models.ForeignKey(SupplierItem, on_delete=models.CASCADE, null=True, blank=True, related_name="bot_messages")
+    photo_position = models.PositiveSmallIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["chat_id", "message_id"], name="unique_telegram_bot_message"),
+        ]
