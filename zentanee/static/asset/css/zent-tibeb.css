@@ -365,6 +365,7 @@ html.lenis { scroll-behavior: auto; }
   animation: zh-install-in 320ms var(--zh-ease) both;
 }
 .zh-install[hidden] { display: none; }
+@media (max-width: 991.98px) { body.zh-body.has-sticky-cta .zh-install { bottom: calc(var(--zh-tabbar) + 78px + 14px + env(safe-area-inset-bottom, 0px)); } }
 .zh-install__mark { display: block; width: 40px; height: 40px; }
 .zh-install__text { display: grid; gap: 2px; min-width: 0; }
 .zh-install__title { margin: 0; font: 700 14px/1.25 var(--zh-body); letter-spacing: -0.005em; }

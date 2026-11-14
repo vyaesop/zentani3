@@ -307,13 +307,14 @@
 
     <div id="zent-toast" class="zent-toast" aria-live="polite"></div>
 
-    {# Install card: zent.js reveals it for engaged shoppers (2+ product views, or after an order). Android gets a real install button; iPhone gets the Share-sheet steps. #}
+    {# Install card: zent.js reveals it as soon as a shopper lands (not on checkout). Android gets an install button (native prompt, or menu steps if Chrome isn't ready); iPhone gets the Share-sheet steps. #}
     <aside class="zh-install" id="zh-install" role="dialog" aria-labelledby="zh-install-title" hidden>
         <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" class="zh-install__mark" width="40" height="40">
         <div class="zh-install__text">
             <p class="zh-install__title" id="zh-install-title">{% blocktrans with name=store.name %}Get the {{ name }} app{% endblocktrans %}</p>
             <p class="zh-install__body" data-install-mode="prompt">{% trans "One tap from your home screen. No app store, barely any space." %}</p>
             <p class="zh-install__body" data-install-mode="ios" hidden>{% trans "Tap" %} <svg class="zh-install__share" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false"><path d="M10 1.5v11M6 5.5l4-4 4 4M6.5 8.5H4v10h12v-10h-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"/></svg> <strong>{% trans "Share" %}</strong>, {% trans "then" %} <strong>{% trans "Add to Home Screen" %}</strong>.</p>
+            <p class="zh-install__body" data-install-mode="android" hidden>{% trans "Open your browser menu" %} <strong>&#8942;</strong>, {% trans "then tap" %} <strong>{% trans "Install app" %}</strong> {% trans "or" %} <strong>{% trans "Add to Home screen" %}</strong>.</p>
         </div>
         <div class="zh-install__actions">
             <button type="button" class="zh-btn zh-btn--primary zh-btn--sm" data-install-accept data-install-mode="prompt">{% trans "Install" %}</button>

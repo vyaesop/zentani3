@@ -121,17 +121,19 @@
   document.body.addEventListener('htmx:afterSettle', syncFilters);
 
   /* ── Install card (PWA) ────────────────────────────────────────── *
-   * Shown only to engaged shoppers: after 2+ product views, or straight after
-   * an order. Android/desktop Chrome get the native prompt behind "Install";
-   * iPhone has no prompt API, so it gets the Share -> Add to Home Screen steps.
+   * Shown as soon as someone lands on the site. Android shows it right away
+   * too; "Install" opens Chrome's native prompt if Chrome has offered one by
+   * then, otherwise it swaps to the browser-menu steps (Chrome only offers the
+   * prompt after its own engagement checks). Desktop shows it only once the
+   * native prompt is available. iPhone has no prompt API, so it gets the
+   * Share -> Add to Home Screen steps.
    * First "not now" hides it until their next visit (a new browser session);
    * every later "not now" hides it for 7 days. Never shown inside the installed app,
    * in in-app browsers (Telegram, Facebook, Instagram, TikTok can't install),
-   * or on pages with their own bottom bar (product, cart, checkout). */
+   * or on checkout. On product pages it lifts above the sticky add-to-cart bar. */
   (function installCard() {
     var card = document.getElementById('zh-install');
     if (!card) return;
-    var KEY_VIEWS = 'zh-pdp-views';
     var KEY_DISMISSALS = 'zh-install-dismissals';   // how many times they said "not now"
     var KEY_SNOOZE = 'zh-install-snooze';           // when they last said it (ms)
     var KEY_SESSION = 'zh-install-hidden';          // sessionStorage: dismissed this visit
@@ -157,24 +159,23 @@
     if (/FBAN|FBAV|Instagram|Telegram|TikTok|musical_ly|Line\//i.test(ua)) return;
 
     var isIos = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    var isPdp = !!document.getElementById('ga-view-item-data');
-    var justOrdered = !!document.getElementById('ga-purchase-data');
-
-    if (isPdp) store(KEY_VIEWS, String(num(KEY_VIEWS) + 1));
+    var isAndroid = /Android/i.test(ua);
 
     function eligible() {
       if (store(KEY_SESSION, undefined, 'sessionStorage')) return false;
       if (num(KEY_DISMISSALS) >= 2 && Date.now() - num(KEY_SNOOZE) < SNOOZE_MS) return false;
-      if (justOrdered) return true;
-      if (isPdp || route === 'cart' || route === 'checkout') return false;
-      return num(KEY_VIEWS) >= 2;
+      return route !== 'checkout';
+    }
+
+    function setMode(mode) {
+      card.querySelectorAll('[data-install-mode]').forEach(function (el) {
+        el.hidden = el.getAttribute('data-install-mode') !== mode;
+      });
     }
 
     function show(mode) {
       if (!card.hidden || !eligible()) return;
-      card.querySelectorAll('[data-install-mode]').forEach(function (el) {
-        el.hidden = el.getAttribute('data-install-mode') !== mode;
-      });
+      setMode(mode);
       card.hidden = false;
       track('pwa_install_card', { mode: mode });
     }
@@ -202,7 +203,11 @@
     var accept = card.querySelector('[data-install-accept]');
     if (accept) {
       accept.addEventListener('click', function () {
-        if (!deferred) { hide(true); return; }
+        if (!deferred) {
+          // Chrome hasn't offered its prompt yet: show the menu steps instead.
+          if (isAndroid) { setMode('android'); track('pwa_install_manual', {}); return; }
+          hide(true); return;
+        }
         deferred.prompt();
         deferred.userChoice.then(function (choice) {
           track('pwa_install_choice', { outcome: choice && choice.outcome });
@@ -215,7 +220,9 @@
     var dismiss = card.querySelector('[data-install-dismiss]');
     if (dismiss) dismiss.addEventListener('click', function () { hide(true); });
 
-    if (isIos) setTimeout(function () { show('ios'); }, 1500);
+    // Short delay so the card slides in after the page has painted.
+    if (isIos) setTimeout(function () { show('ios'); }, 600);
+    else if (isAndroid) setTimeout(function () { show('prompt'); }, 600);
   })();
 
   /* ── GA4 ecommerce ─────────────────────────────────────────────── */
