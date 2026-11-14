@@ -1,0 +1,39 @@
+{% load i18n static %}<!DOCTYPE html>
+<html lang="{% get_current_language as LANGUAGE_CODE %}{{ LANGUAGE_CODE }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#111111">
+<title>{% trans "You're offline" %} · Zentanee</title>
+{# Self-contained on purpose: the service worker serves this with no network, so no external CSS or fonts. #}
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    display: grid; place-items: center; padding: 24px 16px;
+    background: #fbfbf8; color: #111111;
+    font: 15px/1.5 "Archivo", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { display: grid; gap: 16px; justify-items: center; text-align: center; max-width: 420px; padding: 28px 22px; border: 2px solid #111111; background: #ffffff; }
+  img { display: block; width: 56px; height: 56px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; }
+  p { margin: 0; color: #3d3a36; max-width: 34ch; }
+  button {
+    min-height: 46px; padding: 0 22px; border: 2px solid #111111; border-bottom: 6px solid #1f3a93; border-radius: 0; /* the primary button's selvedge */
+    background: #111111; color: #ffffff; font: 600 12.5px/1 inherit; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  }
+  button:hover, button:focus-visible { background: #ffffff; color: #111111; }
+</style>
+</head>
+<body>
+<main>
+  <img src="{% static 'asset/images/logo-mark-80.png' %}" alt="" width="56" height="56">
+  <h1>{% trans "You're offline" %}</h1>
+  <p>{% trans "This page needs a connection. Pages you've already opened still work, and your cart is saved for when you're back online." %}</p>
+  <button type="button" onclick="location.reload()">{% trans "Try again" %}</button>
+</main>
+<script>window.addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>

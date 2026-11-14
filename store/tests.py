@@ -1443,6 +1443,45 @@ class PwaShellTests(TestCase):
         self.assertContains(response, "manifest.webmanifest")
         self.assertContains(response, "serviceWorker")
 
+    def test_service_worker_does_not_touch_the_database(self):
+        # Browsers re-check sw.js on navigations; it must never wake Neon.
+        with self.assertNumQueries(0):
+            response = self.client.get("/sw.js")
+        self.assertEqual(response["Cache-Control"], "no-cache")
+
+    def test_service_worker_precaches_offline_page_and_skips_private_pages(self):
+        body = self.client.get("/sw.js").content.decode()
+        self.assertIn(f'const OFFLINE_URL = "{reverse("store:offline")}"', body)
+        for private in ("cart", "checkout", "orders", "accounts", "dashboard", "payments"):
+            self.assertIn(f'"{private}"', body)
+        self.assertIn("/accounts/logout", body)
+
+    def test_offline_page_is_self_contained(self):
+        with self.assertNumQueries(0):
+            response = self.client.get(reverse("store:offline"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Robots-Tag"], "noindex")
+        self.assertContains(response, "<style>")
+        self.assertNotContains(response, "rel=\"stylesheet\"")
+
+    def test_manifest_has_separate_maskable_icons_that_exist(self):
+        from django.contrib.staticfiles import finders
+
+        path = finders.find("manifest.webmanifest")
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        purposes = {icon["purpose"] for icon in manifest["icons"]}
+        self.assertEqual(purposes, {"any", "maskable"})
+        for icon in manifest["icons"]:
+            self.assertIsNotNone(finders.find(icon["src"].removeprefix("/static/")), icon["src"])
+
+    def test_base_template_ships_ios_meta_and_install_card(self):
+        response = self.client.get(reverse("store:home"))
+        self.assertContains(response, 'name="apple-mobile-web-app-title"')
+        self.assertContains(response, 'name="apple-mobile-web-app-capable"')
+        self.assertContains(response, 'id="zh-install"')
+        self.assertContains(response, 'data-zh-route="home"')
+
 
 class LoadMoreTests(TestCase):
     """Collections use a load-more sentinel (progressive infinite scroll)."""

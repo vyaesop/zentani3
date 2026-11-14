@@ -6,7 +6,9 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
@@ -815,8 +817,22 @@ def shop(request):
 
 
 def service_worker(request):
-    """Serve the PWA service worker from the site root so its scope is '/'."""
-    return render(request, "sw.js", content_type="application/javascript")
+    """Serve the PWA service worker from the site root so its scope is '/'.
+
+    Rendered without the request so no context processor touches the database:
+    browsers re-check this file on navigations, and it must not wake Neon.
+    """
+    response = HttpResponse(render_to_string("sw.js"), content_type="application/javascript")
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+def offline(request):
+    """Self-contained page the service worker precaches and shows when a page
+    is requested offline that was never stored. No request context, no DB."""
+    response = HttpResponse(render_to_string("offline.html"))
+    response["X-Robots-Tag"] = "noindex"
+    return response
 
 
 def delivery_returns(request):

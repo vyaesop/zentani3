@@ -353,6 +353,28 @@ html.lenis { scroll-behavior: auto; }
 }
 .zent-toast.is-visible { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 .zent-toast .zent-alert { background: var(--zh-ink); color: var(--zh-paper); border-color: var(--zh-ink); border-bottom: 6px solid var(--zh-indigo); }
+/* Install card: sits where the toast does, above the tab bar. Square, 2px ink border; the
+   indigo selvedge stays on its primary Install button (DESIGN.md: never a box border). */
+.zh-install {
+  position: fixed; left: 50%; z-index: 1250;
+  bottom: calc(var(--zh-tabbar) + 14px + env(safe-area-inset-bottom, 0px));
+  width: min(calc(100vw - 32px), 440px); transform: translateX(-50%);
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 12px 10px 12px 14px; background: var(--zh-paper); color: var(--zh-ink);
+  border: 2px solid var(--zh-ink);
+  animation: zh-install-in 320ms var(--zh-ease) both;
+}
+.zh-install[hidden] { display: none; }
+.zh-install__mark { display: block; width: 40px; height: 40px; }
+.zh-install__text { display: grid; gap: 2px; min-width: 0; }
+.zh-install__title { margin: 0; font: 700 14px/1.25 var(--zh-body); letter-spacing: -0.005em; }
+.zh-install__body { margin: 0; font-size: 13px; line-height: 1.4; color: var(--zh-ink-2); }
+.zh-install__body strong { color: var(--zh-ink); font-weight: 600; }
+.zh-install__share { display: inline-block; vertical-align: -2px; color: var(--zh-indigo); }
+.zh-install__actions { display: flex; align-items: center; gap: 4px; }
+.zh-install [hidden] { display: none; }
+@keyframes zh-install-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .zh-install { animation: none; } }
 .zent-busy-region.htmx-request { opacity: 0.55; pointer-events: none; transition: opacity 150ms ease; }
 .zent-spinner { display: none; width: 12px; height: 12px; background: currentColor; vertical-align: -1px; margin-left: 8px; animation: zh-spin 0.9s linear infinite; }
 .htmx-request .zent-spinner, .htmx-request.zent-spinner { display: inline-block; }
@@ -485,6 +507,7 @@ body.zent-home-page .zh-footer { margin-top: 0; }
   body.zh-body, body.zh-body.has-sticky-cta { padding-bottom: 0; }
   .zh-tabbar { display: none; }
   .zent-toast { bottom: 24px; }
+  .zh-install { bottom: 24px; }
   .zh-header__row { min-height: 76px; }
   .zh-header__search { display: flex; width: min(320px, 100%); }
   .zh-header__link { display: inline-flex; }
